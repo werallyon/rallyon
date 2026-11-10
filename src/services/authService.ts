@@ -1,5 +1,6 @@
 import { User } from '../types';
 import { supabase } from '../lib/supabaseClient';
+import { getUserWithProfile, mergeAuthUserWithProfile, updateProfile } from './profileService';
 
 export interface SignUpParams {
   firstName: string;
@@ -67,6 +68,7 @@ class AuthService {
   constructor() {
     supabase?.auth.onAuthStateChange((_event, session) => {
       this.currentUser = session?.user ? mapUser(session.user) : null;
+      if (session?.user) void this.hydrateUser(session.user);
       this.notify();
     });
   }
@@ -75,7 +77,7 @@ class AuthService {
     if (!supabase) { this.initialized = true; this.notify(); return null; }
     const { data, error } = await supabase.auth.getSession();
     if (error) throw error;
-    this.currentUser = data.session?.user ? mapUser(data.session.user) : null;
+    this.currentUser = data.session?.user ? await this.hydrateUser(data.session.user) : null;
     this.initialized = true;
     this.notify();
     return this.currentUser;
@@ -88,6 +90,11 @@ class AuthService {
   }
 
   getCurrentUser() { return this.currentUser; }
+
+  private async hydrateUser(authUser: any): Promise<User> {
+    try { return await getUserWithProfile(authUser); }
+    catch { return mergeAuthUserWithProfile(authUser); }
+  }
   private notify() { this.listeners.forEach((cb) => cb(this.currentUser)); }
 
   validateEmail(email: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()); }
@@ -118,7 +125,7 @@ class AuthService {
     if (error) return { success: false, error: error.message };
     if (!data.user) return { success: false, error: 'Account creation did not return a user.' };
     if (!data.session) return { success: true, requiresEmailVerification: true, error: 'Account created. Check your email to verify your RallyOn account, then sign in.' };
-    this.currentUser = mapUser(data.user); this.notify();
+    this.currentUser = await this.hydrateUser(data.user); this.notify();
     return { success: true, user: this.currentUser };
   }
 
@@ -128,7 +135,7 @@ class AuthService {
     if (!supabase) return { success: false, error: 'Supabase is not configured.' };
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
     if (error) return { success: false, error: error.message };
-    this.currentUser = data.user ? mapUser(data.user) : null; this.notify();
+    this.currentUser = data.user ? await this.hydrateUser(data.user) : null; this.notify();
     return { success: Boolean(this.currentUser), user: this.currentUser || undefined };
   }
 
@@ -162,12 +169,14 @@ class AuthService {
     if (!this.currentUser || this.currentUser.id !== id || !supabase) return null;
     const updated = { ...this.currentUser, ...updates, id, updatedAt: new Date().toISOString() } as User;
     this.currentUser = updated; this.notify();
-    void supabase.auth.updateUser({ data: updated }).then(({ data }) => {
-      if (data.user) { this.currentUser = mapUser(data.user); this.notify(); }
-    });
+    void updateProfile(id, updates).then((profile) => {
+      if (profile && this.currentUser?.id === id) {
+        this.currentUser = mergeAuthUserWithProfile({ id, email: this.currentUser.email, user_metadata: {}, email_confirmed_at: this.currentUser.emailVerified ? new Date().toISOString() : null, created_at: this.currentUser.createdAt }, profile);
+        this.notify();
+      }
+    }).catch(() => undefined);
     return updated;
   }
-
   completeOnboarding(id: string) { return this.updateUser(id, { onboardingCompleted: true, onboardingStep: 'complete' }); }
   logout() { if (supabase) void supabase.auth.signOut(); this.currentUser = null; this.notify(); }
   deleteAccount(_id: string) { return false; }
