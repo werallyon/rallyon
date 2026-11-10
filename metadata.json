@@ -1,0 +1,10 @@
+{
+  "name": "RallyOn",
+  "description": "Real-time sports and social venue intelligence platform. Find the game, find your people, find your place.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
