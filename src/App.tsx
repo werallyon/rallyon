@@ -34,6 +34,7 @@ import { rankVenues, computeRallyMatch } from './services/rallyMatchEngine';
 import { signalEngine } from './services/signalEngine';
 import { sportsProvider, sportsService } from './services/sportsProvider';
 import { marketService } from './services/marketService';
+import { getVenues, getVenueGameProgramming, getFavoriteVenueIds, toggleVenueFavorite } from './services/venueService';
 import { sortGamesByFavorites, isFavoriteTeamGame } from './services/teamPreferenceService';
 
 type AuthView = 'WELCOME' | 'SIGN_IN' | 'SIGN_UP' | 'FORGOT_PASSWORD';
@@ -78,6 +79,37 @@ function RallyOnMain() {
 
   // Sports provider games
   const [games, setGames] = useState<SportsGame[]>([]);
+  const [dbVenues, setDbVenues] = useState<Venue[] | null>(null);
+  const [dbVenueGames, setDbVenueGames] = useState<VenueGame[]>([]);
+
+  // Load Supabase venue data; keep seeded data as a safe fallback while the database is empty.
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([getVenues(), getVenueGameProgramming()])
+      .then(([venues, programming]) => {
+        if (!mounted) return;
+        setDbVenues(venues.length ? venues : null);
+        setDbVenueGames(programming.map((p) => ({
+          venueId: p.venue_id,
+          gameId: p.game_id,
+          confidence: p.confidence,
+          verificationStatus: p.status === 'GAME_ON' ? 'GAME_ON' : p.status === 'CONFIRMED' ? 'LIKELY' : 'NOT_CONFIRMED',
+          audioConfirmed: p.audio_on,
+          screenAllocations: p.screen,
+          lastVerifiedAt: p.verified_at || p.updated_at
+        })));
+      })
+      .catch((error) => console.warn('Supabase venue data unavailable; using seeded data.', error));
+    return () => { mounted = false; };
+  }, []);
+
+  // Load saved venues from Supabase when authenticated.
+  useEffect(() => {
+    if (!currentUser?.id || currentUser.id.startsWith('usr_')) return;
+    getFavoriteVenueIds(currentUser.id)
+      .then((ids) => { if (ids.length) setSavedVenueIds(ids); })
+      .catch((error) => console.warn('Supabase favorites unavailable; using profile favorites.', error));
+  }, [currentUser?.id]);
 
   // Subscribe to marketService for active market changes
   useEffect(() => {
@@ -91,8 +123,9 @@ function RallyOnMain() {
 
   // Filter venues for active market ecosystem (Market -> City -> Venue)
   const marketVenues = useMemo(() => {
+    const sourceVenues = dbVenues || SEEDED_VENUES;
     const filtered = marketService.filterVenuesByMarket(
-      SEEDED_VENUES,
+      sourceVenues,
       activeMarket.id
     );
     return filtered.length > 0 ? filtered : SEEDED_VENUES;
@@ -177,9 +210,13 @@ function RallyOnMain() {
 
   // Toggle saving venue
   const handleToggleSave = (venueId: string) => {
-    setSavedVenueIds((prev) =>
-      prev.includes(venueId) ? prev.filter((id) => id !== venueId) : [...prev, venueId]
-    );
+    const wasSaved = savedVenueIds.includes(venueId);
+    setSavedVenueIds((prev) => wasSaved ? prev.filter((id) => id !== venueId) : [...prev, venueId]);
+    if (currentUser?.id && !currentUser.id.startsWith('usr_')) {
+      void toggleVenueFavorite(currentUser.id, venueId, wasSaved).catch((error) => {
+        console.warn('Unable to persist venue favorite.', error);
+      });
+    }
   };
 
   // Convert user's favorite teams to string names for match scoring
@@ -197,7 +234,7 @@ function RallyOnMain() {
     return rankVenues(marketVenues, liveStates, {
       intent: currentIntent,
       selectedGame,
-      venueGames: SEEDED_VENUE_GAMES,
+      venueGames: dbVenueGames.length ? dbVenueGames : SEEDED_VENUE_GAMES,
       presenceList: presences,
       userLocation: { latitude: userLocation.lat, longitude: userLocation.lon },
       userFavoriteTeams: favoriteTeamNames,
@@ -222,7 +259,7 @@ function RallyOnMain() {
     return computeRallyMatch(selectedVenue, live, {
       intent: currentIntent,
       selectedGame,
-      venueGames: SEEDED_VENUE_GAMES,
+      venueGames: dbVenueGames.length ? dbVenueGames : SEEDED_VENUE_GAMES,
       presenceList: presences,
       userLocation: { latitude: userLocation.lat, longitude: userLocation.lon },
       userFavoriteTeams: favoriteTeamNames,
