@@ -35,7 +35,7 @@ const DEFAULT_NOTIFICATIONS: User['notificationPreferences'] = { favoriteTeamGam
 export function mergeAuthUserWithProfile(authUser: any, profile?: ProfileRow | null): User {
   const m = authUser?.user_metadata || {};
   const now = new Date().toISOString();
-  const p = profile || {};
+  const p: ProfileRow = profile ?? { id: authUser.id };
   const firstName = p.first_name ?? m.firstName ?? '';
   const lastName = p.last_name ?? m.lastName ?? '';
   const displayName = p.display_name ?? m.name ?? `${firstName} ${lastName}`.trim() ?? authUser?.email?.split('@')[0] ?? '';
