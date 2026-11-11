@@ -102,7 +102,7 @@ export async function upsertVenueGameProgramming(params: {
     game_id: params.game_id,
     network: params.network ?? null,
     status: params.status,
-    is_confirmed: params.is_confirmed ?? params.status === 'CONFIRMED' || params.status === 'GAME_ON',
+    is_confirmed: params.is_confirmed ?? (params.status === 'CONFIRMED' || params.status === 'GAME_ON'),
     audio_on: params.audio_on ?? true,
     screen: params.screen ?? null,
     featured: params.featured ?? false,
