@@ -87,6 +87,8 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
   const [editCrowd, setEditCrowd] = useState(venue.venueTruth.environment.crowdBaseline);
   const [editNoise, setEditNoise] = useState(venue.venueTruth.environment.noiseBaseline);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
+  const [programmingSourceUrl, setProgrammingSourceUrl] = useState('');
+  const [programmingVerificationNotes, setProgrammingVerificationNotes] = useState('');
 
   // New Promotion form states
   const [newPromoTitle, setNewPromoTitle] = useState('');
@@ -148,12 +150,17 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
       confidence: 100,
       is_confirmed: isShowing,
       created_by: currentUser.id,
-      start_time: game.startTime
+      start_time: game.startTime,
+      source_type: 'VENUE' as VenueGameProgramming['source_type'],
+      source_url: programmingSourceUrl.trim() || undefined,
+      verification_notes: programmingVerificationNotes.trim() || undefined
     };
 
     if (isDatabaseVenue) {
       try {
         const saved = await upsertVenueGameProgramming(payload);
+        setProgrammingSourceUrl('');
+        setProgrammingVerificationNotes('');
         setProgramming((prev) => {
           const next = prev.filter((p) => p.game_id !== game.id);
           return isShowing ? [saved, ...next] : next;
@@ -436,9 +443,31 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
               <div>
                 <h3 className="text-base font-black text-white">What Are You Showing?</h3>
                 <p className="text-xs text-neutral-400">
-                  Tell RallyOn which games you intend to broadcast with sound or on main screens.
+                  Confirm what your venue is showing. Add evidence when you want the listing to carry a stronger verification signal.
                 </p>
               </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-3">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-black text-white">Verification Evidence</span>
+              </div>
+              <p className="text-[11px] text-neutral-400">Optional. Use an official event page, venue post, or other source that supports the programming claim.</p>
+              <input
+                type="url"
+                value={programmingSourceUrl}
+                onChange={(e) => setProgrammingSourceUrl(e.target.value)}
+                placeholder="Source URL (optional)"
+                className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-xl text-xs text-white placeholder:text-neutral-600"
+              />
+              <textarea
+                rows={2}
+                value={programmingVerificationNotes}
+                onChange={(e) => setProgrammingVerificationNotes(e.target.value)}
+                placeholder="Verification notes (optional)"
+                className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-xl text-xs text-white placeholder:text-neutral-600 resize-none"
+              />
             </div>
 
             <div className="space-y-3">
