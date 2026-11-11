@@ -65,7 +65,7 @@ export class CommercialSportsDataProvider implements ISportsDataProvider {
         `${this.vendor} Official Broadcast Rights Verification`
       ],
       lastSync: this.lastSync,
-      error: !this.isConfigured ? 'Missing Commercial License API Key' : this.lastError,
+      error: 'Commercial provider adapter is not implemented; no live feed is available.',
       latencyMs: this.lastLatencyMs,
       cachedGamesCount: 0
     };
