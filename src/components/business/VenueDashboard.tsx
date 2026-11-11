@@ -34,6 +34,14 @@ import {
   BusinessRole
 } from '../../types';
 import { businessVenueService } from '../../services/businessVenueService';
+import { supabase } from '../../lib/supabaseClient';
+import {
+  getVenueGameProgramming,
+  getStoredGames,
+  upsertVenueGameProgramming,
+  deleteVenueGameProgramming
+} from '../../services/venueService';
+import { getStoredGames as getDatabaseGames } from '../../services/gameService';
 import { sportsService } from '../../services/sportsProvider';
 import { googlePlacesService } from '../../services/googlePlacesService';
 import { useAuth } from '../../context/AuthContext';
@@ -66,6 +74,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [sponsorships, setSponsorships] = useState<Sponsorship[]>([]);
   const [analytics, setAnalytics] = useState<VenueAnalyticsSummary | null>(null);
+  const isDatabaseVenue = Boolean(supabase && !venue.id.startsWith('venue_'));
 
   // Profile builder form states
   const [editName, setEditName] = useState(venue.name);
@@ -91,12 +100,22 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
   useEffect(() => {
     let mounted = true;
 
-    sportsService.getGames().then((games) => {
+    const loadGamesAndProgramming = async () => {
+      const games = isDatabaseVenue
+        ? await getDatabaseGames().catch(() => [])
+        : await sportsService.getGames();
       if (mounted) setUpcomingGames(games);
-    });
+
+      if (isDatabaseVenue) {
+        const dbProgramming = await getVenueGameProgramming().catch(() => []);
+        if (mounted) setProgramming(dbProgramming.filter((p) => p.venue_id === venue.id));
+      }
+    };
+
+    loadGamesAndProgramming();
 
     const refreshData = () => {
-      setProgramming(businessVenueService.getProgrammingForVenue(venue.id));
+      if (!isDatabaseVenue) setProgramming(businessVenueService.getProgrammingForVenue(venue.id));
       setPromotions(businessVenueService.getPromotionsForVenue(venue.id));
       setSponsorships(businessVenueService.getSponsorships().filter((s) => s.venue_id === venue.id));
       setAnalytics(businessVenueService.getVenueAnalytics(venue.id));
@@ -108,7 +127,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
       mounted = false;
       unsub();
     };
-  }, [venue.id]);
+  }, [venue.id, isDatabaseVenue]);
 
   const showToast = (msg: string) => {
     setSaveFeedback(msg);
@@ -118,26 +137,57 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
   // Handle programming toggle
   const handleToggleShowing = (game: SportsGame, isShowing: boolean) => {
     if (!currentUser) return;
-    businessVenueService.saveProgramming({
+    const payload = {
       venue_id: venue.id,
       game_id: game.id,
       network: game.broadcastNetwork || 'ESPN',
-      status: isShowing ? 'GAME_ON' : 'NOT_SHOWING',
+      status: isShowing ? 'GAME_ON' : 'NOT_SHOWING' as VenueGameProgramming['status'],
       audio_on: true,
       screen: 'Main Video Wall',
       featured: isShowing,
       notes: isShowing ? 'Verified Airing on Main Screens • Sound ON' : 'Not showing tonight',
-      created_by: currentUser.name
-    });
-    showToast(`Updated programming for ${game.homeTeam.abbrev} vs ${game.awayTeam.abbrev}`);
+      confidence: 100,
+      is_confirmed: isShowing,
+      created_by: currentUser.name,
+      start_time: game.startTime
+    };
+
+    if (isDatabaseVenue) {
+      try {
+        const saved = await upsertVenueGameProgramming(payload);
+        setProgramming((prev) => {
+          const next = prev.filter((p) => p.game_id !== game.id);
+          return isShowing ? [saved, ...next] : next;
+        });
+        showToast(`Updated programming for ${game.homeTeam.abbrev} vs ${game.awayTeam.abbrev}`);
+      } catch (error) {
+        console.warn('Unable to persist venue programming.', error);
+        showToast('Could not save programming. Verify this venue is claimed by your account.');
+      }
+    } else {
+      businessVenueService.saveProgramming(payload);
+      setProgramming(businessVenueService.getProgrammingForVenue(venue.id));
+      showToast(`Updated programming for ${game.homeTeam.abbrev} vs ${game.awayTeam.abbrev}`);
+    }
   };
 
-  const handleToggleAudio = (prog: VenueGameProgramming) => {
-    businessVenueService.saveProgramming({
-      ...prog,
-      audio_on: !prog.audio_on
-    });
-    showToast(`Game audio ${!prog.audio_on ? 'ON' : 'OFF'}`);
+  const handleToggleAudio = async (prog: VenueGameProgramming) => {
+    const nextAudio = !prog.audio_on;
+    if (isDatabaseVenue) {
+      try {
+        const saved = await upsertVenueGameProgramming({ ...prog, audio_on: nextAudio });
+        setProgramming((prev) => prev.map((item) => item.id === saved.id ? saved : item));
+        showToast(`Game audio ${nextAudio ? 'ON' : 'OFF'}`);
+      } catch (error) {
+        console.warn('Unable to update venue programming audio.', error);
+        showToast('Could not update audio. Verify this venue is claimed by your account.');
+      }
+      return;
+    }
+
+    businessVenueService.saveProgramming({ ...prog, audio_on: nextAudio });
+    setProgramming(businessVenueService.getProgrammingForVenue(venue.id));
+    showToast(`Game audio ${nextAudio ? 'ON' : 'OFF'}`);
   };
 
   const handleSaveProfile = (e: React.FormEvent) => {
