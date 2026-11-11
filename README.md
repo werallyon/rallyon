@@ -6,7 +6,7 @@ RallyOn is a sports, entertainment, and venue discovery platform.
 
 **Prerequisites:** Node.js 20+ and Deno 2+ for Edge Function checks.
 
-1. Install dependencies: `npm ci`
+1. Install dependencies: `npm install`
 2. Copy `.env.example` to `.env.local`.
 3. Add the required local API keys/secrets to `.env.local`.
 4. Run the app: `npm run dev`
