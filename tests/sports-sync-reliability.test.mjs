@@ -70,3 +70,23 @@ test("production function gateway config requires the custom in-function token c
   assert.match(config, /\[functions\.sync-games\]/);
   assert.match(config, /verify_jwt\s*=\s*false/);
 });
+
+test("manual recovery uses the production ESPN host and fails non-zero on partial provider errors", async () => {
+  const source = await readFile(new URL("../scripts/sync-espn.mjs", import.meta.url), "utf8");
+  assert.match(source, /getSyncOutcome/);
+  assert.match(source, /process\.exitCode = 1/);
+  assert.match(source, /site\.web\.api\.espn\.com/);
+  assert.doesNotMatch(source, /site\.api\.espn\.com/);
+});
+
+test("GitHub sports recovery workflow is manual-only, not a competing scheduler", async () => {
+  const workflow = await readFile(new URL("../.github/workflows/sports-sync.yml", import.meta.url), "utf8");
+  assert.match(workflow, /workflow_dispatch/);
+  assert.doesNotMatch(workflow, /^\s*schedule:/m);
+  assert.match(workflow, /confirm_production_write/);
+});
+
+test("games schema keeps the composite external-event uniqueness constraint", async () => {
+  const migration = await readFile(new URL("../supabase/migrations/20261110_create_rallyon_core_data_model.sql", import.meta.url), "utf8");
+  assert.match(migration, /unique\s*\(league,\s*external_game_id\)/i);
+});
