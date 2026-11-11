@@ -15,6 +15,8 @@ const LEAGUES = [
   ["basketball", "wnba", "WNBA", "BASKETBALL", "GAME"],
   // Baseball / hockey
   ["baseball", "mlb", "MLB", "BASEBALL", "GAME"],
+  ["baseball", "college-baseball", "NCAA_BB_BASEBALL", "BASEBALL", "GAME"],
+  ["baseball", "world-baseball-classic", "WBC", "BASEBALL", "GAME"],
   ["hockey", "nhl", "NHL", "HOCKEY", "GAME"],
   // Soccer
   ["soccer", "usa.1", "MLS", "SOCCER", "GAME"],
@@ -33,9 +35,10 @@ const LEAGUES = [
   ["golf", "pga", "PGA", "GOLF", "TOURNAMENT"],
   ["golf", "lpga", "LPGA", "GOLF", "TOURNAMENT"],
   ["golf", "liv", "LIV", "GOLF", "TOURNAMENT"],
+  ["golf", "eur", "DP_WORLD", "GOLF", "TOURNAMENT"],
   // Motorsports
   ["racing", "f1", "F1", "RACING", "RACE"],
-  ["racing", "nascar", "NASCAR", "RACING", "RACE"],
+  ["racing", "nascar-premier", "NASCAR", "RACING", "RACE"],
   ["racing", "irl", "INDYCAR", "RACING", "RACE"],
 ];
 
