@@ -149,15 +149,17 @@ export const SportsProviderModal: React.FC<SportsProviderModalProps> = ({
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
                   status.mode === 'LIVE_FEED'
                     ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : status.mode === 'UNAVAILABLE'
+                    ? 'bg-red-500/20 text-red-400 border border-red-500/30'
                     : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                 }`}
               >
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${
-                    status.mode === 'LIVE_FEED' ? 'bg-emerald-400' : 'bg-amber-400'
+                    status.mode === 'LIVE_FEED' ? 'bg-emerald-400' : status.mode === 'UNAVAILABLE' ? 'bg-red-400' : 'bg-amber-400'
                   }`}
                 />
-                {status.mode === 'LIVE_FEED' ? 'Live ESPN Streams' : 'Curated Fallback Mode'}
+                {status.mode === 'LIVE_FEED' ? 'Live ESPN Streams' : status.mode === 'UNAVAILABLE' ? 'Provider Unavailable' : 'Demo Fixtures'}
               </span>
             </div>
 
@@ -187,6 +189,12 @@ export const SportsProviderModal: React.FC<SportsProviderModalProps> = ({
                 </span>
               </div>
             </div>
+
+            {status.error && (
+              <div className="p-3 rounded-xl border border-red-500/30 bg-red-950/30 text-[11px] text-red-300" role="alert">
+                {status.error}
+              </div>
+            )}
 
             {/* Diagnostics and sync buttons */}
             <div className="flex items-center gap-2 pt-1">
