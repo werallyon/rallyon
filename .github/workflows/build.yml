@@ -19,11 +19,19 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: Install dependencies
         run: npm install
 
-      - name: Production data regression tests
+      - name: Regression tests
         run: npm test
+
+      - name: Check Edge Function types
+        run: deno check --node-modules-dir=auto supabase/functions/sync-games/index.ts
 
       - name: Type check
         run: npm run lint
