@@ -31,7 +31,7 @@ jobs:
         run: npm test
 
       - name: Check Edge Function types
-        run: deno check supabase/functions/sync-games/index.ts
+        run: deno check --node-modules-dir=auto supabase/functions/sync-games/index.ts
 
       - name: Type check
         run: npm run lint
