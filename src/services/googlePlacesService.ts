@@ -1,8 +1,9 @@
 import { Venue, GooglePlaceData, VenuePlaceMatch } from '../types';
+import { isDemoMode } from '../config/dataMode';
 
 export interface PlacesServiceStatus {
   isConfigured: boolean;
-  mode: 'CONFIGURED' | 'USING_DEMO_CACHE';
+  mode: 'CONFIGURED' | 'USING_DEMO_CACHE' | 'UNCONFIGURED';
   apiKeyFound: boolean;
   placesCachedCount: number;
 }
@@ -127,7 +128,7 @@ const SEEDED_GOOGLE_PLACES: Record<string, GooglePlaceData> = {
   }
 };
 
-const STORAGE_MATCHES_KEY = 'rallyon_venue_place_matches_v1';
+const STORAGE_MATCHES_KEY = `rallyon_venue_place_matches_v1_${isDemoMode ? 'demo' : 'production'}`;
 
 export class GooglePlacesService {
   private apiKey: string;
@@ -141,9 +142,11 @@ export class GooglePlacesService {
       '';
 
     // Seed initial places
-    Object.values(SEEDED_GOOGLE_PLACES).forEach((place) => {
-      this.placesCache.set(place.placeId, place);
-    });
+    if (isDemoMode) {
+      Object.values(SEEDED_GOOGLE_PLACES).forEach((place) => {
+        this.placesCache.set(place.placeId, place);
+      });
+    }
 
     this.loadPersistedMatches();
   }
@@ -156,7 +159,7 @@ export class GooglePlacesService {
         Object.entries(parsed).forEach(([venueId, match]) => {
           this.venueMatches.set(venueId, match as VenuePlaceMatch);
         });
-      } else {
+      } else if (isDemoMode) {
         // Initial default mappings for seeded venues
         this.venueMatches.set('venue_bufords', {
           venueId: 'venue_bufords',
@@ -207,7 +210,7 @@ export class GooglePlacesService {
   getStatus(): PlacesServiceStatus {
     return {
       isConfigured: Boolean(this.apiKey && this.apiKey.length > 5),
-      mode: this.apiKey && this.apiKey.length > 5 ? 'CONFIGURED' : 'USING_DEMO_CACHE',
+      mode: this.apiKey && this.apiKey.length > 5 ? 'CONFIGURED' : (isDemoMode ? 'USING_DEMO_CACHE' : 'UNCONFIGURED'),
       apiKeyFound: Boolean(this.apiKey && this.apiKey.length > 5),
       placesCachedCount: this.placesCache.size
     };

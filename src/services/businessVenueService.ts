@@ -15,14 +15,15 @@ import {
   VenueReliabilityScore,
   Venue
 } from '../types';
+import { isDemoMode } from '../config/dataMode';
 
-const STORAGE_CLAIMS_KEY = 'rallyon_venue_claims_v1';
-const STORAGE_PROGRAMMING_KEY = 'rallyon_venue_programming_v1';
-const STORAGE_PROMOTIONS_KEY = 'rallyon_venue_promotions_v1';
-const STORAGE_REDEMPTIONS_KEY = 'rallyon_venue_redemptions_v1';
-const STORAGE_SPONSORSHIPS_KEY = 'rallyon_sponsorships_v1';
-const STORAGE_ANALYTICS_KEY = 'rallyon_analytics_events_v1';
-const STORAGE_BUSINESS_ACCOUNTS_KEY = 'rallyon_business_accounts_v1';
+const STORAGE_CLAIMS_KEY = `rallyon_venue_claims_v1_${isDemoMode ? 'demo' : 'production'}`;
+const STORAGE_PROGRAMMING_KEY = `rallyon_venue_programming_v1_${isDemoMode ? 'demo' : 'production'}`;
+const STORAGE_PROMOTIONS_KEY = `rallyon_venue_promotions_v1_${isDemoMode ? 'demo' : 'production'}`;
+const STORAGE_REDEMPTIONS_KEY = `rallyon_venue_redemptions_v1_${isDemoMode ? 'demo' : 'production'}`;
+const STORAGE_SPONSORSHIPS_KEY = `rallyon_sponsorships_v1_${isDemoMode ? 'demo' : 'production'}`;
+const STORAGE_ANALYTICS_KEY = `rallyon_analytics_events_v1_${isDemoMode ? 'demo' : 'production'}`;
+const STORAGE_BUSINESS_ACCOUNTS_KEY = `rallyon_business_accounts_v1_${isDemoMode ? 'demo' : 'production'}`;
 
 export class BusinessVenueService {
   private claims: VenueClaim[] = [];
@@ -43,32 +44,32 @@ export class BusinessVenueService {
   private loadFromStorage() {
     try {
       const storedClaims = localStorage.getItem(STORAGE_CLAIMS_KEY);
-      this.claims = storedClaims ? JSON.parse(storedClaims) : this.getInitialClaims();
+      this.claims = storedClaims ? JSON.parse(storedClaims) : (isDemoMode ? this.getInitialClaims() : []);
 
       const storedProg = localStorage.getItem(STORAGE_PROGRAMMING_KEY);
-      this.programming = storedProg ? JSON.parse(storedProg) : this.getInitialProgramming();
+      this.programming = storedProg ? JSON.parse(storedProg) : (isDemoMode ? this.getInitialProgramming() : []);
 
       const storedPromos = localStorage.getItem(STORAGE_PROMOTIONS_KEY);
-      this.promotions = storedPromos ? JSON.parse(storedPromos) : this.getInitialPromotions();
+      this.promotions = storedPromos ? JSON.parse(storedPromos) : (isDemoMode ? this.getInitialPromotions() : []);
 
       const storedSpons = localStorage.getItem(STORAGE_SPONSORSHIPS_KEY);
-      this.sponsorships = storedSpons ? JSON.parse(storedSpons) : this.getInitialSponsorships();
+      this.sponsorships = storedSpons ? JSON.parse(storedSpons) : (isDemoMode ? this.getInitialSponsorships() : []);
 
       const storedRedemptions = localStorage.getItem(STORAGE_REDEMPTIONS_KEY);
       this.redemptions = storedRedemptions ? JSON.parse(storedRedemptions) : [];
 
       const storedEvents = localStorage.getItem(STORAGE_ANALYTICS_KEY);
-      this.analyticsEvents = storedEvents ? JSON.parse(storedEvents) : this.getInitialAnalytics();
+      this.analyticsEvents = storedEvents ? JSON.parse(storedEvents) : (isDemoMode ? this.getInitialAnalytics() : []);
 
       const storedAccounts = localStorage.getItem(STORAGE_BUSINESS_ACCOUNTS_KEY);
-      this.businessAccounts = storedAccounts ? JSON.parse(storedAccounts) : this.getInitialAccounts();
+      this.businessAccounts = storedAccounts ? JSON.parse(storedAccounts) : (isDemoMode ? this.getInitialAccounts() : []);
     } catch {
-      this.claims = this.getInitialClaims();
-      this.programming = this.getInitialProgramming();
-      this.promotions = this.getInitialPromotions();
-      this.sponsorships = this.getInitialSponsorships();
-      this.analyticsEvents = this.getInitialAnalytics();
-      this.businessAccounts = this.getInitialAccounts();
+      this.claims = isDemoMode ? this.getInitialClaims() : [];
+      this.programming = isDemoMode ? this.getInitialProgramming() : [];
+      this.promotions = isDemoMode ? this.getInitialPromotions() : [];
+      this.sponsorships = isDemoMode ? this.getInitialSponsorships() : [];
+      this.analyticsEvents = isDemoMode ? this.getInitialAnalytics() : [];
+      this.businessAccounts = isDemoMode ? this.getInitialAccounts() : [];
     }
   }
 
@@ -493,12 +494,12 @@ export class BusinessVenueService {
     const confirmedCount = programming.filter((p) => p.status === 'GAME_ON' || p.status === 'CONFIRMED').length;
     const totalCount = programming.length;
 
-    let confirmationRate = 92;
+    let confirmationRate = 0;
     if (totalCount > 0) {
       confirmationRate = Math.round((confirmedCount / totalCount) * 100);
     }
 
-    const score = Math.min(99, Math.max(70, Math.round(confirmationRate * 0.95 + 4)));
+    const score = totalCount === 0 ? 0 : Math.min(99, Math.max(0, Math.round(confirmationRate * 0.95 + 4)));
 
     return {
       venue_id: venueId,

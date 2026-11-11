@@ -10,18 +10,19 @@ import {
   SEEDED_PRESENCE,
   INITIAL_LIVE_STATES
 } from '../data/seedData';
+import { isDemoMode } from '../config/dataMode';
 
 class SignalEngine {
-  private signals: VenueSignal[] = [...SEEDED_SIGNALS];
-  private presences: Presence[] = [...SEEDED_PRESENCE];
-  private liveStates: Record<string, VenueLiveState> = { ...INITIAL_LIVE_STATES };
+  private signals: VenueSignal[] = isDemoMode ? [...SEEDED_SIGNALS] : [];
+  private presences: Presence[] = isDemoMode ? [...SEEDED_PRESENCE] : [];
+  private liveStates: Record<string, VenueLiveState> = isDemoMode ? { ...INITIAL_LIVE_STATES } : {};
   private listeners: Array<() => void> = [];
   private simulationInterval: any = null;
-  public isSimulating: boolean = true;
+  public isSimulating: boolean = isDemoMode;
 
   constructor() {
     this.cleanExpiredPresences();
-    this.startSimulation();
+    if (isDemoMode) this.startSimulation();
   }
 
   public subscribe(listener: () => void) {
@@ -147,6 +148,7 @@ class SignalEngine {
    * Modulates crowd, energy, trending velocity, and emits occasional crowd signals.
    */
   public toggleSimulation() {
+    if (!isDemoMode) return;
     this.isSimulating = !this.isSimulating;
     if (this.isSimulating) {
       this.startSimulation();
@@ -157,6 +159,7 @@ class SignalEngine {
   }
 
   private startSimulation() {
+    if (!isDemoMode) return;
     if (this.simulationInterval) clearInterval(this.simulationInterval);
     this.simulationInterval = setInterval(() => {
       if (!this.isSimulating) return;

@@ -1,5 +1,6 @@
 import { Venue, VenueGame, VenueGameProgramming } from '../types';
 import { supabase } from '../lib/supabaseClient';
+import { isDemoMode } from '../config/dataMode';
 
 function mapVenue(row: any): Venue {
   return {
@@ -31,7 +32,9 @@ function mapVenue(row: any): Venue {
 
 export async function getVenues(): Promise<Venue[]> {
   if (!supabase) return [];
-  const { data, error } = await supabase.from('venues').select('*').order('name');
+  let query = supabase.from('venues').select('*').order('name');
+  if (!isDemoMode) query = query.eq('is_demo_data', false);
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []).map(mapVenue);
 }

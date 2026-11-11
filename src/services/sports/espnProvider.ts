@@ -16,6 +16,7 @@ import {
   TopPerformer
 } from './types';
 import { SEEDED_GAMES } from '../../data/seedData';
+import { isDemoMode } from '../../config/dataMode';
 import { TEAMS_DATABASE } from '../../data/teamsDatabase';
 
 // ESPN Sport & League Endpoints Mapping
@@ -87,7 +88,7 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
       type: this.type,
       isConfigured: this.isConfigured,
       requiresApiKey: this.requiresApiKey,
-      mode: this.isUsingFallback ? 'DEMO_FALLBACK' : 'LIVE_FEED',
+      mode: this.isUsingFallback ? (isDemoMode ? 'DEMO_FALLBACK' : 'UNAVAILABLE') : 'LIVE_FEED',
       activeEndpoints: Object.entries(ESPN_LEAGUE_MAP).map(
         ([l, conf]) => `${conf.displayName} (${conf.sport}/${conf.league})`
       ),
@@ -427,7 +428,7 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
   }
 
   /**
-   * Primary getGames endpoint with caching, multi-league concurrency, and seamless fallback
+   * Primary getGames endpoint with caching and explicit demo-only fallback
    */
   async getGames(filter?: GameScheduleFilter): Promise<SportsGame[]> {
     const cacheKey = `${filter?.league || 'ALL'}_${filter?.status || 'ALL'}_${filter?.date || 'TODAY'}`;
@@ -447,6 +448,7 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
     const fetchPromise = (async () => {
       try {
         let allGames: SportsGame[] = [];
+        let providerErrors: string[] = [];
 
         if (filter?.league) {
           // Single league request
@@ -469,17 +471,18 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
             targetLeagues.map((l) => this.fetchLeagueScoreboard(l, filter?.date))
           );
 
-          settleResults.forEach((res) => {
-            if (res.status === 'fulfilled' && res.value.length > 0) {
-              allGames.push(...res.value);
-            }
+          const failures: string[] = [];
+          settleResults.forEach((res, index) => {
+            if (res.status === 'fulfilled') allGames.push(...res.value);
+            else failures.push(`${targetLeagues[index]}: ${String(res.reason)}`);
           });
+          providerErrors = failures;
         }
 
         if (allGames.length > 0) {
           this.isUsingFallback = false;
           this.lastSyncTime = new Date().toISOString();
-          this.lastError = undefined;
+          this.lastError = providerErrors.length ? providerErrors.join('; ') : undefined;
 
           // Filter by status if requested
           if (filter?.status) {
@@ -502,22 +505,26 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
           this.cache.set(cacheKey, { data: allGames, timestamp: now, ttl });
           return allGames;
         }
+        this.isUsingFallback = true;
+        if (!this.lastError) this.lastError = 'ESPN returned no games for the requested schedule.';
       } catch (err: any) {
         this.lastError = err.message || 'ESPN fetch failed';
         this.isUsingFallback = true;
       }
 
-      // Graceful fallback to seeded high-fidelity games
-      let fallback = [...SEEDED_GAMES];
-      if (filter?.league) {
-        fallback = fallback.filter((g) => g.league === filter.league);
-      }
-      if (filter?.status) {
-        fallback = fallback.filter((g) => g.status === filter.status);
+      // Seeded fixtures are available only when demo mode is explicitly enabled.
+      if (isDemoMode) {
+        let demoGames = [...SEEDED_GAMES];
+        if (filter?.league) demoGames = demoGames.filter((g) => g.league === filter.league);
+        if (filter?.status) demoGames = demoGames.filter((g) => g.status === filter.status);
+        this.cache.set(cacheKey, { data: demoGames, timestamp: now, ttl: 45000 });
+        return demoGames;
       }
 
-      this.cache.set(cacheKey, { data: fallback, timestamp: now, ttl: 45000 });
-      return fallback;
+      if (!this.lastError) this.lastError = 'ESPN returned no games for the requested schedule.';
+      this.isUsingFallback = true;
+      this.cache.set(cacheKey, { data: [], timestamp: now, ttl: 45000 });
+      return [];
     })();
 
     this.activePendingRequests.set(cacheKey, fetchPromise);

@@ -11,7 +11,7 @@ import {
   GameScheduleFilter,
   GameSummaryData
 } from './types';
-import { SEEDED_GAMES } from '../../data/seedData';
+
 
 /**
  * Commercial & Licensed Sports Data Provider (Sportradar / Stats Perform / The Rundown architecture)
@@ -58,16 +58,16 @@ export class CommercialSportsDataProvider implements ISportsDataProvider {
       type: this.type,
       isConfigured: this.isConfigured,
       requiresApiKey: this.requiresApiKey,
-      mode: this.isConfigured ? 'LIVE_FEED' : 'DEMO_FALLBACK',
+      mode: 'UNAVAILABLE',
       activeEndpoints: [
         `${this.vendor} Real-time Schedules Feed`,
         `${this.vendor} Push Odds & Play-by-Play`,
         `${this.vendor} Official Broadcast Rights Verification`
       ],
       lastSync: this.lastSync,
-      error: !this.isConfigured ? 'Missing Commercial License API Key' : this.lastError,
+      error: 'Commercial provider adapter is not implemented; no live feed is available.',
       latencyMs: this.lastLatencyMs,
-      cachedGamesCount: SEEDED_GAMES.length
+      cachedGamesCount: 0
     };
   }
 
@@ -87,15 +87,13 @@ export class CommercialSportsDataProvider implements ISportsDataProvider {
     }
 
     try {
-      // Simulate/perform enterprise ping
-      await new Promise((resolve) => setTimeout(resolve, 80));
       const latencyMs = Math.round(performance.now() - start);
       this.lastLatencyMs = latencyMs;
-      this.lastSync = new Date().toISOString();
+      this.lastError = 'Commercial provider integration is not implemented.';
       return {
-        success: true,
+        success: false,
         latencyMs,
-        message: `Commercial feed connected to ${this.vendor} gateway (${latencyMs}ms). License active.`
+        message: 'Commercial provider adapter is not implemented; no live connection was tested.'
       };
     } catch (err: any) {
       return {
@@ -106,25 +104,9 @@ export class CommercialSportsDataProvider implements ISportsDataProvider {
     }
   }
 
-  async getGames(filter?: GameScheduleFilter): Promise<SportsGame[]> {
-    this.lastSync = new Date().toISOString();
-
-    // If API key is provided and valid, this would call the commercial gateway
-    // Standardizes data to RallyOn SportsGame format
-    let results = [...SEEDED_GAMES];
-    if (filter?.league) {
-      results = results.filter((g) => g.league === filter.league);
-    }
-    if (filter?.status) {
-      results = results.filter((g) => g.status === filter.status);
-    }
-
-    return results.map((g) => ({
-      ...g,
-      broadcast: g.broadcast
-        ? { ...g.broadcast, externalProvider: `${this.vendor} Official Data` }
-        : undefined
-    }));
+  async getGames(_filter?: GameScheduleFilter): Promise<SportsGame[]> {
+    this.lastError = 'Commercial provider integration is not implemented; refusing to return demo fixtures.';
+    return [];
   }
 
   async getGameById(gameId: string): Promise<SportsGame | null> {
@@ -132,31 +114,11 @@ export class CommercialSportsDataProvider implements ISportsDataProvider {
     return games.find((g) => g.id === gameId || g.externalGameId === gameId) || null;
   }
 
-  async getGameSummary(gameId: string, league?: SportsLeague): Promise<GameSummaryData | null> {
-    const game = await this.getGameById(gameId);
-    if (!game) return null;
-
-    return {
-      gameId,
-      league: game.league,
-      venue: {
-        name: game.venueName || 'Official Venue Arena',
-        city: 'Metropolitan',
-        indoor: false
-      },
-      odds: {
-        details: 'Verified Commercial Line',
-        overUnder: 48.5,
-        spread: -3.5,
-        provider: 'Official Odds Service'
-      },
-      situationText: game.liveDetails?.situation || 'Active Broadcast',
-      lastUpdated: new Date().toISOString()
-    };
+  async getGameSummary(_gameId: string, _league?: SportsLeague): Promise<GameSummaryData | null> {
+    return null;
   }
 
-  async getBroadcastForGame(gameId: string): Promise<BroadcastIntelligence | null> {
-    const game = await this.getGameById(gameId);
-    return game?.broadcast || null;
+  async getBroadcastForGame(_gameId: string): Promise<BroadcastIntelligence | null> {
+    return null;
   }
 }

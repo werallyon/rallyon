@@ -129,8 +129,9 @@ export class SportsService {
       try {
         await this.getActiveProvider().getGames();
         this.notify();
-      } catch {
-        // silent fail in background ticker
+      } catch (error) {
+        console.error('Background sports refresh failed:', error);
+        this.notify();
       } finally {
         this.isAutoRefreshing = false;
       }
