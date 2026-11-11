@@ -448,6 +448,7 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
     const fetchPromise = (async () => {
       try {
         let allGames: SportsGame[] = [];
+        let providerErrors: string[] = [];
 
         if (filter?.league) {
           // Single league request
@@ -475,13 +476,13 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
             if (res.status === 'fulfilled') allGames.push(...res.value);
             else failures.push(`${targetLeagues[index]}: ${String(res.reason)}`);
           });
-          if (failures.length) this.lastError = failures.join('; ');
+          providerErrors = failures;
         }
 
         if (allGames.length > 0) {
           this.isUsingFallback = false;
           this.lastSyncTime = new Date().toISOString();
-          this.lastError = undefined;
+          this.lastError = providerErrors.length ? providerErrors.join('; ') : undefined;
 
           // Filter by status if requested
           if (filter?.status) {
