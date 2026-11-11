@@ -1,19 +1,22 @@
 name: Temporary lockfile refresh
 
 on:
-  push:
-    branches: [rebuild/pr6-from-main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
 
 jobs:
   refresh-lockfile:
+    if: github.event.pull_request.head.ref == 'rebuild/pr6-from-main'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout PR head
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
       - name: Setup Node
         uses: actions/setup-node@v4
