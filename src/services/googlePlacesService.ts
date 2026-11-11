@@ -3,7 +3,7 @@ import { isDemoMode } from '../config/dataMode';
 
 export interface PlacesServiceStatus {
   isConfigured: boolean;
-  mode: 'CONFIGURED' | 'USING_DEMO_CACHE';
+  mode: 'CONFIGURED' | 'USING_DEMO_CACHE' | 'UNCONFIGURED';
   apiKeyFound: boolean;
   placesCachedCount: number;
 }
@@ -210,7 +210,7 @@ export class GooglePlacesService {
   getStatus(): PlacesServiceStatus {
     return {
       isConfigured: Boolean(this.apiKey && this.apiKey.length > 5),
-      mode: this.apiKey && this.apiKey.length > 5 ? 'CONFIGURED' : (isDemoMode ? 'USING_DEMO_CACHE' : 'CONFIGURED'),
+      mode: this.apiKey && this.apiKey.length > 5 ? 'CONFIGURED' : (isDemoMode ? 'USING_DEMO_CACHE' : 'UNCONFIGURED'),
       apiKeyFound: Boolean(this.apiKey && this.apiKey.length > 5),
       placesCachedCount: this.placesCache.size
     };
