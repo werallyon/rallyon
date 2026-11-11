@@ -26,6 +26,7 @@ import {
   SportsGame,
   VenueSignal,
   Presence,
+  VenueGame,
   RallyMatchResult,
   Market
 } from './types';
@@ -130,7 +131,7 @@ function RallyOnMain() {
       activeMarket.id
     );
     return filtered.length > 0 ? filtered : SEEDED_VENUES;
-  }, [activeMarket.id]);
+  }, [activeMarket.id, dbVenues]);
 
   // User coordinate (from user model or default to active market center)
   const userLocation = useMemo(() => {
@@ -191,3 +192,253 @@ function RallyOnMain() {
       unsubscribe();
     };
   }, [currentUser?.favoriteTeams]);
+  
+  const venueGames = useMemo(
+    () => (dbVenueGames.length ? dbVenueGames : SEEDED_VENUE_GAMES),
+    [dbVenueGames]
+  );
+
+  const rankedVenues = useMemo(
+    () =>
+      rankVenues(marketVenues, liveStates, {
+        intent: currentIntent,
+        selectedGame,
+        venueGames,
+        presenceList: presences,
+        userLocation: { latitude: userLocation.lat, longitude: userLocation.lon },
+        userFavoriteTeams: currentUser?.favoriteTeams?.map((t) => t.name) || [],
+        userFavoriteSports: currentUser?.favoriteSports || []
+      }),
+    [
+      marketVenues,
+      liveStates,
+      currentIntent,
+      selectedGame,
+      venueGames,
+      presences,
+      userLocation,
+      currentUser?.favoriteTeams,
+      currentUser?.favoriteSports
+    ]
+  );
+
+  const selectedVenueMatch = useMemo(
+    () => (selectedVenue ? rankedVenues.find((m) => m.venue.id === selectedVenue.id) || null : null),
+    [selectedVenue, rankedVenues]
+  );
+
+  const handleToggleSave = async (venueId: string) => {
+    const saved = savedVenueIds.includes(venueId);
+    setSavedVenueIds((prev) => saved ? prev.filter((id) => id !== venueId) : [...prev, venueId]);
+    if (currentUser?.id && !currentUser.id.startsWith('usr_')) {
+      try {
+        await toggleVenueFavorite(currentUser.id, venueId, saved);
+      } catch (error) {
+        console.warn('Unable to persist venue favorite.', error);
+        setSavedVenueIds((prev) => saved ? [...prev, venueId] : prev.filter((id) => id !== venueId));
+      }
+    }
+  };
+
+  const refreshSignals = () => {
+    setLiveStates(signalEngine.getLiveStates());
+    setSignals(signalEngine.getSignals());
+    setPresences(signalEngine.getPresences());
+  };
+
+  const handleSelectVenue = (venue: Venue) => {
+    setSelectedVenue(venue);
+  };
+
+  const handleSelectGame = (game: SportsGame | null) => {
+    setSelectedGame(game);
+  };
+
+  const handleUpdateFavoriteTeams = (teams: any[]) => {
+    updateUser({ favoriteTeams: teams });
+  };
+
+  if (authState === 'AUTH_IN_PROGRESS') {
+    return <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center text-sm font-bold">Loading RallyOn…</div>;
+  }
+
+  if (authState === 'LOGGED_OUT') {
+    if (authView === 'SIGN_IN') {
+      return <SignInScreen onBack={() => setAuthView('WELCOME')} onGoToSignUp={() => setAuthView('SIGN_UP')} onGoToForgotPassword={() => setAuthView('FORGOT_PASSWORD')} />;
+    }
+    if (authView === 'SIGN_UP') {
+      return <SignUpScreen onBack={() => setAuthView('WELCOME')} onGoToSignIn={() => setAuthView('SIGN_IN')} />;
+    }
+    if (authView === 'FORGOT_PASSWORD') {
+      return <PasswordResetScreen onBackToSignIn={() => setAuthView('SIGN_IN')} />;
+    }
+    return <WelcomeScreen onGoToSignUp={() => setAuthView('SIGN_UP')} onGoToSignIn={() => setAuthView('SIGN_IN')} />;
+  }
+
+  if (authState === 'EMAIL_VERIFICATION_REQUIRED') {
+    return <EmailVerificationScreen />;
+  }
+
+  if (authState === 'AUTHENTICATED_ONBOARDING_INCOMPLETE') {
+    return <OnboardingFlow />;
+  }
+
+  if (authState === 'AUTH_ERROR') {
+    return <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-6 text-center">Unable to initialize RallyOn authentication.</div>;
+  }
+
+  const commonScreenProps = {
+    games,
+    venues: marketVenues,
+    liveStates,
+    currentIntent,
+    selectedGame,
+    onSelectGame: handleSelectGame,
+    onSelectIntent: setCurrentIntent,
+    venueGames,
+    presences,
+    savedVenueIds,
+    onToggleSave: handleToggleSave,
+    onSelectVenue: handleSelectVenue
+  };
+
+  return (
+    <div className="min-h-screen bg-neutral-950 text-neutral-100">
+      <Header
+        currentCity={currentCity}
+        onCityChange={setCurrentCity}
+        isSimulating={isSimulating}
+        onToggleSimulation={() => {
+          signalEngine.toggleSimulation();
+          refreshSignals();
+          setIsSimulating(signalEngine.isSimulating);
+        }}
+      />
+
+      <main className="max-w-md mx-auto px-4 pt-4 pb-24">
+        {currentTab === 'HOME' && (
+          <HomeScreen
+            games={games}
+            selectedGame={selectedGame}
+            onSelectGame={handleSelectGame}
+            currentIntent={currentIntent}
+            onSelectIntent={setCurrentIntent}
+            rankedVenues={rankedVenues}
+            savedVenueIds={savedVenueIds}
+            onToggleSave={handleToggleSave}
+            onSelectVenue={handleSelectVenue}
+            onOpenLiveFeed={() => setCurrentTab('LIVE')}
+            currentUser={currentUser}
+            favoriteTeams={currentUser?.favoriteTeams}
+            onUpdateFavoriteTeams={handleUpdateFavoriteTeams}
+          />
+        )}
+
+        {currentTab === 'LIVE' && (
+          <LiveScreen
+            games={games}
+            signals={signals}
+            venues={marketVenues}
+            liveStates={liveStates}
+            venueGames={venueGames}
+            onSelectGame={handleSelectGame}
+            onSelectVenue={handleSelectVenue}
+            favoriteTeams={currentUser?.favoriteTeams}
+          />
+        )}
+
+        {currentTab === 'MAP' && (
+          <MapScreen
+            venues={marketVenues}
+            liveStates={liveStates}
+            matchResults={rankedVenues}
+            games={games}
+            selectedGame={selectedGame}
+            onSelectGame={handleSelectGame}
+            currentIntent={currentIntent}
+            onSelectIntent={setCurrentIntent}
+            venueGames={venueGames}
+            presences={presences}
+            savedVenueIds={savedVenueIds}
+            onToggleSave={handleToggleSave}
+            onSelectVenue={handleSelectVenue}
+          />
+        )}
+
+        {currentTab === 'SEARCH' && (
+          <SearchScreen
+            venues={marketVenues}
+            games={games}
+            liveStates={liveStates}
+            onSelectVenue={handleSelectVenue}
+            onSelectGame={(game) => {
+              setSelectedGame(game);
+              setCurrentTab('HOME');
+            }}
+            favoriteTeams={currentUser?.favoriteTeams}
+          />
+        )}
+
+        {currentTab === 'PROFILE' && (
+          <ProfileScreen
+            venues={marketVenues}
+            savedVenueIds={savedVenueIds}
+            presences={presences}
+            onSelectVenue={handleSelectVenue}
+            isSimulating={isSimulating}
+            onToggleSimulation={() => {
+              signalEngine.toggleSimulation();
+              refreshSignals();
+              setIsSimulating(signalEngine.isSimulating);
+            }}
+            onOpenVenueDashboard={(venueId) => setActiveVenueDashboardId(venueId)}
+            onOpenAdminModeration={() => setShowAdminModeration(true)}
+          />
+        )}
+      </main>
+
+      <Navigation
+        currentTab={currentTab}
+        onTabSelect={setCurrentTab}
+        liveBadgeCount={games.filter((g) => g.status === 'LIVE').length}
+        friendActivityCount={presences.length}
+      />
+
+      {selectedVenue && selectedVenueMatch && (
+        <VenueDetailModal
+          venue={selectedVenue}
+          liveState={selectedVenueMatch.liveState}
+          matchResult={selectedVenueMatch}
+          currentIntent={currentIntent}
+          activeGame={selectedGame}
+          venueGame={selectedVenueMatch.activeGameStatus}
+          friendsInside={selectedVenueMatch.friendsInside}
+          isSaved={savedVenueIds.includes(selectedVenue.id)}
+          onToggleSave={handleToggleSave}
+          onClose={() => setSelectedVenue(null)}
+          onCheckInSuccess={refreshSignals}
+          onOpenDashboard={(venueId) => setActiveVenueDashboardId(venueId)}
+        />
+      )}
+
+      {activeVenueDashboardId && (
+        <VenueDashboard
+          venueId={activeVenueDashboardId}
+          onClose={() => setActiveVenueDashboardId(null)}
+        />
+      )}
+
+      {showAdminModeration && (
+        <AdminModerationPanel onClose={() => setShowAdminModeration(false)} />
+      )}
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <RallyOnMain />
+    </AuthProvider>
+  );
+}
