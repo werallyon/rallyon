@@ -90,3 +90,11 @@ test("games schema keeps the composite external-event uniqueness constraint", as
   const migration = await readFile(new URL("../supabase/migrations/20261110_create_rallyon_core_data_model.sql", import.meta.url), "utf8");
   assert.match(migration, /unique\s*\(league,\s*external_game_id\)/i);
 });
+
+test("production hardening migration creates sync token table before applying deny policies", async () => {
+  const migration = await readFile(new URL("../supabase/migrations/20261111_rallyon_production_hardening_v1.sql", import.meta.url), "utf8");
+  assert.match(migration, /create table if not exists public\.system_sync_tokens/i);
+  assert.match(migration, /enable row level security/i);
+  assert.match(migration, /grant select on table public\.system_sync_tokens to service_role/i);
+  assert.ok(migration.indexOf("create table if not exists public.system_sync_tokens") < migration.indexOf("create policy system_sync_tokens_client_select_deny"));
+});
