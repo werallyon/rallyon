@@ -37,7 +37,6 @@ import { businessVenueService } from '../../services/businessVenueService';
 import { supabase } from '../../lib/supabaseClient';
 import {
   getVenueGameProgramming,
-  getStoredGames,
   upsertVenueGameProgramming,
   deleteVenueGameProgramming
 } from '../../services/venueService';
