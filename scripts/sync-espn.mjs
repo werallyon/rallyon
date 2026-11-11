@@ -44,21 +44,36 @@ function team(competitor) {
 const allGames = [];
 const diagnostics = [];
 
+async function fetchJson(url) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; RallyOn/1.0; +https://github.com/werallyon/rallyon)',
+          Accept: 'application/json, text/plain, */*',
+        },
+      });
+      const text = await response.text();
+      if (!response.ok) {
+        lastError = new Error(`HTTP ${response.status}: ${text.slice(0, 300)}`);
+        if (response.status >= 400 && response.status < 500 && response.status !== 429) break;
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+        continue;
+      }
+      return JSON.parse(text);
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+    }
+  }
+  throw lastError ?? new Error('Unknown ESPN request failure');
+}
+
 for (const [sport, league, leagueCode] of leagues) {
   const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard?limit=100&dates=${dateRange}`;
   try {
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'RallyOn/1.0 sports sync',
-        Accept: 'application/json',
-      },
-    });
-    if (!response.ok) {
-      diagnostics.push({ league: leagueCode, status: response.status });
-      continue;
-    }
-
-    const payload = await response.json();
+    const payload = await fetchJson(url);
     for (const event of payload.events ?? []) {
       const competition = event.competitions?.[0];
       const competitors = competition?.competitors ?? [];
@@ -94,8 +109,8 @@ for (const [sport, league, leagueCode] of leagues) {
 }
 
 if (!allGames.length) {
-  console.log(JSON.stringify({ synced: 0, dateRange, diagnostics }));
-  process.exit(0);
+  console.error(JSON.stringify({ synced: 0, dateRange, diagnostics }));
+  throw new Error(`ESPN sync returned zero games for ${dateRange}`);
 }
 
 const response = await fetch(
