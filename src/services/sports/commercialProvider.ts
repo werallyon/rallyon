@@ -58,7 +58,7 @@ export class CommercialSportsDataProvider implements ISportsDataProvider {
       type: this.type,
       isConfigured: this.isConfigured,
       requiresApiKey: this.requiresApiKey,
-      mode: this.isConfigured ? 'LIVE_FEED' : 'DEMO_FALLBACK',
+      mode: 'UNAVAILABLE',
       activeEndpoints: [
         `${this.vendor} Real-time Schedules Feed`,
         `${this.vendor} Push Odds & Play-by-Play`,
@@ -87,15 +87,13 @@ export class CommercialSportsDataProvider implements ISportsDataProvider {
     }
 
     try {
-      // Simulate/perform enterprise ping
-      await new Promise((resolve) => setTimeout(resolve, 80));
       const latencyMs = Math.round(performance.now() - start);
       this.lastLatencyMs = latencyMs;
-      this.lastSync = new Date().toISOString();
+      this.lastError = 'Commercial provider integration is not implemented.';
       return {
         success: true,
         latencyMs,
-        message: `Commercial feed connected to ${this.vendor} gateway (${latencyMs}ms). License active.`
+        message: 'Commercial provider adapter is not implemented; no live connection was tested.'
       };
     } catch (err: any) {
       return {
