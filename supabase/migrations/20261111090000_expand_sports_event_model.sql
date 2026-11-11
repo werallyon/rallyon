@@ -10,7 +10,7 @@ alter table public.games
 update public.games
 set sport = case
   when league in ('NFL','NCAA_FB') then 'FOOTBALL'
-  when league in ('NBA','NCAA_BB') then 'BASKETBALL'
+  when league in ('NBA','NCAA_BB','WNBA') then 'BASKETBALL'
   when league = 'MLB' then 'BASEBALL'
   when league = 'NHL' then 'HOCKEY'
   when league in ('MLS','EPL','LALIGA','BUNDESLIGA','SERIEA','LIGUE1','UCL','UEL','NWSL','WSL') then 'SOCCER'
