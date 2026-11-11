@@ -46,13 +46,19 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
   }
 
-  const headers = authHeaders;
-
   const allGames: any[] = [];
   const diagnostics: any[] = [];
   const today = new Date();
   const ymd = (d: Date) => d.toISOString().slice(0, 10).replaceAll("-", "");
   const syncWindow = req.headers.get("x-rallyon-sync-window") ?? "today";
+
+  if (syncWindow !== "today" && syncWindow !== "upcoming") {
+    return new Response(JSON.stringify({ error: "Invalid sync window" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const syncDates = Array.from({ length: syncWindow === "upcoming" ? 7 : 1 }, (_, index) => {
     const offsetDays = syncWindow === "upcoming" ? index + 1 : 0;
     return ymd(new Date(today.getTime() + offsetDays * 24 * 60 * 60 * 1000));
@@ -63,7 +69,10 @@ Deno.serve(async (req: Request) => {
       const url = `https://site.web.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard?limit=100&dates=${syncDate}`;
       try {
         const response = await fetch(url);
-        if (!response.ok) { diagnostics.push({ league: leagueCode, date: syncDate, status: response.status }); continue; }
+        if (!response.ok) {
+          diagnostics.push({ league: leagueCode, date: syncDate, status: response.status });
+          continue;
+        }
         const payload = await response.json();
 
         for (const event of payload.events ?? []) {
@@ -102,20 +111,35 @@ Deno.serve(async (req: Request) => {
   if (!allGames.length) {
     return new Response(JSON.stringify({
       synced: 0,
-      message: syncWindow === "upcoming" ? "No games returned for the next 7 days" : "No games returned for today",
+      message: diagnostics.length
+        ? "Sports provider failed for one or more requested league/date combinations"
+        : (syncWindow === "upcoming" ? "No games returned for the next 7 days" : "No games returned for today"),
       diagnostics
-    }), { headers: { "Content-Type": "application/json" } });
+    }), {
+      status: diagnostics.length ? 502 : 200,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const response = await fetch(`${supabaseUrl}/rest/v1/games?on_conflict=league,external_game_id`, {
     method: "POST",
-    headers: { ...headers, Prefer: "resolution=merge-duplicates,return=minimal" },
+    headers: { ...authHeaders, Prefer: "resolution=merge-duplicates,return=minimal" },
     body: JSON.stringify(allGames),
   });
 
   if (!response.ok) {
-    return new Response(JSON.stringify({ error: await response.text() }), { status: 500, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: await response.text() }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
-  return new Response(JSON.stringify({ synced: allGames.length }), { headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify({
+    synced: allGames.length,
+    partial: diagnostics.length > 0,
+    diagnostics,
+  }), {
+    status: diagnostics.length ? 207 : 200,
+    headers: { "Content-Type": "application/json" },
+  });
 });
