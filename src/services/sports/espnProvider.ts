@@ -16,6 +16,7 @@ import {
   TopPerformer
 } from './types';
 import { SEEDED_GAMES } from '../../data/seedData';
+import { isDemoMode } from '../../config/dataMode';
 import { TEAMS_DATABASE } from '../../data/teamsDatabase';
 
 // ESPN Sport & League Endpoints Mapping
@@ -427,7 +428,7 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
   }
 
   /**
-   * Primary getGames endpoint with caching, multi-league concurrency, and seamless fallback
+   * Primary getGames endpoint with caching and explicit demo-only fallback
    */
   async getGames(filter?: GameScheduleFilter): Promise<SportsGame[]> {
     const cacheKey = `${filter?.league || 'ALL'}_${filter?.status || 'ALL'}_${filter?.date || 'TODAY'}`;
@@ -469,11 +470,12 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
             targetLeagues.map((l) => this.fetchLeagueScoreboard(l, filter?.date))
           );
 
-          settleResults.forEach((res) => {
-            if (res.status === 'fulfilled' && res.value.length > 0) {
-              allGames.push(...res.value);
-            }
+          const failures: string[] = [];
+          settleResults.forEach((res, index) => {
+            if (res.status === 'fulfilled') allGames.push(...res.value);
+            else failures.push(`${targetLeagues[index]}: ${String(res.reason)}`);
           });
+          if (failures.length) this.lastError = failures.join('; ');
         }
 
         if (allGames.length > 0) {
@@ -507,17 +509,19 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
         this.isUsingFallback = true;
       }
 
-      // Graceful fallback to seeded high-fidelity games
-      let fallback = [...SEEDED_GAMES];
-      if (filter?.league) {
-        fallback = fallback.filter((g) => g.league === filter.league);
-      }
-      if (filter?.status) {
-        fallback = fallback.filter((g) => g.status === filter.status);
+      // Seeded fixtures are available only when demo mode is explicitly enabled.
+      if (isDemoMode) {
+        let demoGames = [...SEEDED_GAMES];
+        if (filter?.league) demoGames = demoGames.filter((g) => g.league === filter.league);
+        if (filter?.status) demoGames = demoGames.filter((g) => g.status === filter.status);
+        this.cache.set(cacheKey, { data: demoGames, timestamp: now, ttl: 45000 });
+        return demoGames;
       }
 
-      this.cache.set(cacheKey, { data: fallback, timestamp: now, ttl: 45000 });
-      return fallback;
+      if (!this.lastError) this.lastError = 'ESPN returned no games for the requested schedule.';
+      this.isUsingFallback = true;
+      this.cache.set(cacheKey, { data: [], timestamp: now, ttl: 45000 });
+      return [];
     })();
 
     this.activePendingRequests.set(cacheKey, fetchPromise);
