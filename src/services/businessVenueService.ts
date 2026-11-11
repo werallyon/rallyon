@@ -17,13 +17,13 @@ import {
 } from '../types';
 import { isDemoMode } from '../config/dataMode';
 
-const STORAGE_CLAIMS_KEY = 'rallyon_venue_claims_v1_ + (isDemoMode ? 'demo' : 'production')';
-const STORAGE_PROGRAMMING_KEY = 'rallyon_venue_programming_v1_ + (isDemoMode ? 'demo' : 'production')';
-const STORAGE_PROMOTIONS_KEY = 'rallyon_venue_promotions_v1_ + (isDemoMode ? 'demo' : 'production')';
-const STORAGE_REDEMPTIONS_KEY = 'rallyon_venue_redemptions_v1_ + (isDemoMode ? 'demo' : 'production')';
-const STORAGE_SPONSORSHIPS_KEY = 'rallyon_sponsorships_v1_ + (isDemoMode ? 'demo' : 'production')';
-const STORAGE_ANALYTICS_KEY = 'rallyon_analytics_events_v1_ + (isDemoMode ? 'demo' : 'production')';
-const STORAGE_BUSINESS_ACCOUNTS_KEY = 'rallyon_business_accounts_v1_ + (isDemoMode ? 'demo' : 'production')';
+const STORAGE_CLAIMS_KEY = `rallyon_venue_claims_v1_${isDemoMode ? 'demo' : 'production'}`;
+const STORAGE_PROGRAMMING_KEY = `rallyon_venue_programming_v1_${isDemoMode ? 'demo' : 'production'}`;
+const STORAGE_PROMOTIONS_KEY = `rallyon_venue_promotions_v1_${isDemoMode ? 'demo' : 'production'}`;
+const STORAGE_REDEMPTIONS_KEY = `rallyon_venue_redemptions_v1_${isDemoMode ? 'demo' : 'production'}`;
+const STORAGE_SPONSORSHIPS_KEY = `rallyon_sponsorships_v1_${isDemoMode ? 'demo' : 'production'}`;
+const STORAGE_ANALYTICS_KEY = `rallyon_analytics_events_v1_${isDemoMode ? 'demo' : 'production'}`;
+const STORAGE_BUSINESS_ACCOUNTS_KEY = `rallyon_business_accounts_v1_${isDemoMode ? 'demo' : 'production'}`;
 
 export class BusinessVenueService {
   private claims: VenueClaim[] = [];
