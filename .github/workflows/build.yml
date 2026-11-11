@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Sports sync regression tests
+      - name: Regression tests
         run: npm test
 
       - name: Check Edge Function types
