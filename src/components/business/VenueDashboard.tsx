@@ -134,7 +134,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
   };
 
   // Handle programming toggle
-  const handleToggleShowing = (game: SportsGame, isShowing: boolean) => {
+  const handleToggleShowing = async (game: SportsGame, isShowing: boolean) => {
     if (!currentUser) return;
     const payload = {
       venue_id: venue.id,
@@ -147,7 +147,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
       notes: isShowing ? 'Verified Airing on Main Screens • Sound ON' : 'Not showing tonight',
       confidence: 100,
       is_confirmed: isShowing,
-      created_by: currentUser.name,
+      created_by: currentUser.id,
       start_time: game.startTime
     };
 
