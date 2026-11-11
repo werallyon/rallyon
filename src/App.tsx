@@ -423,13 +423,13 @@ function RallyOnMain() {
 
       {activeVenueDashboardId && (
         <VenueDashboard
-          venueId={activeVenueDashboardId}
-          onClose={() => setActiveVenueDashboardId(null)}
+          venue={marketVenues.find((v) => v.id === activeVenueDashboardId) || marketVenues[0]}
+          onBackToApp={() => setActiveVenueDashboardId(null)}
         />
       )}
 
       {showAdminModeration && (
-        <AdminModerationPanel onClose={() => setShowAdminModeration(false)} />
+        <AdminModerationPanel onBack={() => setShowAdminModeration(false)} />
       )}
     </div>
   );
