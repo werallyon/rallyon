@@ -51,49 +51,60 @@ Deno.serve(async (req: Request) => {
   const allGames: any[] = [];
   const diagnostics: any[] = [];
   const today = new Date();
-  const end = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
   const ymd = (d: Date) => d.toISOString().slice(0, 10).replaceAll("-", "");
-  const dateRange = `${ymd(today)}-${ymd(end)}`;
+  const syncWindow = req.headers.get("x-rallyon-sync-window") ?? "today";
+  const syncDates = Array.from({ length: syncWindow === "upcoming" ? 7 : 1 }, (_, index) => {
+    const offsetDays = syncWindow === "upcoming" ? index + 1 : 0;
+    return ymd(new Date(today.getTime() + offsetDays * 24 * 60 * 60 * 1000));
+  });
 
   for (const [sport, league, leagueCode] of LEAGUES) {
-    const url = `https://site.web.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard?limit=100&dates=${dateRange}`;
-    try {
-      const response = await fetch(url);
-      if (!response.ok) { diagnostics.push({ league: leagueCode, status: response.status }); continue; }
-      const payload = await response.json();
+    for (const syncDate of syncDates) {
+      const url = `https://site.web.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard?limit=100&dates=${syncDate}`;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) { diagnostics.push({ league: leagueCode, date: syncDate, status: response.status }); continue; }
+        const payload = await response.json();
 
-      for (const event of payload.events ?? []) {
-        const competition = event.competitions?.[0];
-        const competitors = competition?.competitors ?? [];
-        const home = competitors.find((c: any) => c.homeAway === "home");
-        const away = competitors.find((c: any) => c.homeAway === "away");
-        if (!home || !away || !event.id || !event.date) continue;
+        for (const event of payload.events ?? []) {
+          const competition = event.competitions?.[0];
+          const competitors = competition?.competitors ?? [];
+          const home = competitors.find((c: any) => c.homeAway === "home");
+          const away = competitors.find((c: any) => c.homeAway === "away");
+          if (!home || !away || !event.id || !event.date) continue;
 
-        allGames.push({
-          league: leagueCode,
-          home_team: team(home),
-          away_team: team(away),
-          start_time: event.date,
-          status: statusOf(event),
-          live_details: event.status?.type?.state === "in" ? {
-            currentScore: { home: Number(home.score ?? 0), away: Number(away.score ?? 0) },
-            period: event.status?.period ? String(event.status.period) : "",
-            clock: event.status?.displayClock ?? "",
-            headline: event.status?.type?.detail ?? "",
-          } : null,
-          broadcast_network: competition?.broadcasts?.[0]?.names?.[0] ?? null,
-          broadcast: competition?.broadcasts?.[0] ?? null,
-          venue_name: competition?.venue?.fullName ?? null,
-          season: event.season?.year ? String(event.season.year) : null,
-          external_game_id: String(event.id),
-          last_updated: new Date().toISOString(),
-        });
+          allGames.push({
+            league: leagueCode,
+            home_team: team(home),
+            away_team: team(away),
+            start_time: event.date,
+            status: statusOf(event),
+            live_details: event.status?.type?.state === "in" ? {
+              currentScore: { home: Number(home.score ?? 0), away: Number(away.score ?? 0) },
+              period: event.status?.period ? String(event.status.period) : "",
+              clock: event.status?.displayClock ?? "",
+              headline: event.status?.type?.detail ?? "",
+            } : null,
+            broadcast_network: competition?.broadcasts?.[0]?.names?.[0] ?? null,
+            broadcast: competition?.broadcasts?.[0] ?? null,
+            venue_name: competition?.venue?.fullName ?? null,
+            season: event.season?.year ? String(event.season.year) : null,
+            external_game_id: String(event.id),
+            last_updated: new Date().toISOString(),
+          });
+        }
+      } catch (error) {
+        diagnostics.push({ league: leagueCode, date: syncDate, error: String(error) });
       }
-    } catch (error) { diagnostics.push({ league: leagueCode, error: String(error) }); }
+    }
   }
 
   if (!allGames.length) {
-    return new Response(JSON.stringify({ synced: 0, message: `No games returned for ${dateRange}`, diagnostics }), { headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({
+      synced: 0,
+      message: syncWindow === "upcoming" ? "No games returned for the next 7 days" : "No games returned for today",
+      diagnostics
+    }), { headers: { "Content-Type": "application/json" } });
   }
 
   const response = await fetch(`${supabaseUrl}/rest/v1/games?on_conflict=league,external_game_id`, {
