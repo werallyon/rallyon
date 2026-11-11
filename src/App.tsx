@@ -31,6 +31,7 @@ import {
   Market
 } from './types';
 import { SEEDED_VENUES, SEEDED_VENUE_GAMES } from './data/seedData';
+import { isDemoMode } from './config/dataMode';
 import { rankVenues, computeRallyMatch } from './services/rallyMatchEngine';
 import { signalEngine } from './services/signalEngine';
 import { sportsProvider, sportsService } from './services/sportsProvider';
@@ -65,11 +66,9 @@ function RallyOnMain() {
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
   const [activeVenueDashboardId, setActiveVenueDashboardId] = useState<string | null>(null);
   const [showAdminModeration, setShowAdminModeration] = useState<boolean>(false);
-  const [savedVenueIds, setSavedVenueIds] = useState<string[]>([
-    'venue_bufords',
-    'venue_cover3',
-    'venue_haymaker'
-  ]);
+  const [savedVenueIds, setSavedVenueIds] = useState<string[]>(() =>
+    isDemoMode ? ['venue_bufords', 'venue_cover3', 'venue_haymaker'] : []
+  );
 
   // Real-time signal engine states
   const [liveStates, setLiveStates] = useState<Record<string, VenueLiveState>>(() =>
@@ -81,16 +80,16 @@ function RallyOnMain() {
 
   // Sports provider games
   const [games, setGames] = useState<SportsGame[]>([]);
-  const [dbVenues, setDbVenues] = useState<Venue[] | null>(null);
+  const [dbVenues, setDbVenues] = useState<Venue[] | null>(() => isDemoMode ? null : []);
   const [dbVenueGames, setDbVenueGames] = useState<VenueGame[]>([]);
 
-  // Load Supabase venue data; keep seeded data as a safe fallback while the database is empty.
+  // Load authoritative Supabase venue data. Empty/error states stay empty in production.
   useEffect(() => {
     let mounted = true;
     Promise.all([getVenues(), getVenueGameProgramming()])
       .then(([venues, programming]) => {
         if (!mounted) return;
-        setDbVenues(venues.length ? venues : null);
+        setDbVenues(isDemoMode && venues.length === 0 ? null : venues);
         setDbVenueGames(programming.map((p) => ({
           venueId: p.venue_id,
           gameId: p.game_id,
@@ -101,7 +100,7 @@ function RallyOnMain() {
           lastVerifiedAt: p.verified_at || p.updated_at
         })));
       })
-      .catch((error) => console.warn('Supabase venue data unavailable; using seeded data.', error));
+      .catch((error) => { console.error('Supabase venue data unavailable.', error); if (mounted) setDbVenues([]); });
     return () => { mounted = false; };
   }, []);
 
@@ -125,12 +124,12 @@ function RallyOnMain() {
 
   // Filter venues for active market ecosystem (Market -> City -> Venue)
   const marketVenues = useMemo(() => {
-    const sourceVenues = dbVenues || SEEDED_VENUES;
+    const sourceVenues = dbVenues ?? (isDemoMode ? SEEDED_VENUES : []);
     const filtered = marketService.filterVenuesByMarket(
       sourceVenues,
       activeMarket.id
     );
-    return filtered.length > 0 ? filtered : SEEDED_VENUES;
+    return filtered;
   }, [activeMarket.id, dbVenues]);
 
   // User coordinate (from user model or default to active market center)
@@ -190,7 +189,7 @@ function RallyOnMain() {
   }, [currentUser?.favoriteTeams]);
   
   const venueGames = useMemo(
-    () => (dbVenueGames.length ? dbVenueGames : SEEDED_VENUE_GAMES),
+    () => (dbVenueGames.length || !isDemoMode ? dbVenueGames : SEEDED_VENUE_GAMES),
     [dbVenueGames]
   );
 
