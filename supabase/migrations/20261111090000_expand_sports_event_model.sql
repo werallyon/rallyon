@@ -1,4 +1,8 @@
 alter table public.games
+  alter column home_team drop not null,
+  alter column away_team drop not null;
+
+alter table public.games
   add column if not exists sport text,
   add column if not exists event_type text not null default 'GAME',
   add column if not exists participants jsonb not null default '[]'::jsonb;
@@ -9,7 +13,7 @@ set sport = case
   when league in ('NBA','NCAA_BB') then 'BASKETBALL'
   when league = 'MLB' then 'BASEBALL'
   when league = 'NHL' then 'HOCKEY'
-  when league like 'MLS%' or league like 'SOCCER_%' then 'SOCCER'
+  when league in ('MLS','EPL','LALIGA','BUNDESLIGA','SERIEA','LIGUE1','UCL','UEL','NWSL','WSL') then 'SOCCER'
   when league = 'UFC' then 'MMA'
   when league in ('ATP','WTA') then 'TENNIS'
   when league in ('PGA','LPGA','LIV') then 'GOLF'
