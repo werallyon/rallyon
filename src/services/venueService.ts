@@ -72,6 +72,74 @@ export async function toggleVenueFavorite(userId: string, venueId: string, saved
   }
 }
 
+export async function upsertVenueGameProgramming(params: {
+  id?: string;
+  venue_id: string;
+  game_id: string;
+  network?: string;
+  status: VenueGameProgramming['status'];
+  is_confirmed?: boolean;
+  audio_on?: boolean;
+  screen?: string;
+  featured?: boolean;
+  notes?: string;
+  confidence?: number;
+  verified_at?: string;
+  created_by?: string;
+  start_time?: string;
+  end_time?: string;
+}): Promise<VenueGameProgramming> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const payload = {
+    ...(params.id ? { id: params.id } : {}),
+    venue_id: params.venue_id,
+    game_id: params.game_id,
+    network: params.network ?? null,
+    status: params.status,
+    is_confirmed: params.is_confirmed ?? params.status === 'CONFIRMED' || params.status === 'GAME_ON',
+    audio_on: params.audio_on ?? true,
+    screen: params.screen ?? null,
+    featured: params.featured ?? false,
+    notes: params.notes ?? null,
+    confidence: params.confidence ?? 0,
+    verified_at: params.verified_at ?? new Date().toISOString(),
+    created_by: params.created_by ?? null,
+    start_time: params.start_time ?? null,
+    end_time: params.end_time ?? null
+  };
+  const { data, error } = await supabase
+    .from('venue_game_programming')
+    .upsert(payload, { onConflict: 'venue_id,game_id' })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return {
+    id: data.id,
+    venue_id: data.venue_id,
+    game_id: data.game_id,
+    network: data.network ?? undefined,
+    status: data.status,
+    is_confirmed: data.is_confirmed,
+    audio_on: data.audio_on,
+    screen: data.screen ?? undefined,
+    featured: data.featured,
+    notes: data.notes ?? undefined,
+    confidence: Number(data.confidence ?? 0),
+    verified_at: data.verified_at ?? undefined,
+    created_by: data.created_by ?? '',
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+    start_time: data.start_time ?? undefined,
+    end_time: data.end_time ?? undefined
+  };
+}
+
+export async function deleteVenueGameProgramming(id: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { error } = await supabase.from('venue_game_programming').delete().eq('id', id);
+  if (error) throw error;
+}
+
 export async function getFavoriteVenueIds(userId: string): Promise<string[]> {
   if (!supabase) return [];
   const { data, error } = await supabase.from('venue_favorites').select('venue_id').eq('user_id', userId);
