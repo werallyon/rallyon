@@ -72,6 +72,15 @@ function participant(competitor: any) {
   };
 }
 
+function participantAsTeam(item: any) {
+  return {
+    name: item?.name ?? "",
+    abbrev: item?.abbrev ?? "",
+    logo: item?.logo ?? "",
+    record: undefined,
+  };
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -182,8 +191,12 @@ Deno.serve(async (req: Request) => {
             sport: sportCode,
             event_type: eventType,
             participants,
-            home_team: isTeamGame ? team(home) : null,
-            away_team: isTeamGame ? team(away) : null,
+            home_team: isTeamGame
+              ? team(home)
+              : participantAsTeam(participants[0] ?? { name: event.name ?? leagueCode }),
+            away_team: isTeamGame
+              ? team(away)
+              : participantAsTeam(participants[1] ?? { name: event.name ?? eventType }),
             start_time: event.date,
             status: statusOf(event),
             live_details: event.status?.type?.state === "in" ? {
