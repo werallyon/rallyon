@@ -25,7 +25,7 @@ jobs:
           deno-version: v2.x
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Sports sync regression tests
         run: npm test
