@@ -165,3 +165,5 @@ npm run build
 ```
 
 GitHub Actions runs these checks on pushes and pull requests to `main`.
+
+<!-- CI refresh trigger -->
