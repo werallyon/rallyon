@@ -1,18 +1,30 @@
-name: RallyOn Sports Sync
+name: RallyOn Manual Sports Recovery
 
+# Production scheduling is owned exclusively by Supabase Cron.
+# This workflow is a deliberate, operator-triggered recovery/backfill path only.
 on:
-  schedule:
-    - cron: '17 * * * *'
   workflow_dispatch:
+    inputs:
+      confirm_production_write:
+        description: "Confirm that this manual recovery will upsert ESPN games into production Supabase"
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   sync:
+    if: inputs.confirm_production_write == true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Sync ESPN games to Supabase
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run manual ESPN recovery
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
