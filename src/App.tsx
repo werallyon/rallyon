@@ -35,7 +35,7 @@ import { signalEngine } from './services/signalEngine';
 import { sportsProvider, sportsService } from './services/sportsProvider';
 import { marketService } from './services/marketService';
 import { getVenues, getVenueGameProgramming, getFavoriteVenueIds, toggleVenueFavorite } from './services/venueService';
-import { getStoredGames } from './services/gameService';
+import { getStoredGames, syncGames } from './services/gameService';
 import { sortGamesByFavorites, isFavoriteTeamGame } from './services/teamPreferenceService';
 
 type AuthView = 'WELCOME' | 'SIGN_IN' | 'SIGN_UP' | 'FORGOT_PASSWORD';
@@ -140,35 +140,47 @@ function RallyOnMain() {
     return { lat: activeMarket.latitude, lon: activeMarket.longitude };
   }, [currentUser?.latitude, currentUser?.longitude, activeMarket]);
 
-  // Load sports games on mount & subscribe to provider updates
+  // Sync the authoritative sports feed into Supabase, then load stored games.
+  // The Edge Function is JWT-protected, so only authenticated users trigger it.
+  useEffect(() => {
+    let mounted = true;
+    const syncAndLoad = async () => {
+      if (currentUser?.id && !currentUser.id.startsWith('usr_')) {
+        await syncGames().catch((error) => console.warn('Sports sync unavailable; using stored/provider games.', error));
+      }
+      const storedGames = await getStoredGames().catch(() => []);
+      const data = storedGames.length ? storedGames : await sportsService.getGames();
+      if (!mounted) return;
+      setGames(data);
+      setSelectedGame((currentSelected) => {
+        if (!currentSelected) {
+          if (currentUser?.favoriteTeams && currentUser.favoriteTeams.length > 0) {
+            const favLive = data.find(
+              (g) =>
+                (g.status === 'LIVE' || g.status === 'HALFTIME') &&
+                isFavoriteTeamGame(g, currentUser.favoriteTeams).isFavorite
+            );
+            if (favLive) return favLive;
+            const favAny = data.find(
+              (g) => isFavoriteTeamGame(g, currentUser.favoriteTeams).isFavorite
+            );
+            if (favAny) return favAny;
+          }
+          return data.find((g) => g.status === 'LIVE') || data[0] || null;
+        }
+        return data.find((g) => g.id === currentSelected.id) || currentSelected;
+      });
+    };
+    syncAndLoad();
+    return () => { mounted = false; };
+  }, [currentUser?.id]);
+
+  // Subscribe to provider updates for UI refreshes.
   useEffect(() => {
     let mounted = true;
     const fetchGames = async () => {
-      const storedGames = await getStoredGames().catch(() => []);
-      const data = storedGames.length ? storedGames : await sportsService.getGames();
-      if (mounted) {
-        setGames(data);
-        setSelectedGame((currentSelected) => {
-          if (!currentSelected) {
-            // Prioritize favorite team's live/upcoming game when logged in!
-            if (currentUser?.favoriteTeams && currentUser.favoriteTeams.length > 0) {
-              const favLive = data.find(
-                (g) =>
-                  (g.status === 'LIVE' || g.status === 'HALFTIME') &&
-                  isFavoriteTeamGame(g, currentUser.favoriteTeams).isFavorite
-              );
-              if (favLive) return favLive;
-
-              const favAny = data.find(
-                (g) => isFavoriteTeamGame(g, currentUser.favoriteTeams).isFavorite
-              );
-              if (favAny) return favAny;
-            }
-            return data.find((g) => g.status === 'LIVE') || data[0] || null;
-          }
-          return data.find((g) => g.id === currentSelected.id) || currentSelected;
-        });
-      }
+      const data = await getStoredGames().catch(() => sportsService.getGames());
+      if (mounted) setGames(data);
     };
 
     fetchGames();
