@@ -492,6 +492,9 @@ export interface VenueGameProgramming {
   updated_at: string;
   start_time?: string;
   end_time?: string;
+  source_type?: 'MANUAL' | 'VENUE' | 'OFFICIAL' | 'USER_REPORT' | 'SYSTEM';
+  source_url?: string;
+  verification_notes?: string;
 }
 
 // =========================================================
