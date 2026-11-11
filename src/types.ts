@@ -74,8 +74,8 @@ export interface SportsGame {
   sport?: SportsType;
   eventType?: SportsEventType;
   participants?: SportsParticipant[];
-  homeTeam?: SportsTeam | null;
-  awayTeam?: SportsTeam | null;
+  homeTeam: SportsTeam;
+  awayTeam: SportsTeam;
   startTime: string; // ISO or human format
   status: GameStatus;
   liveDetails?: {
