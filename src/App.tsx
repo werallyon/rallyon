@@ -36,7 +36,7 @@ import { signalEngine } from './services/signalEngine';
 import { sportsProvider, sportsService } from './services/sportsProvider';
 import { marketService } from './services/marketService';
 import { getVenues, getVenueGameProgramming, getFavoriteVenueIds, toggleVenueFavorite } from './services/venueService';
-import { getStoredGames, syncGames } from './services/gameService';
+import { getStoredGames } from './services/gameService';
 import { sortGamesByFavorites, isFavoriteTeamGame } from './services/teamPreferenceService';
 
 type AuthView = 'WELCOME' | 'SIGN_IN' | 'SIGN_UP' | 'FORGOT_PASSWORD';
@@ -141,14 +141,10 @@ function RallyOnMain() {
     return { lat: activeMarket.latitude, lon: activeMarket.longitude };
   }, [currentUser?.latitude, currentUser?.longitude, activeMarket]);
 
-  // Sync the authoritative sports feed into Supabase, then load stored games.
-  // The Edge Function is JWT-protected, so only authenticated users trigger it.
+  // Supabase Cron owns production ingestion; the browser only reads stored games.
   useEffect(() => {
     let mounted = true;
-    const syncAndLoad = async () => {
-      if (currentUser?.id && !currentUser.id.startsWith('usr_')) {
-        await syncGames().catch((error) => console.warn('Sports sync unavailable; using stored/provider games.', error));
-      }
+    const loadGames = async () => {
       const storedGames = await getStoredGames().catch(() => []);
       const data = storedGames.length ? storedGames : await sportsService.getGames();
       if (!mounted) return;
@@ -172,7 +168,7 @@ function RallyOnMain() {
         return data.find((g) => g.id === currentSelected.id) || currentSelected;
       });
     };
-    syncAndLoad();
+    loadGames();
     return () => { mounted = false; };
   }, [currentUser?.id]);
 
