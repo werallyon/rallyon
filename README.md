@@ -69,6 +69,7 @@ The scheduling migrations are intentionally ordered:
 
 1. `20261111043646_rallyon_sync_games_schedule_v2.sql` creates/rotates the Vault-backed token and the hourly job.
 2. `20261111043830_rallyon_sync_games_schedule_v3.sql` replaces the hourly definition and adds the daily upcoming job.
+3. `20261111050000_rallyon_sync_games_schedule_timeout_v4.sql` re-creates those same two jobs with a 120-second pg_net request timeout; it reuses the existing Vault token and does not add duplicate jobs or rotate credentials.
 
 These migrations have already been applied to the production project `nqdrfwvxomecduxmmzrc`. Do not manually re-run them in production: v2 generates a new token and updates the stored hash. On a fresh environment, apply them once in timestamp order after the core data-model and production-hardening migrations.
 
