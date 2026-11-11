@@ -26,10 +26,3 @@ export async function getStoredGames(): Promise<SportsGame[]> {
   return (data ?? []).map(mapGame);
 }
 
-
-export async function syncGames(): Promise<number> {
-  if (!supabase) return 0;
-  const { data, error } = await supabase.functions.invoke('sync-games', { body: {} });
-  if (error) throw error;
-  return Number(data?.synced ?? 0);
-}
