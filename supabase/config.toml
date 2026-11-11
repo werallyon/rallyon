@@ -1,0 +1,6 @@
+# The scheduled caller authenticates with x-rallyon-sync-token.
+# The Edge Function verifies its SHA-256 hash against system_sync_tokens.
+# Cron does not send a user JWT, so the platform JWT gate must be disabled
+# for this function only; requests without the custom token still receive 401.
+[functions.sync-games]
+verify_jwt = false
