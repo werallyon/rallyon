@@ -80,7 +80,7 @@ function RallyOnMain() {
 
   // Sports provider games
   const [games, setGames] = useState<SportsGame[]>([]);
-  const [dbVenues, setDbVenues] = useState<Venue[] | null>(null);
+  const [dbVenues, setDbVenues] = useState<Venue[] | null>(() => isDemoMode ? null : []);
   const [dbVenueGames, setDbVenueGames] = useState<VenueGame[]>([]);
 
   // Load authoritative Supabase venue data. Empty/error states stay empty in production.
