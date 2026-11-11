@@ -242,8 +242,9 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
       const competition = event.competitions?.[0];
       if (!competition) return null;
 
-      const homeComp = competition.competitors?.find((c: any) => c.homeAway === 'home');
-      const awayComp = competition.competitors?.find((c: any) => c.homeAway === 'away');
+      const competitors: any[] = competition.competitors || [];
+      const homeComp = competitors.find((c: any) => c.homeAway === 'home') || competitors[0];
+      const awayComp = competitors.find((c: any) => c.homeAway === 'away') || competitors[1];
 
       if (!homeComp || !awayComp) return null;
 
@@ -254,12 +255,12 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
       const homeRankPrefix = homeRank && homeRank <= 25 ? `#${homeRank} ` : '';
       const awayRankPrefix = awayRank && awayRank <= 25 ? `#${awayRank} ` : '';
 
-      const homeName = `${homeRankPrefix}${homeComp.team?.displayName || homeComp.team?.name || 'Home Team'}`;
-      const awayName = `${awayRankPrefix}${awayComp.team?.displayName || awayComp.team?.name || 'Away Team'}`;
+      const homeName = `${homeRankPrefix}${homeComp.team?.displayName || homeComp.team?.name || homeComp.athlete?.displayName || homeComp.athlete?.fullName || 'Home Team'}`;
+      const awayName = `${awayRankPrefix}${awayComp.team?.displayName || awayComp.team?.name || awayComp.athlete?.displayName || awayComp.athlete?.fullName || 'Away Team'}`;
 
       // Check for matching team in database to enrich colors/fallbacks
-      const homeAbbrev = homeComp.team?.abbreviation || '';
-      const awayAbbrev = awayComp.team?.abbreviation || '';
+      const homeAbbrev = homeComp.team?.abbreviation || homeComp.athlete?.shortName || homeComp.athlete?.displayName?.slice(0, 3).toUpperCase() || '';
+      const awayAbbrev = awayComp.team?.abbreviation || awayComp.athlete?.shortName || awayComp.athlete?.displayName?.slice(0, 3).toUpperCase() || '';
 
       const matchedHome = TEAMS_DATABASE.find(
         (t) =>
@@ -278,6 +279,7 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
         abbrev: homeAbbrev || matchedHome?.abbrev || 'HOM',
         logo:
           homeComp.team?.logo ||
+          homeComp.athlete?.headshot?.href ||
           matchedHome?.logo ||
           `https://a.espncdn.com/i/teamlogos/${league.toLowerCase()}/500/${homeAbbrev.toLowerCase() || 'default'}.png`,
         record: homeComp.records?.[0]?.summary || '',
@@ -289,6 +291,7 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
         abbrev: awayAbbrev || matchedAway?.abbrev || 'AWY',
         logo:
           awayComp.team?.logo ||
+          awayComp.athlete?.headshot?.href ||
           matchedAway?.logo ||
           `https://a.espncdn.com/i/teamlogos/${league.toLowerCase()}/500/${awayAbbrev.toLowerCase() || 'default'}.png`,
         record: awayComp.records?.[0]?.summary || '',
@@ -418,6 +421,13 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
           headline: oddsNote || event.status?.type?.detail || undefined,
           situation
         },
+        participants: competitors.map((competitor: any) => ({
+          name: competitor.team?.displayName || competitor.team?.name || competitor.athlete?.displayName || competitor.athlete?.fullName || 'Participant',
+          abbrev: competitor.team?.abbreviation || competitor.athlete?.shortName || '',
+          logo: competitor.team?.logo || competitor.athlete?.headshot?.href || '',
+          score: competitor.score ?? null,
+          winner: competitor.winner ?? null
+        })),
         lastUpdated: new Date().toISOString()
       };
     } catch {
