@@ -91,7 +91,7 @@ export class CommercialSportsDataProvider implements ISportsDataProvider {
       this.lastLatencyMs = latencyMs;
       this.lastError = 'Commercial provider integration is not implemented.';
       return {
-        success: true,
+        success: false,
         latencyMs,
         message: 'Commercial provider adapter is not implemented; no live connection was tested.'
       };
