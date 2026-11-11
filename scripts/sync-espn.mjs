@@ -131,4 +131,14 @@ if (!response.ok) {
   throw new Error(`Supabase upsert failed: ${response.status} ${await response.text()}`);
 }
 
-console.log(JSON.stringify({ synced: allGames.length, dateRange, diagnostics }));
+if (diagnostics.length) {
+  console.error(JSON.stringify({
+    synced: allGames.length,
+    dateRange,
+    diagnostics,
+    partial: true,
+  }));
+  throw new Error(`ESPN sync completed with ${diagnostics.length} provider failure(s)`);
+}
+
+console.log(JSON.stringify({ synced: allGames.length, dateRange, diagnostics, partial: false }));
