@@ -3,6 +3,18 @@
 -- This migration is intentionally client-deny for system_sync_tokens; the
 -- Edge Function/service role remains able to use the table.
 
+-- This table was provisioned directly in the original production setup.
+-- Keep its definition in migrations so a fresh project can replay the sync setup.
+create table if not exists public.system_sync_tokens (
+  name text primary key,
+  token_sha256 text not null check (token_sha256 ~ '^[0-9a-f]{64}$'),
+  created_at timestamptz not null default now()
+);
+
+alter table public.system_sync_tokens enable row level security;
+revoke all on table public.system_sync_tokens from anon, authenticated;
+grant select on table public.system_sync_tokens to service_role;
+
 drop policy if exists programming_owner_insert on public.venue_game_programming;
 drop policy if exists programming_owner_update on public.venue_game_programming;
 drop policy if exists programming_owner_delete on public.venue_game_programming;
