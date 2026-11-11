@@ -5,8 +5,11 @@ function mapGame(row: any): SportsGame {
   return {
     id: row.id,
     league: row.league,
-    homeTeam: row.home_team,
-    awayTeam: row.away_team,
+    sport: row.sport ?? undefined,
+    eventType: row.event_type ?? undefined,
+    participants: row.participants ?? undefined,
+    homeTeam: row.home_team ?? null,
+    awayTeam: row.away_team ?? null,
     startTime: row.start_time,
     status: row.status,
     liveDetails: row.live_details ?? undefined,
