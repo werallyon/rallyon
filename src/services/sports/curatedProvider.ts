@@ -10,6 +10,7 @@ import {
   GameSummaryData
 } from './types';
 import { SEEDED_GAMES } from '../../data/seedData';
+import { isDemoMode } from '../../config/dataMode';
 
 /**
  * Curated Seeded Sports Data Provider
@@ -29,10 +30,10 @@ export class CuratedSportsDataProvider implements ISportsDataProvider {
       type: this.type,
       isConfigured: true,
       requiresApiKey: false,
-      mode: 'DEMO_FALLBACK',
+      mode: isDemoMode ? 'DEMO_FALLBACK' : 'UNAVAILABLE',
       activeEndpoints: ['Local High-Fidelity Sports Fixtures Matrix'],
       lastSync: new Date().toISOString(),
-      cachedGamesCount: SEEDED_GAMES.length
+      cachedGamesCount: isDemoMode ? SEEDED_GAMES.length : 0
     };
   }
 
@@ -42,13 +43,14 @@ export class CuratedSportsDataProvider implements ISportsDataProvider {
 
   async testConnection(): Promise<{ success: boolean; latencyMs: number; message: string }> {
     return {
-      success: true,
+      success: isDemoMode,
       latencyMs: 1,
-      message: 'Local Curated Fixtures Matrix responding instantly.'
+      message: isDemoMode ? 'Local Curated Fixtures Matrix responding instantly.' : 'Curated fixtures are disabled outside explicit demo mode.'
     };
   }
 
   async getGames(filter?: GameScheduleFilter): Promise<SportsGame[]> {
+    if (!isDemoMode) return [];
     let list = [...SEEDED_GAMES];
     if (filter?.league) {
       list = list.filter((g) => g.league === filter.league);
@@ -60,6 +62,7 @@ export class CuratedSportsDataProvider implements ISportsDataProvider {
   }
 
   async getGameById(gameId: string): Promise<SportsGame | null> {
+    if (!isDemoMode) return null;
     return SEEDED_GAMES.find((g) => g.id === gameId || g.externalGameId === gameId) || null;
   }
 
