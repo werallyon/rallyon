@@ -18,11 +18,11 @@ export interface IntentConfig {
 export type SportsLeague =
   | 'NFL' | 'NCAA_FB'
   | 'NBA' | 'NCAA_BB' | 'WNBA'
-  | 'MLB' | 'NHL'
+  | 'MLB' | 'NCAA_BASEBALL' | 'WBC' | 'NHL'
   | 'MLS' | 'EPL' | 'LALIGA' | 'BUNDESLIGA' | 'SERIEA' | 'LIGUE1' | 'UCL' | 'UEL' | 'NWSL'
   | 'ATP' | 'WTA'
   | 'UFC'
-  | 'PGA' | 'LPGA' | 'LIV'
+  | 'PGA' | 'LPGA' | 'LIV' | 'DP_WORLD'
   | 'F1' | 'NASCAR' | 'INDYCAR'
   | 'SOCCER';
 
