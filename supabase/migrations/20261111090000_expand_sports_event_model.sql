@@ -11,12 +11,12 @@ update public.games
 set sport = case
   when league in ('NFL','NCAA_FB') then 'FOOTBALL'
   when league in ('NBA','NCAA_BB','WNBA') then 'BASKETBALL'
-  when league = 'MLB' then 'BASEBALL'
+  when league in ('MLB','NCAA_BASEBALL','WBC') then 'BASEBALL'
   when league = 'NHL' then 'HOCKEY'
   when league in ('MLS','EPL','LALIGA','BUNDESLIGA','SERIEA','LIGUE1','UCL','UEL','NWSL','WSL') then 'SOCCER'
   when league = 'UFC' then 'MMA'
   when league in ('ATP','WTA') then 'TENNIS'
-  when league in ('PGA','LPGA','LIV') then 'GOLF'
+  when league in ('PGA','LPGA','LIV','DP_WORLD') then 'GOLF'
   when league in ('F1','NASCAR','INDYCAR') then 'RACING'
   else 'OTHER'
 end
