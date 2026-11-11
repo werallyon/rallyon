@@ -4,8 +4,6 @@ import { supabase } from '../lib/supabaseClient';
 function mapVenue(row: any): Venue {
   return {
     id: row.id,
-    market_id: row.market_id ?? undefined,
-    city_id: row.city_id ?? undefined,
     isDemoData: Boolean(row.is_demo_data),
     name: row.name,
     address: row.address,
