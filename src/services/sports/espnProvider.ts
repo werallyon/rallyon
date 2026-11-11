@@ -88,7 +88,7 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
       type: this.type,
       isConfigured: this.isConfigured,
       requiresApiKey: this.requiresApiKey,
-      mode: this.isUsingFallback ? 'DEMO_FALLBACK' : 'LIVE_FEED',
+      mode: this.isUsingFallback ? (isDemoMode ? 'DEMO_FALLBACK' : 'UNAVAILABLE') : 'LIVE_FEED',
       activeEndpoints: Object.entries(ESPN_LEAGUE_MAP).map(
         ([l, conf]) => `${conf.displayName} (${conf.sport}/${conf.league})`
       ),
@@ -504,6 +504,8 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
           this.cache.set(cacheKey, { data: allGames, timestamp: now, ttl });
           return allGames;
         }
+        this.isUsingFallback = true;
+        if (!this.lastError) this.lastError = 'ESPN returned no games for the requested schedule.';
       } catch (err: any) {
         this.lastError = err.message || 'ESPN fetch failed';
         this.isUsingFallback = true;
