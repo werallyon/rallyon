@@ -128,7 +128,7 @@ const SEEDED_GOOGLE_PLACES: Record<string, GooglePlaceData> = {
   }
 };
 
-const STORAGE_MATCHES_KEY = 'rallyon_venue_place_matches_v1';
+const STORAGE_MATCHES_KEY = `rallyon_venue_place_matches_v1_${isDemoMode ? 'demo' : 'production'}`;
 
 export class GooglePlacesService {
   private apiKey: string;
