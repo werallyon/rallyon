@@ -505,14 +505,34 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
           // Multi-league concurrent aggregation
           // Focus on active high-demand sports
           const targetLeagues: SportsLeague[] = [
-            'MLB',
-            'NCAA_FB',
             'NFL',
-            'MLS',
-            'SOCCER',
+            'NCAA_FB',
             'NBA',
+            'NCAA_BB',
+            'WNBA',
+            'MLB',
+            'NCAA_BASEBALL',
+            'WBC',
             'NHL',
-            'NCAA_BB'
+            'MLS',
+            'EPL',
+            'LALIGA',
+            'BUNDESLIGA',
+            'SERIEA',
+            'LIGUE1',
+            'UCL',
+            'UEL',
+            'NWSL',
+            'ATP',
+            'WTA',
+            'UFC',
+            'PGA',
+            'LPGA',
+            'LIV',
+            'DP_WORLD',
+            'F1',
+            'NASCAR',
+            'INDYCAR'
           ];
 
           const settleResults = await Promise.allSettled(
