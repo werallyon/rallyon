@@ -109,16 +109,17 @@ test('all business localStorage namespaces are separated by demo and production 
   ]) {
     assert.ok(businessVenue.includes(key + "_${isDemoMode ? 'demo' : 'production'}"));
   }
-  assert.match(businessVenue, /this\\.redemptions\\s*=\\s*storedRedemptions\\s*\\?\\s*JSON\\.parse\\(storedRedemptions\\)\\s*:\\s*\\[\\]/);
+  assert.ok(businessVenue.includes('this.redemptions = storedRedemptions ? JSON.parse(storedRedemptions) : [];'));
 });
 
 test('Google Places never preloads seeded records or default venue matches in production', () => {
-  assert.match(googlePlaces, /if\\s*\\(isDemoMode\\)\\s*\\{[\\s\\S]*?Object\\.values\\(SEEDED_GOOGLE_PLACES\\)/);
-  assert.match(googlePlaces, /else if\\s*\\(isDemoMode\\)\\s*\\{/);
+  assert.ok(googlePlaces.includes('if (isDemoMode) {'));
+  assert.ok(googlePlaces.includes('Object.values(SEEDED_GOOGLE_PLACES).forEach'));
+  assert.ok(googlePlaces.includes('} else if (isDemoMode) {'));
 });
 
 test('signal engine does not start or toggle simulated activity in production', () => {
-  assert.match(signalEngine, /if\\s*\\(isDemoMode\\)\\s*this\\.startSimulation\\(\\)/);
-  assert.match(signalEngine, /public toggleSimulation\\(\\)\\s*\\{\\s*if\\s*\\(!isDemoMode\\)\\s*return/);
-  assert.match(signalEngine, /private startSimulation\\(\\)\\s*\\{\\s*if\\s*\\(!isDemoMode\\)\\s*return/);
+  assert.ok(signalEngine.includes('if (isDemoMode) this.startSimulation();'));
+  assert.ok(signalEngine.includes('public toggleSimulation() {\n    if (!isDemoMode) return;'));
+  assert.ok(signalEngine.includes('private startSimulation() {\n    if (!isDemoMode) return;'));
 });
