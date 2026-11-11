@@ -57,7 +57,10 @@ export async function getVenueGameProgramming(): Promise<VenueGameProgramming[]>
     created_at: row.created_at,
     updated_at: row.updated_at,
     start_time: row.start_time ?? undefined,
-    end_time: row.end_time ?? undefined
+    end_time: row.end_time ?? undefined,
+    source_type: row.source_type ?? 'MANUAL',
+    source_url: row.source_url ?? undefined,
+    verification_notes: row.verification_notes ?? undefined
   }));
 }
 
@@ -88,6 +91,9 @@ export async function upsertVenueGameProgramming(params: {
   created_by?: string;
   start_time?: string;
   end_time?: string;
+  source_type?: VenueGameProgramming['source_type'];
+  source_url?: string;
+  verification_notes?: string;
 }): Promise<VenueGameProgramming> {
   if (!supabase) throw new Error('Supabase is not configured');
   const payload = {
@@ -105,7 +111,10 @@ export async function upsertVenueGameProgramming(params: {
     verified_at: params.verified_at ?? new Date().toISOString(),
     created_by: params.created_by ?? null,
     start_time: params.start_time ?? null,
-    end_time: params.end_time ?? null
+    end_time: params.end_time ?? null,
+    source_type: params.source_type ?? 'MANUAL',
+    source_url: params.source_url ?? null,
+    verification_notes: params.verification_notes ?? null
   };
   const { data, error } = await supabase
     .from('venue_game_programming')
@@ -130,7 +139,10 @@ export async function upsertVenueGameProgramming(params: {
     created_at: data.created_at,
     updated_at: data.updated_at,
     start_time: data.start_time ?? undefined,
-    end_time: data.end_time ?? undefined
+    end_time: data.end_time ?? undefined,
+    source_type: data.source_type ?? 'MANUAL',
+    source_url: data.source_url ?? undefined,
+    verification_notes: data.verification_notes ?? undefined
   };
 }
 
