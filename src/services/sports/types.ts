@@ -14,7 +14,7 @@ export interface SportsProviderStatus {
   type: SportsProviderType;
   isConfigured: boolean;
   requiresApiKey: boolean;
-  mode: 'LIVE_FEED' | 'DEMO_FALLBACK';
+  mode: 'LIVE_FEED' | 'DEMO_FALLBACK' | 'UNAVAILABLE';
   activeEndpoints: string[];
   lastSync?: string;
   error?: string;
