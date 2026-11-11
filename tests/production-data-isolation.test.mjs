@@ -90,3 +90,35 @@ test('Google Places demo cache and venue matching are mode-separated', () => {
   assert.match(googlePlaces, /rallyon_venue_place_matches_v1_\$\{isDemoMode\s*\?\s*'demo'\s*:\s*'production'\}/);
   assert.match(googlePlaces, /mode:\s*this\.apiKey[^\n]*\?\s*'CONFIGURED'\s*:\s*\(isDemoMode\s*\?\s*'USING_DEMO_CACHE'\s*:\s*'UNCONFIGURED'\)/);
 });
+
+
+test('saved venue defaults and seeded venue-game links are demo-only', () => {
+  assert.ok(app.includes("isDemoMode ? ['venue_bufords', 'venue_cover3', 'venue_haymaker'] : []"));
+  assert.ok(app.includes('dbVenueGames.length || !isDemoMode ? dbVenueGames : SEEDED_VENUE_GAMES'));
+});
+
+test('all business localStorage namespaces are separated by demo and production mode', () => {
+  for (const key of [
+    'rallyon_venue_claims_v1',
+    'rallyon_venue_programming_v1',
+    'rallyon_venue_promotions_v1',
+    'rallyon_venue_redemptions_v1',
+    'rallyon_sponsorships_v1',
+    'rallyon_analytics_events_v1',
+    'rallyon_business_accounts_v1'
+  ]) {
+    assert.ok(businessVenue.includes(key + "_${isDemoMode ? 'demo' : 'production'}"));
+  }
+  assert.match(businessVenue, /this\\.redemptions\\s*=\\s*storedRedemptions\\s*\\?\\s*JSON\\.parse\\(storedRedemptions\\)\\s*:\\s*\\[\\]/);
+});
+
+test('Google Places never preloads seeded records or default venue matches in production', () => {
+  assert.match(googlePlaces, /if\\s*\\(isDemoMode\\)\\s*\\{[\\s\\S]*?Object\\.values\\(SEEDED_GOOGLE_PLACES\\)/);
+  assert.match(googlePlaces, /else if\\s*\\(isDemoMode\\)\\s*\\{/);
+});
+
+test('signal engine does not start or toggle simulated activity in production', () => {
+  assert.match(signalEngine, /if\\s*\\(isDemoMode\\)\\s*this\\.startSimulation\\(\\)/);
+  assert.match(signalEngine, /public toggleSimulation\\(\\)\\s*\\{\\s*if\\s*\\(!isDemoMode\\)\\s*return/);
+  assert.match(signalEngine, /private startSimulation\\(\\)\\s*\\{\\s*if\\s*\\(!isDemoMode\\)\\s*return/);
+});
