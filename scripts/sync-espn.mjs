@@ -1,3 +1,5 @@
+import { getSyncDates, getSyncOutcome } from '../supabase/functions/_shared/sync-utils.js';
+
 const leagues = [
   ['football', 'nfl', 'NFL'],
   ['football', 'college-football', 'NCAA_FB'],
@@ -15,34 +17,31 @@ if (!supabaseUrl || !serviceKey) {
   throw new Error('Missing SUPABASE_URL or SUPABASE_SECRET_KEY');
 }
 
-const now = new Date();
-const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-const ymd = (d) => d.toISOString().slice(0, 10).replaceAll('-', '');
-const dateRange = `${ymd(now)}-${ymd(end)}`;
+// Manual recovery covers today plus the following seven Chicago calendar days.
+const syncDates = getSyncDates(new Date(), { days: 8, startOffset: 0 });
+const allGames = [];
+const diagnostics = [];
 
 function statusOf(event) {
-  const s = String(event?.status?.type?.name ?? '').toUpperCase();
-  if (s.includes('FINAL')) return 'FINAL';
-  if (s.includes('POSTPONED')) return 'POSTPONED';
-  if (s.includes('CANCEL')) return 'CANCELLED';
-  if (s.includes('DELAY')) return 'DELAYED';
-  if (s.includes('HALFTIME')) return 'HALFTIME';
-  if (s.includes('IN_PROGRESS') || s.includes('LIVE')) return 'LIVE';
+  const status = String(event?.status?.type?.name ?? '').toUpperCase();
+  if (status.includes('FINAL')) return 'FINAL';
+  if (status.includes('POSTPONED')) return 'POSTPONED';
+  if (status.includes('CANCEL')) return 'CANCELLED';
+  if (status.includes('DELAY')) return 'DELAYED';
+  if (status.includes('HALFTIME')) return 'HALFTIME';
+  if (status.includes('IN_PROGRESS') || status.includes('LIVE')) return 'LIVE';
   return 'UPCOMING';
 }
 
 function team(competitor) {
-  const t = competitor?.team ?? {};
+  const source = competitor?.team ?? {};
   return {
-    name: t.displayName ?? t.name ?? '',
-    abbrev: t.abbreviation ?? t.shortDisplayName ?? '',
-    logo: t.logo ?? t.logos?.[0]?.href ?? '',
+    name: source.displayName ?? source.name ?? '',
+    abbrev: source.abbreviation ?? source.shortDisplayName ?? '',
+    logo: source.logo ?? source.logos?.[0]?.href ?? '',
     record: competitor?.records?.[0]?.summary,
   };
 }
-
-const allGames = [];
-const diagnostics = [];
 
 async function fetchJson(url) {
   let lastError = null;
@@ -54,91 +53,119 @@ async function fetchJson(url) {
           Accept: 'application/json, text/plain, */*',
         },
       });
-      const text = await response.text();
+      const body = await response.text();
       if (!response.ok) {
-        lastError = new Error(`HTTP ${response.status}: ${text.slice(0, 300)}`);
+        lastError = new Error(`HTTP ${response.status}: ${body.slice(0, 300)}`);
         if (response.status >= 400 && response.status < 500 && response.status !== 429) break;
-        await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+        if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
         continue;
       }
-      return JSON.parse(text);
+      const payload = JSON.parse(body);
+      if (!payload || !Array.isArray(payload.events)) {
+        throw new Error('Invalid ESPN scoreboard payload');
+      }
+      return payload;
     } catch (error) {
       lastError = error;
-      await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
     }
   }
   throw lastError ?? new Error('Unknown ESPN request failure');
 }
 
-for (const [sport, league, leagueCode] of leagues) {
-  const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard?limit=100&dates=${dateRange}`;
-  try {
-    const payload = await fetchJson(url);
-    for (const event of payload.events ?? []) {
-      const competition = event.competitions?.[0];
-      const competitors = competition?.competitors ?? [];
-      const home = competitors.find((c) => c.homeAway === 'home');
-      const away = competitors.find((c) => c.homeAway === 'away');
-      if (!home || !away || !event.id || !event.date) continue;
+for (const syncDate of syncDates) {
+  const results = await Promise.all(leagues.map(async ([sport, league, leagueCode]) => {
+    const games = [];
+    const issues = [];
+    const url = `https://site.web.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard?limit=100&dates=${syncDate}`;
 
-      allGames.push({
-        league: leagueCode,
-        home_team: team(home),
-        away_team: team(away),
-        start_time: event.date,
-        status: statusOf(event),
-        live_details: event.status?.type?.state === 'in'
-          ? {
-              currentScore: { home: Number(home.score ?? 0), away: Number(away.score ?? 0) },
-              period: event.status?.period ? String(event.status.period) : '',
-              clock: event.status?.displayClock ?? '',
-              headline: event.status?.type?.detail ?? '',
-            }
-          : null,
-        broadcast_network: competition?.broadcasts?.[0]?.names?.[0] ?? null,
-        broadcast: competition?.broadcasts?.[0] ?? null,
-        venue_name: competition?.venue?.fullName ?? null,
-        season: event.season?.year ? String(event.season.year) : null,
-        external_game_id: String(event.id),
-        last_updated: new Date().toISOString(),
-      });
+    try {
+      const payload = await fetchJson(url);
+      let invalidEvents = 0;
+      for (const event of payload.events) {
+        const competition = event.competitions?.[0];
+        const competitors = competition?.competitors ?? [];
+        const home = competitors.find((item) => item.homeAway === 'home');
+        const away = competitors.find((item) => item.homeAway === 'away');
+        if (!home || !away || !event.id || !event.date) {
+          invalidEvents += 1;
+          continue;
+        }
+
+        games.push({
+          league: leagueCode,
+          home_team: team(home),
+          away_team: team(away),
+          start_time: event.date,
+          status: statusOf(event),
+          live_details: event.status?.type?.state === 'in'
+            ? {
+                currentScore: { home: Number(home.score ?? 0), away: Number(away.score ?? 0) },
+                period: event.status?.period ? String(event.status.period) : '',
+                clock: event.status?.displayClock ?? '',
+                headline: event.status?.type?.detail ?? '',
+              }
+            : null,
+          broadcast_network: competition?.broadcasts?.[0]?.names?.[0] ?? null,
+          broadcast: competition?.broadcasts?.[0] ?? null,
+          venue_name: competition?.venue?.fullName ?? null,
+          season: event.season?.year ? String(event.season.year) : null,
+          external_game_id: String(event.id),
+          last_updated: new Date().toISOString(),
+        });
+      }
+      if (invalidEvents > 0) issues.push({ league: leagueCode, date: syncDate, invalidEvents });
+    } catch (error) {
+      issues.push({ league: leagueCode, date: syncDate, error: String(error) });
     }
-  } catch (error) {
-    diagnostics.push({ league: leagueCode, error: String(error) });
+
+    return { games, issues };
+  }));
+
+  for (const result of results) {
+    allGames.push(...result.games);
+    diagnostics.push(...result.issues);
   }
 }
 
-if (!allGames.length) {
-  console.error(JSON.stringify({ synced: 0, dateRange, diagnostics }));
-  throw new Error(`ESPN sync returned zero games for ${dateRange}`);
-}
-
-const response = await fetch(
-  `${supabaseUrl}/rest/v1/games?on_conflict=league,external_game_id`,
-  {
-    method: 'POST',
-    headers: {
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-      'Content-Type': 'application/json',
-      Prefer: 'resolution=merge-duplicates,return=minimal',
-    },
-    body: JSON.stringify(allGames),
-  },
+const uniqueGames = Array.from(
+  new Map(allGames.map((game) => [`${game.league}:${game.external_game_id}`, game])).values(),
 );
+if (uniqueGames.length > 0) {
+  const response = await fetch(
+    `${supabaseUrl}/rest/v1/games?on_conflict=league,external_game_id`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal',
+      },
+      body: JSON.stringify(uniqueGames),
+    },
+  );
 
-if (!response.ok) {
-  throw new Error(`Supabase upsert failed: ${response.status} ${await response.text()}`);
+  if (!response.ok) {
+    throw new Error(`Supabase upsert failed: ${response.status} ${await response.text()}`);
+  }
 }
 
-if (diagnostics.length) {
-  console.error(JSON.stringify({
-    synced: allGames.length,
-    dateRange,
-    diagnostics,
-    partial: true,
-  }));
-  throw new Error(`ESPN sync completed with ${diagnostics.length} provider failure(s)`);
-}
+const outcome = getSyncOutcome(uniqueGames.length, diagnostics);
+const report = {
+  synced: outcome.synced,
+  complete: outcome.complete,
+  partial: outcome.partial,
+  dates: syncDates,
+  diagnostics,
+};
 
-console.log(JSON.stringify({ synced: allGames.length, dateRange, diagnostics, partial: false }));
+// A successful empty ESPN window is a valid empty result. Provider failures,
+// including partial failures, produce a non-zero workflow exit after good
+// games have been persisted.
+if (outcome.failed) {
+  console.error(JSON.stringify(report));
+  process.exitCode = 1;
+} else {
+  console.log(JSON.stringify(report));
+}
