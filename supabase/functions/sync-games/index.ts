@@ -15,7 +15,7 @@ const LEAGUES = [
   ["basketball", "wnba", "WNBA", "BASKETBALL", "GAME"],
   // Baseball / hockey
   ["baseball", "mlb", "MLB", "BASEBALL", "GAME"],
-  ["baseball", "college-baseball", "NCAA_BB_BASEBALL", "BASEBALL", "GAME"],
+  ["baseball", "college-baseball", "NCAA_BASEBALL", "BASEBALL", "GAME"],
   ["baseball", "world-baseball-classic", "WBC", "BASEBALL", "GAME"],
   ["hockey", "nhl", "NHL", "HOCKEY", "GAME"],
   // Soccer
