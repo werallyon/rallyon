@@ -51,6 +51,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Setup Supabase CLI
         id: setup-supabase-cli
         uses: supabase/setup-cli@v3
@@ -71,6 +80,9 @@ jobs:
 
       - name: Verify profile contract, favorite backfill, RLS and RPC
         run: bash validation/run-local-sql.sh validation/supabase/verify.sql
+
+      - name: Verify real Auth, PostgREST, RLS and lifecycle behavior
+        run: node --test tests/integration/p0-auth-rls-api.test.mjs
 
       - name: Verify preflight rejects unsafe policies, triggers, schema and grants
         run: bash validation/verify-preflight-guards.sh
