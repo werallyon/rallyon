@@ -29,7 +29,15 @@ expect_preflight_failure() {
     cat "$OUTPUT"
     exit 1
   fi
-  echo "PASS: preflight rejected $name"
+  local db_container
+  db_container="$(docker ps --filter "label=com.supabase.cli.project=rallyon-pr22-migration-validation" --format '{{.Names}}' | grep -E '(^|_)db_' | head -n 1)"
+  local relation_absent
+  relation_absent="$(docker exec "$db_container" psql -U postgres -d postgres -Atqc "select (to_regclass('public.user_favorite_teams') is null)::text")"
+  if [[ "$relation_absent" != "true" ]]; then
+    echo "FAIL: failed migration left public.user_favorite_teams behind for case: $name"
+    exit 1
+  fi
+  echo "PASS: preflight rejected $name and transaction left no partial relation"
   rm -f "$INJECTION"
 }
 
@@ -74,6 +82,16 @@ expect_preflight_failure \
   "missing RPC profile column" \
   "profile schema is incompatible" \
   "alter table public.profiles drop column current_intent;"
+
+expect_preflight_failure \
+  "malformed legacy favorite entry" \
+  "legacy favorite entries lack a valid string id/name" \
+  "update public.profiles set favorite_teams = '[{\"id\":\"bad-id\",\"name\":\"\"}]'::jsonb where id = 'a1000000-0000-4000-8000-000000000001';"
+
+expect_preflight_failure \
+  "non-array legacy favorite root" \
+  "NULL or non-array favorite_teams" \
+  "update public.profiles set favorite_teams = '{}'::jsonb where id = 'a1000000-0000-4000-8000-000000000001';"
 
 expect_preflight_failure \
   "PUBLIC profile table grant" \
