@@ -89,6 +89,15 @@ test('optimistic profile and favorite writes roll back on persistence failure', 
   assert.ok(authService.includes('this.currentUser = previousUser;'));
 });
 
+test('sign-in and sign-up completion are guarded against superseded auth actions', () => {
+  assert.ok(authService.includes('private authActionRevision = 0'));
+  assert.ok(authService.includes('private async isCurrentAuthAction'));
+  assert.ok(authService.includes('actionRevision !== this.authActionRevision'));
+  assert.ok(authService.includes('data.session?.user.id === userId'));
+  assert.ok(authService.includes('revision !== this.authRevision'));
+  assert.ok(authService.includes('this.authActionRevision++; this.profileWriteRevision++;'));
+});
+
 test('no-op profile writes still require an existing canonical row', () => {
   assert.match(profileService, /if \(!Object\.keys\(patch\)\.length\) \{[\s\S]*?if \(!profile\) throw new Error/);
 });
