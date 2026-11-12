@@ -40,9 +40,11 @@ class AuthService {
   private currentUser: User | null = null;
   private listeners = new Set<(user: User | null) => void>();
   private initialized = false;
+  private authRevision = 0;
 
   constructor() {
     supabase?.auth.onAuthStateChange((_event, session) => {
+      const revision = ++this.authRevision;
       if (!session?.user) {
         this.currentUser = null;
         this.notify();
@@ -51,7 +53,7 @@ class AuthService {
       // Do not publish Auth metadata as a temporary profile. Hydrate the
       // canonical public.profiles row before notifying consumers.
       void this.hydrateUser(session.user).then((user) => {
-        if (this.currentUser?.id === session.user.id || !this.currentUser) {
+        if (revision === this.authRevision) {
           this.currentUser = user;
           this.notify();
         }
@@ -63,9 +65,11 @@ class AuthService {
 
   async initialize(): Promise<User | null> {
     if (!supabase) { this.initialized = true; this.notify(); return null; }
+    const revision = ++this.authRevision;
     const { data, error } = await supabase.auth.getSession();
     if (error) throw error;
-    this.currentUser = data.session?.user ? await this.hydrateUser(data.session.user) : null;
+    const hydratedUser = data.session?.user ? await this.hydrateUser(data.session.user) : null;
+    if (revision === this.authRevision) this.currentUser = hydratedUser;
     this.initialized = true;
     this.notify();
     return this.currentUser;
