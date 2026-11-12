@@ -306,6 +306,7 @@ export function normalizeFavoriteTeams(teams: TeamReference[]): TeamReference[] 
     for (const field of ['sportId', 'league', 'abbrev', 'logo'] as const) {
       if (typeof team[field] !== 'string') throw new TypeError(`Favorite team ${field} must be a string.`);
     }
+    if (team.color !== undefined && typeof team.color !== 'string') throw new TypeError('Favorite team color must be a string when provided.');
     if (seen.has(id)) continue;
     seen.add(id);
     normalized.push({
