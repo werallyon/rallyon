@@ -75,3 +75,25 @@ test('profile RPC rechecks the live authenticated identity before submitting', (
   assert.match(write, /auth\.getUser\(\)/);
   assert.match(write, /authData\.user\.id !== id/);
 });
+
+test('canonical profile SELECT excludes the retained legacy favorite JSON column', () => {
+  assert.match(profileService, /select\('id,username,first_name/);
+  assert.equal(/select\('\*'\)/.test(profileService), false);
+  assert.equal(/favorite_teams/.test(profileService), false);
+});
+
+test('profile display name does not fall back to Auth email identity', () => {
+  const mapper = profileService.slice(
+    profileService.indexOf('export function mergeAuthUserWithProfile'),
+    profileService.indexOf('export async function getProfile')
+  );
+  assert.match(mapper, /name: displayName,/);
+  assert.equal(/authUser\?\.email\?\.split/.test(mapper), false);
+});
+
+test('AuthContext only clears loading/errors for the latest auth request', () => {
+  const context = read('src/context/AuthContext.tsx');
+  assert.match(context, /authRequestRevision = useRef\(0\)/);
+  assert.match(context, /requestRevision === authRequestRevision\.current/);
+  assert.match(context, /if \(user\) setAuthError\(null\)/);
+});
