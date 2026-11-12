@@ -250,7 +250,13 @@ Before merge, create an integration branch from the then-current main after the 
 ## 6. Current status
 
 - GitHub Actions RallyOn Build Check #117 passed on the coordinated P0-C branch head: regression tests, Edge Function type check, TypeScript type check, and production build.
-- Database-level validation has not run; no disposable database was provisioned or modified during this preparation. P0-A's separate runbook now documents the canonical profile schema/trigger/RLS and signup/session lifecycle checks that must be run alongside this favorite-team backfill/RLS procedure.
-- Actual production profiles.favorite_teams type and stored format remain unknown. Inspect safely before migration approval.
-- Production Supabase untouched.
-- This document is the only preparation artifact to be added to the PR #18 branch.
+- Hosted SQL validation was performed on the isolated RallyOn-Validation project (ref: ihkijbflltlrizswipeb), never production. It has two recorded migrations: p0_validation_base_profiles and p0c_relational_favorite_teams. The base profile schema/trigger was manually reconstructed from read-only production schema findings; it is not a recovered copy of the exact production bootstrap migration.
+- The P0-C table's columns, composite primary key, check constraints, indexes, and four owner-scoped RLS policies were inspected and match this migration's intended definitions.
+- Two synthetic Auth users were created directly in auth.users (not through the GoTrue signup API); both received one profile row from the bootstrap trigger. This validates the database trigger path, not a complete Auth API signup/session flow.
+- Initial backfill produced two expected rows for user A. A transaction-scoped edge-case rehearsal then covered duplicate IDs, blank/missing required fields, scalar/null array elements, and a JSON null root. The duplicate collapsed, invalid elements were skipped, and the non-array root produced no rows. The transaction was rolled back.
+- Re-running the exact backfill INSERT ... ON CONFLICT DO NOTHING preserved the existing relational rows. This validates repeatability for already-backfilled rows, not all possible legacy-data conditions.
+- RLS SQL tests using SET ROLE and request.jwt.claim.sub showed one-user visibility, blocked cross-user profile/favorite updates, successful own favorite insertion, and no anonymous visibility. Those were SQL role/claim tests, not REST API tests with independent real sessions.
+- A privilege audit found authenticated had REFERENCES, TRIGGER, and TRUNCATE grants on the newly created table in addition to CRUD. The migration is being tightened to revoke all from anon and authenticated before granting only CRUD to authenticated. The hosted validation project is being aligned with that least-privilege definition.
+- Supabase security advisors also report a mutable search_path on public.set_profiles_updated_at (base-schema function) and disabled leaked-password protection; the unused team_id index notice is expected until queried by a workload. These are recorded for follow-up; no production changes are authorized.
+- Remaining: execute actual GoTrue signup/API and independent-session REST tests; exercise the React services against the hosted project; test auth lifecycle/session transitions and legacy-query failure vs successful-empty behavior; reconcile production migration-history drift before claiming a clean local replay.
+- Production Supabase untouched. PR #16 and PR #18 remain open, draft, and unmerged.
