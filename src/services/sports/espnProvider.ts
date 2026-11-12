@@ -19,6 +19,21 @@ import { SEEDED_GAMES } from '../../data/seedData';
 import { isDemoMode } from '../../config/dataMode';
 import { TEAMS_DATABASE } from '../../data/teamsDatabase';
 
+function flattenESPNEvents(events: any[]): any[] {
+  return events.flatMap((event) => {
+    const groupedCompetitions = (event?.groupings ?? []).flatMap((group: any) => group?.competitions ?? []);
+    if (groupedCompetitions.length === 0) return [event];
+
+    return groupedCompetitions.map((competition: any) => ({
+      ...event,
+      id: competition?.id ?? event.id,
+      date: competition?.date ?? event.date,
+      status: competition?.status ?? event.status,
+      competitions: [competition],
+    }));
+  });
+}
+
 // ESPN Sport & League Endpoints Mapping
 export const ESPN_LEAGUE_MAP: Record<
   SportsLeague,
@@ -462,7 +477,7 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
       }
 
       const json = await res.json();
-      const events: any[] = json.events || [];
+      const events: any[] = flattenESPNEvents(json.events || []);
 
       const parsedGames = events
         .map((event) => this.normalizeESPNEvent(event, league))
