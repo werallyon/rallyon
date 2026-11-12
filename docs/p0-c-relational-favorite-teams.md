@@ -23,7 +23,7 @@
 
 ## Coordination
 
-This branch is based on `main` and is intentionally separate from P0-A and other P0 work. P0-A also touches profile/auth hydration; resolve those overlapping files deliberately when integrating both PRs. Keep the relational favorite-team data contract and P0-A's canonical profile contract intact. P0-C must not reintroduce `user_metadata` fallbacks or catch canonical profile errors; only the relational favorite-team query may use its documented legacy fallback.
+This branch remains separate from P0-A and other P0 work. Its auth/profile services have now been aligned with P0-A's canonical profile mapping, fail-closed missing-row behavior, and stale-auth-event revision guard. The only compatibility fallback retained is for the optional relational favorite-team query; profile hydration errors propagate. During final integration, retain P0-A's canonical profile behavior and P0-C's separate favorite-team persistence path. P0-C must not reintroduce `user_metadata` fallbacks or catch canonical profile errors; only the relational favorite-team query may use its documented legacy fallback.
 
 ## Validation
 
