@@ -112,3 +112,34 @@ test('initialization completing after a newer sign-in cannot overwrite that acco
   await initialize;
   assert.equal(service.getCurrentUser()?.id, 'user-b');
 });
+
+test('account-switch hydration clears the old account and rejects its late completion', async () => {
+  const client = makeClient();
+  const service = new AuthService(client);
+  service.hydrateUser = async (user) => ({ id: user.id, email: user.email });
+  const userA = authUser('user-a', 'a@example.com');
+  client.pendingSignIns.set('a@example.com', { promise: Promise.resolve({ user: userA, session: { user: userA } }) });
+  await service.signIn('a@example.com', 'passwordA');
+
+  const notifications = [];
+  service.subscribe((user) => notifications.push(user?.id ?? null));
+  const hydrationA = deferred();
+  const hydrationB = deferred();
+  service.hydrateUser = (user) => user.id === 'user-a' ? hydrationA.promise : hydrationB.promise;
+
+  client.setSession(userA);
+  client.emit('TOKEN_REFRESHED', { user: userA });
+  const userB = authUser('user-b', 'b@example.com');
+  client.setSession(userB);
+  client.emit('SIGNED_IN', { user: userB });
+  assert.equal(service.getCurrentUser(), null, 'A must be cleared as soon as B becomes the authenticated identity');
+
+  hydrationB.resolve({ id: 'user-b', email: 'b@example.com' });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(service.getCurrentUser()?.id, 'user-b');
+
+  hydrationA.resolve({ id: 'user-a', email: 'a@example.com' });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(service.getCurrentUser()?.id, 'user-b');
+  assert.deepEqual(notifications.slice(-3), [null, 'user-b', 'user-b']);
+});
