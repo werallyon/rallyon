@@ -144,7 +144,7 @@ Expected: zero rows. Also compare A/B Auth UUIDs against profile IDs explicitly.
 
 ## 5. Results recorded for this review
 
-- GitHub Actions RallyOn Build Check #105 for PR #16: **passed** (Regression tests, Edge Function types, TypeScript type check, production build).
+- GitHub Actions RallyOn Build Check #116 for PR #16: **passed** on the reviewed branch head (Regression tests, Edge Function types, TypeScript type check, production build).
 - Local npm test, npm run lint, and npm run build: **not run**; this hosted editing environment could not clone GitHub (DNS/network unavailable).
 - Disposable Supabase lifecycle, schema, trigger, and RLS checks: **not run**; no disposable/local Supabase instance was provisioned or connected during this review.
 - Therefore, database readiness remains a blocker. Do not interpret the CI result as database validation.
