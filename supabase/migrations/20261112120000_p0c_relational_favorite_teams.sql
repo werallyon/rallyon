@@ -138,7 +138,7 @@ begin
 
   select count(*) into v_public_profile_column_grants
   from pg_attribute a
-  cross join lateral aclexplode(coalesce(a.attacl, array[]::aclitem[])) acl
+  cross join lateral aclexplode(a.attacl) acl
   where a.attrelid = 'public.profiles'::regclass
     and a.attnum > 0 and not a.attisdropped
     and acl.grantee = 0
