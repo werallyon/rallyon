@@ -84,7 +84,6 @@ function RallyOnMain() {
   const [dbVenues, setDbVenues] = useState<Venue[] | null>(() => isDemoMode ? null : []);
   const [dbVenueGames, setDbVenueGames] = useState<VenueGame[]>([]);
   const [detectedLocation, setDetectedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [locationPermission, setLocationPermission] = useState<'GRANTED' | 'DENIED' | 'PROMPT'>('PROMPT');
 
   // Automatically request location once the authenticated app is ready. This is
   // browser permission based; RallyOn does not continuously track the user.
@@ -93,10 +92,9 @@ function RallyOnMain() {
 
     let mounted = true;
     requestUserLocation()
-      .then(({ location, permission }) => {
+      .then(({ location }) => {
         if (!mounted) return;
         setDetectedLocation({ latitude: location.latitude, longitude: location.longitude });
-        setLocationPermission(permission);
         const resolvedMarket = marketService.detectMarketFromCoordinates(
           location.latitude,
           location.longitude
