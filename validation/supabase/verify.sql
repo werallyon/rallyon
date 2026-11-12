@@ -100,7 +100,7 @@ begin
     );
     raise exception 'Expected malformed favorite payload to fail';
   exception when others then
-    if sqlerrm = 'Expected malformed favorite payload to fail' then
+    if sqlerrm <> 'Every favorite team must be an object with non-empty string id and name' then
       raise;
     end if;
   end;
