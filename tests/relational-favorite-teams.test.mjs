@@ -34,6 +34,22 @@ test('migration backfills legacy JSON in original selection order without overwr
   assert.equal(/drop column.*favorite_teams/i.test(migration), false);
 });
 
+test('migration refuses unsafe legacy data and unknown pre-existing relations', () => {
+  assert.ok(migration.includes("found %; inspect and repair explicitly before migration"));
+  assert.ok(migration.includes("user_favorite_teams already exists"));
+  assert.ok(migration.includes("v_broad_policies"));
+  assert.ok(migration.includes("v_anon_grants"));
+  assert.ok(migration.includes("jsonb_typeof(favorite_teams::jsonb)"));
+  assert.ok(migration.includes("distinct on (p.id, t.value->>'id')"));
+  assert.equal(/create table if not exists public\\.user_favorite_teams/i.test(migration), false);
+});
+
+test('canonical profile mapper requires a matching non-null profile row', () => {
+  assert.match(profileService, /mergeAuthUserWithProfile\\(authUser: any, profile: ProfileRow\\)/);
+  assert.ok(profileService.includes('profile.id !== authUser.id'));
+  assert.equal(/profile\\?\\.id \\?\\? \\{ id: authUser.id \\}/.test(profileService), false);
+});
+
 test('favorite-team service maps the existing TeamReference contract and persists relationally', () => {
   for (const fragment of [
     'export function mapFavoriteTeamRow',
