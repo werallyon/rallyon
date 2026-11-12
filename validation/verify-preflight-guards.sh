@@ -111,3 +111,26 @@ expect_preflight_failure \
 # Finish with a clean positive reset and verify the exact migrations still apply.
 supabase --workdir "$WORKDIR" db reset
 bash validation/run-local-sql.sh validation/supabase/verify.sql
+
+# The synthetic base intentionally starts with the known production drift:
+# invoker-rights Auth bootstrap plus broad anon profile table grants. The
+# migration must safely harden both before its strict preflight succeeds.
+db_container="$(docker ps --filter "label=com.supabase.cli.project=rallyon-pr22-migration-validation" --format '{{.Names}}' | grep -E '(^|_)db_' | head -n 1)"
+hardened="$(docker exec "$db_container" psql -U postgres -d postgres -Atqc "
+select (
+  p.prosecdef
+  and p.proconfig @> array['search_path=public, pg_temp']::text[]
+  and not has_table_privilege('anon', 'public.profiles', 'SELECT')
+  and not has_table_privilege('anon', 'public.profiles', 'INSERT')
+  and not has_table_privilege('anon', 'public.profiles', 'UPDATE')
+  and not has_table_privilege('anon', 'public.profiles', 'DELETE')
+)::text
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.proname = 'handle_new_user';
+")"
+if [[ "$hardened" != "true" ]]; then
+  echo "FAIL: migration did not harden the legacy Auth bootstrap and anon profile grants"
+  exit 1
+fi
+echo "PASS: migration hardened legacy production Auth bootstrap and anon grants"
