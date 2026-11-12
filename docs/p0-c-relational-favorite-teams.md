@@ -10,7 +10,7 @@
 - Restrict row reads/writes to the owning authenticated user through RLS.
 - Backfill existing `profiles.favorite_teams` JSON arrays into the relational table using an additive migration. The legacy column is intentionally retained; this PR does not drop or rewrite it.
 - `teamPreferenceService` reads relational rows in selection order and replaces a user's selection with deduplicated upserts followed by deletion of removed rows. Upserts happen before deletes so a failed write does not erase the prior selection.
-- `authService` hydrates relational favorites after profile hydration. A successful empty relational result is authoritative; if the table is not yet deployed or the query fails, the existing profile value remains a compatibility fallback.
+- `authService` first requires successful canonical `public.profiles` hydration, then hydrates relational favorites. A successful empty relational result is authoritative; if the favorite-team table is not yet deployed or its query fails, the existing legacy profile value remains a compatibility fallback. A profile-row/query failure is not caught or converted into an Auth-metadata/default profile.
 - Profile updates no longer write `favoriteTeams` back into `profiles.favorite_teams`. Existing onboarding/profile UI continues to call the same `updateUser({ favoriteTeams })` contract.
 
 ## Migration assumptions and rollout
@@ -23,7 +23,7 @@
 
 ## Coordination
 
-This branch is based on `main` and is intentionally separate from P0-A and other P0 work. P0-A also touches profile/auth hydration; resolve those overlapping files deliberately when integrating both PRs. Keep the relational favorite-team data contract and P0-A's canonical profile contract intact.
+This branch is based on `main` and is intentionally separate from P0-A and other P0 work. P0-A also touches profile/auth hydration; resolve those overlapping files deliberately when integrating both PRs. Keep the relational favorite-team data contract and P0-A's canonical profile contract intact. P0-C must not reintroduce `user_metadata` fallbacks or catch canonical profile errors; only the relational favorite-team query may use its documented legacy fallback.
 
 ## Validation
 
