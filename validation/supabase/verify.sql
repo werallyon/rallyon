@@ -142,13 +142,13 @@ begin
   if v_other_name <> 'P0 Bravo' then
     raise exception 'RPC ownership injection changed another user profile';
   end if;
-end $;
+end $$;
 rollback;
 
 -- Anonymous cannot execute the transactional RPC or mutate either protected table.
 begin;
 set local role anon;
-do $
+do $$
 begin
   begin
     perform public.save_profile_and_favorite_teams('{}'::jsonb, '[]'::jsonb, true);
@@ -199,5 +199,5 @@ begin
   exception when insufficient_privilege then
     null;
   end;
-end $;
+end $$;
 rollback;
