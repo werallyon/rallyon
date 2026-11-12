@@ -44,6 +44,8 @@ The suite verifies:
 - A can insert, read, update, and delete A's favorite-team row.
 - B cannot read, update, or delete A's favorite-team row.
 - A successful empty favorites query returns `[]` without an error (and must not be interpreted as a reason to fall back to legacy data).
+- The authenticated `save_profile_and_favorite_teams` RPC updates the canonical profile and replaces the complete relational favorite selection in one transaction.
+- Malformed favorite input is rejected and rolls back the accompanying profile update; an empty array atomically clears favorites.
 - An anonymous client cannot read profiles or favorite-team rows.
 - Both Auth users are signed out and deleted in a `finally` cleanup path; Auth foreign-key cascades remove their profiles and favorites.
 
@@ -73,7 +75,7 @@ npm run supabase:validation:reset
 npm run supabase:validation:verify
 ```
 
-The isolated CLI config pins PostgreSQL major version 17 and uses non-default ports to avoid colliding with another local Supabase stack. Reset recreates only this local validation database and applies the three migrations in this directory. The verify command runs SQL assertions and exits with an error if the fixture counts, backfill, or RLS flags are wrong.
+The isolated CLI config pins PostgreSQL major version 17 and uses non-default ports to avoid colliding with another local Supabase stack. Reset recreates only this local validation database and applies the four migrations in this directory. The verify command runs SQL assertions and exits with an error if the fixture counts, backfill, or RLS flags are wrong.
 
 Stop when finished:
 
