@@ -31,6 +31,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     let mounted = true;
+    const initializationRevision = authRequestRevision.current;
     const unsubscribe = authService.subscribe((user) => {
       if (mounted) {
         setCurrentUser(user);
@@ -38,8 +39,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     });
     authService.initialize()
-      .catch((e: any) => { if (mounted) setAuthError(e?.message || 'Unable to initialize authentication.'); })
-      .finally(() => { if (mounted) setIsLoading(false); });
+      .catch((e: any) => {
+        if (mounted && initializationRevision === authRequestRevision.current) {
+          setAuthError(e?.message || 'Unable to initialize authentication.');
+        }
+      })
+      .finally(() => {
+        if (mounted && initializationRevision === authRequestRevision.current) setIsLoading(false);
+      });
     return () => { mounted = false; unsubscribe(); };
   }, []);
 
