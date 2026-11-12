@@ -47,7 +47,9 @@ class AuthService {
 
   constructor() {
     supabase?.auth.onAuthStateChange((_event, session) => {
+      const actionRevision = this.authActionRevision;
       const revision = ++this.authRevision;
+      if (actionRevision !== this.authActionRevision) return;
       if (!session?.user) {
         this.profileWriteRevision++;
         this.currentUser = null;
@@ -62,12 +64,12 @@ class AuthService {
         this.notify();
       }
       void this.hydrateUser(session.user).then((user) => {
-        if (revision === this.authRevision) {
+        if (revision === this.authRevision && actionRevision === this.authActionRevision) {
           this.currentUser = user;
           this.notify();
         }
       }).catch((error) => {
-        if (revision === this.authRevision) {
+        if (revision === this.authRevision && actionRevision === this.authActionRevision) {
           this.currentUser = null;
           this.notify();
         }
