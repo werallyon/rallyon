@@ -2,9 +2,9 @@ name: RallyOn Build Check
 
 on:
   push:
-    branches: [main, fix/p0-auth-rls-review-remediation]
+    branches: [main, fix/p0-c-remediation-ci-base]
   pull_request:
-    branches: [main, fix/p0-c-relational-favorite-teams]
+    branches: [main, fix/p0-c-remediation-ci-base]
 
 jobs:
   build:
