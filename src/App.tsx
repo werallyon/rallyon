@@ -97,6 +97,11 @@ function RallyOnMain() {
         if (!mounted) return;
         setDetectedLocation({ latitude: location.latitude, longitude: location.longitude });
         setLocationPermission(permission);
+        const resolvedMarket = marketService.detectMarketFromCoordinates(
+          location.latitude,
+          location.longitude
+        );
+        marketService.setActiveMarket(resolvedMarket.market.id);
       })
       .catch((error: any) => {
         if (!mounted) return;
