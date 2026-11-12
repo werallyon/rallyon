@@ -36,48 +36,51 @@ const demoUser: User = {
   savedVenueIds: ['venue_bufords', 'venue_cover3', 'venue_haymaker']
 };
 
-function mapUser(u: any): User {
-  const m = u.user_metadata || {};
-  const now = new Date().toISOString();
-  return {
-    id: u.id, email: u.email || '', firstName: m.firstName || '', lastName: m.lastName || '',
-    name: m.name || u.email?.split('@')[0] || '', username: m.username || u.email?.split('@')[0] || '',
-    profilePhotoUrl: m.profilePhotoUrl || '', avatar: m.avatar || '',
-    authProvider: m.authProvider || 'EMAIL', emailVerified: Boolean(u.email_confirmed_at),
-    onboardingCompleted: Boolean(m.onboardingCompleted), onboardingStep: m.onboardingStep || 'welcome',
-    createdAt: m.createdAt || u.created_at || now, updatedAt: now, lastActiveAt: now,
-    locationPermissionStatus: m.locationPermissionStatus || 'PROMPT',
-    notificationPermissionStatus: m.notificationPermissionStatus || 'PROMPT',
-    homeCity: m.homeCity || 'Austin', homeState: m.homeState || 'TX', homeZip: m.homeZip,
-    latitude: m.latitude ?? 30.2672, longitude: m.longitude ?? -97.7431, city: m.city || 'Austin, TX',
-    favoriteSports: m.favoriteSports || [], favoriteLeagues: m.favoriteLeagues || [], favoriteTeams: m.favoriteTeams || [],
-    preferredExperience: m.preferredExperience || ['HIGH_ENERGY'], currentIntent: m.currentIntent || 'HIGH_ENERGY',
-    preferences: m.preferences || { energy: 80, crowd: 70, social: 80, sportsIntensity: 85, viewingPreference: 90 },
-    privacySettings: m.privacySettings || { profileVisibility: 'PUBLIC', friendVisibility: 'ALL_FRIENDS', checkInVisibility: 'FRIENDS_ONLY', locationSharing: 'NEIGHBORHOOD_ONLY', presenceVisibility: 'SHOW_VENUE' },
-    privacy: m.privacy || 'FRIENDS_ONLY',
-    notificationPreferences: m.notificationPreferences || { favoriteTeamGames: true, gameStartingSoon: true, gameNearYou: true, venueTrending: true, friendsCheckingIn: true, recommendations: true },
-    savedVenueIds: m.savedVenueIds || []
-  } as User;
-}
-
 class AuthService {
   private currentUser: User | null = null;
   private listeners = new Set<(user: User | null) => void>();
   private initialized = false;
+  private authRevision = 0;
+  private profileWriteRevision = 0;
 
   constructor() {
     supabase?.auth.onAuthStateChange((_event, session) => {
-      this.currentUser = session?.user ? mapUser(session.user) : null;
-      if (session?.user) void this.hydrateUser(session.user);
-      this.notify();
+      const revision = ++this.authRevision;
+      if (!session?.user) {
+        this.profileWriteRevision++;
+        this.currentUser = null;
+        this.notify();
+        return;
+      }
+      // Never keep a previous account's profile visible while a new identity
+      // is being hydrated. Auth metadata is not a profile fallback.
+      if (this.currentUser?.id !== session.user.id) {
+        this.profileWriteRevision++;
+        this.currentUser = null;
+        this.notify();
+      }
+      void this.hydrateUser(session.user).then((user) => {
+        if (revision === this.authRevision) {
+          this.currentUser = user;
+          this.notify();
+        }
+      }).catch((error) => {
+        if (revision === this.authRevision) {
+          this.currentUser = null;
+          this.notify();
+        }
+        console.error('Unable to load the canonical RallyOn profile. Verify profile bootstrap and RLS.', error);
+      });
     });
   }
 
   async initialize(): Promise<User | null> {
     if (!supabase) { this.initialized = true; this.notify(); return null; }
+    const revision = ++this.authRevision;
     const { data, error } = await supabase.auth.getSession();
     if (error) throw error;
-    this.currentUser = data.session?.user ? await this.hydrateUser(data.session.user) : null;
+    const hydratedUser = data.session?.user ? await this.hydrateUser(data.session.user) : null;
+    if (revision === this.authRevision) this.currentUser = hydratedUser;
     this.initialized = true;
     this.notify();
     return this.currentUser;
@@ -92,8 +95,9 @@ class AuthService {
   getCurrentUser() { return this.currentUser; }
 
   private async hydrateUser(authUser: any): Promise<User> {
-    try { return await getUserWithProfile(authUser); }
-    catch { return mergeAuthUserWithProfile(authUser); }
+    // A missing row or profile query failure is a bootstrap/data-access error,
+    // not permission to synthesize a profile from Auth metadata or defaults.
+    return getUserWithProfile(authUser);
   }
   private notify() { this.listeners.forEach((cb) => cb(this.currentUser)); }
 
@@ -167,18 +171,38 @@ class AuthService {
 
   updateUser(id: string, updates: Partial<User>): User | null {
     if (!this.currentUser || this.currentUser.id !== id || !supabase) return null;
-    const updated = { ...this.currentUser, ...updates, id, updatedAt: new Date().toISOString() } as User;
+    const previousUser = this.currentUser;
+    const writeRevision = ++this.profileWriteRevision;
+    const updated = { ...previousUser, ...updates, id, updatedAt: new Date().toISOString() } as User;
     this.currentUser = updated; this.notify();
     void updateProfile(id, updates).then((profile) => {
-      if (profile && this.currentUser?.id === id) {
-        this.currentUser = mergeAuthUserWithProfile({ id, email: this.currentUser.email, user_metadata: {}, email_confirmed_at: this.currentUser.emailVerified ? new Date().toISOString() : null, created_at: this.currentUser.createdAt }, profile);
+      if (profile && this.currentUser?.id === id && writeRevision === this.profileWriteRevision) {
+        const previousUser = this.currentUser;
+        const hydratedUser = mergeAuthUserWithProfile({
+          id,
+          email: previousUser.email,
+          app_metadata: { provider: previousUser.authProvider.toLowerCase() },
+          email_confirmed_at: previousUser.emailVerified ? new Date().toISOString() : null,
+          created_at: previousUser.createdAt
+        }, profile);
+        this.currentUser = {
+          ...hydratedUser,
+          locationPermissionStatus: previousUser.locationPermissionStatus,
+          notificationPermissionStatus: previousUser.notificationPermissionStatus
+        };
         this.notify();
       }
-    }).catch(() => undefined);
+    }).catch((error) => {
+      if (this.currentUser?.id === id && writeRevision === this.profileWriteRevision) {
+        this.currentUser = previousUser;
+        this.notify();
+      }
+      console.error('Unable to persist the canonical RallyOn profile update.', error);
+    });
     return updated;
   }
   completeOnboarding(id: string) { return this.updateUser(id, { onboardingCompleted: true, onboardingStep: 'complete' }); }
-  logout() { if (supabase) void supabase.auth.signOut(); this.currentUser = null; this.notify(); }
+  logout() { this.profileWriteRevision++; if (supabase) void supabase.auth.signOut(); this.currentUser = null; this.notify(); }
   deleteAccount(_id: string) { return false; }
 }
 

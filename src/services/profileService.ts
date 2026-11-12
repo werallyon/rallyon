@@ -1,6 +1,11 @@
 import { User } from '../types';
 import { supabase } from '../lib/supabaseClient';
 
+/**
+ * public.profiles is the canonical store for mutable RallyOn profile data.
+ * Supabase Auth is authoritative only for identity/authentication fields
+ * (user id, email, verification state, provider and account creation time).
+ */
 type ProfileRow = {
   id: string;
   username?: string | null;
@@ -32,33 +37,63 @@ const DEFAULT_PREFERENCES: User['preferences'] = { energy: 80, crowd: 70, social
 const DEFAULT_PRIVACY: User['privacySettings'] = { profileVisibility: 'PUBLIC', friendVisibility: 'ALL_FRIENDS', checkInVisibility: 'FRIENDS_ONLY', locationSharing: 'NEIGHBORHOOD_ONLY', presenceVisibility: 'SHOW_VENUE' };
 const DEFAULT_NOTIFICATIONS: User['notificationPreferences'] = { favoriteTeamGames: true, gameStartingSoon: true, gameNearYou: true, venueTrending: true, friendsCheckingIn: true, recommendations: true };
 
+function resolveAuthProvider(authUser: any): User['authProvider'] {
+  const provider = authUser?.app_metadata?.provider;
+  if (provider === 'google') return 'GOOGLE';
+  if (provider === 'apple') return 'APPLE';
+  return 'EMAIL';
+}
+
+/**
+ * Auth metadata is deliberately not used as a profile fallback. It may contain
+ * legacy/duplicated values and is not kept in sync by profile edits.
+ */
 export function mergeAuthUserWithProfile(authUser: any, profile?: ProfileRow | null): User {
-  const m = authUser?.user_metadata || {};
   const now = new Date().toISOString();
   const p: ProfileRow = profile ?? { id: authUser.id };
-  const firstName = p.first_name ?? m.firstName ?? '';
-  const lastName = p.last_name ?? m.lastName ?? '';
-  const displayName = p.display_name ?? m.name ?? `${firstName} ${lastName}`.trim() ?? authUser?.email?.split('@')[0] ?? '';
+  const firstName = p.first_name ?? '';
+  const lastName = p.last_name ?? '';
+  const displayName = p.display_name ?? [firstName, lastName].filter(Boolean).join(' ');
+  const homeCity = p.home_city ?? '';
+  const homeState = p.home_state ?? '';
+  const avatarUrl = p.avatar_url ?? '';
+
   return {
-    id: authUser.id, email: authUser.email || '', firstName, lastName,
+    id: authUser.id,
+    email: authUser.email || '',
+    firstName,
+    lastName,
     name: displayName || authUser?.email?.split('@')[0] || '',
-    username: p.username ?? m.username ?? authUser?.email?.split('@')[0] ?? '',
-    profilePhotoUrl: p.avatar_url ?? m.profilePhotoUrl ?? m.avatar ?? '',
-    avatar: p.avatar_url ?? m.avatar ?? m.profilePhotoUrl ?? '',
-    authProvider: m.authProvider || 'EMAIL', emailVerified: Boolean(authUser.email_confirmed_at),
-    onboardingCompleted: Boolean(p.onboarding_completed ?? m.onboardingCompleted),
-    onboardingStep: (p.onboarding_step ?? m.onboardingStep ?? 'welcome') as User['onboardingStep'],
-    createdAt: p.created_at ?? m.createdAt ?? authUser.created_at ?? now, updatedAt: p.updated_at ?? now, lastActiveAt: now,
-    locationPermissionStatus: m.locationPermissionStatus || 'PROMPT', notificationPermissionStatus: m.notificationPermissionStatus || 'PROMPT',
-    homeCity: p.home_city ?? m.homeCity ?? 'Austin', homeState: p.home_state ?? m.homeState ?? 'TX', homeZip: p.home_zip ?? m.homeZip,
-    latitude: p.latitude ?? m.latitude, longitude: p.longitude ?? m.longitude,
-    city: [p.home_city ?? m.homeCity ?? 'Austin', p.home_state ?? m.homeState ?? 'TX'].filter(Boolean).join(', '),
-    favoriteSports: p.favorite_sports ?? m.favoriteSports ?? [], favoriteLeagues: p.favorite_leagues ?? m.favoriteLeagues ?? [],
-    favoriteTeams: p.favorite_teams ?? m.favoriteTeams ?? [], preferredExperience: p.preferred_experience ?? m.preferredExperience ?? ['HIGH_ENERGY'],
-    currentIntent: p.current_intent ?? m.currentIntent ?? 'HIGH_ENERGY', preferences: p.preferences ?? m.preferences ?? DEFAULT_PREFERENCES,
-    privacySettings: p.privacy_settings ?? m.privacySettings ?? DEFAULT_PRIVACY, privacy: m.privacy || 'FRIENDS_ONLY',
-    notificationPreferences: p.notification_preferences ?? m.notificationPreferences ?? DEFAULT_NOTIFICATIONS, savedVenueIds: p.saved_venue_ids ?? m.savedVenueIds ?? []
-  } as User;
+    username: p.username ?? '',
+    profilePhotoUrl: avatarUrl,
+    avatar: avatarUrl,
+    authProvider: resolveAuthProvider(authUser),
+    emailVerified: Boolean(authUser.email_confirmed_at),
+    onboardingCompleted: Boolean(p.onboarding_completed),
+    onboardingStep: p.onboarding_step ?? 'welcome',
+    createdAt: p.created_at ?? authUser.created_at ?? now,
+    updatedAt: p.updated_at ?? now,
+    lastActiveAt: now,
+    // Permission prompts are session/device state, not Auth user metadata.
+    locationPermissionStatus: 'PROMPT',
+    notificationPermissionStatus: 'PROMPT',
+    homeCity,
+    homeState,
+    homeZip: p.home_zip ?? undefined,
+    latitude: p.latitude ?? undefined,
+    longitude: p.longitude ?? undefined,
+    city: [homeCity, homeState].filter(Boolean).join(', '),
+    favoriteSports: p.favorite_sports ?? [],
+    favoriteLeagues: p.favorite_leagues ?? [],
+    favoriteTeams: p.favorite_teams ?? [],
+    preferredExperience: p.preferred_experience ?? ['HIGH_ENERGY'],
+    currentIntent: p.current_intent ?? 'HIGH_ENERGY',
+    preferences: p.preferences ?? DEFAULT_PREFERENCES,
+    privacySettings: p.privacy_settings ?? DEFAULT_PRIVACY,
+    privacy: 'FRIENDS_ONLY',
+    notificationPreferences: p.notification_preferences ?? DEFAULT_NOTIFICATIONS,
+    savedVenueIds: p.saved_venue_ids ?? []
+  };
 }
 
 export async function getProfile(userId: string): Promise<ProfileRow | null> {
@@ -69,16 +104,56 @@ export async function getProfile(userId: string): Promise<ProfileRow | null> {
 }
 
 export async function getUserWithProfile(authUser: any): Promise<User> {
-  return mergeAuthUserWithProfile(authUser, await getProfile(authUser.id));
+  if (!authUser?.id) throw new Error('Cannot load a profile without an authenticated user id.');
+  const profile = await getProfile(authUser.id);
+  if (!profile) {
+    throw new Error('The authenticated user has no public.profiles row. Verify the signup bootstrap trigger or repair the profile before continuing.');
+  }
+  return mergeAuthUserWithProfile(authUser, profile);
 }
+
+const PROFILE_FIELD_MAP: Record<string, keyof ProfileRow> = {
+  username: 'username',
+  firstName: 'first_name',
+  lastName: 'last_name',
+  name: 'display_name',
+  profilePhotoUrl: 'avatar_url',
+  avatar: 'avatar_url',
+  onboardingCompleted: 'onboarding_completed',
+  onboardingStep: 'onboarding_step',
+  homeCity: 'home_city',
+  homeState: 'home_state',
+  homeZip: 'home_zip',
+  latitude: 'latitude',
+  longitude: 'longitude',
+  favoriteSports: 'favorite_sports',
+  favoriteLeagues: 'favorite_leagues',
+  favoriteTeams: 'favorite_teams',
+  preferredExperience: 'preferred_experience',
+  currentIntent: 'current_intent',
+  preferences: 'preferences',
+  privacySettings: 'privacy_settings',
+  notificationPreferences: 'notification_preferences',
+  savedVenueIds: 'saved_venue_ids'
+};
 
 export async function updateProfile(userId: string, updates: Partial<User>): Promise<ProfileRow | null> {
   if (!supabase) return null;
-  const map: Record<string, keyof ProfileRow> = { username:'username', firstName:'first_name', lastName:'last_name', name:'display_name', profilePhotoUrl:'avatar_url', avatar:'avatar_url', onboardingCompleted:'onboarding_completed', onboardingStep:'onboarding_step', homeCity:'home_city', homeState:'home_state', homeZip:'home_zip', latitude:'latitude', longitude:'longitude', favoriteSports:'favorite_sports', favoriteLeagues:'favorite_leagues', favoriteTeams:'favorite_teams', preferredExperience:'preferred_experience', currentIntent:'current_intent', preferences:'preferences', privacySettings:'privacy_settings', notificationPreferences:'notification_preferences', savedVenueIds:'saved_venue_ids' };
   const patch: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(updates)) if (map[key]) patch[map[key]] = value;
-  if (!Object.keys(patch).length) return getProfile(userId);
-  const { data, error } = await supabase.from('profiles').update(patch).eq('id', userId).select('*').single();
+  for (const [key, value] of Object.entries(updates)) {
+    const column = PROFILE_FIELD_MAP[key];
+    if (column) patch[column] = value;
+  }
+  if (!Object.keys(patch).length) {
+    const profile = await getProfile(userId);
+    if (!profile) throw new Error('The authenticated user has no public.profiles row. Profile bootstrap must be repaired before continuing.');
+    return profile;
+  }
+
+  // Update only: profile creation/backfill belongs to a separately reviewed,
+  // migration-backed database change, not an implicit client-side upsert.
+  const { data, error } = await supabase.from('profiles').update(patch).eq('id', userId).select('*').maybeSingle();
   if (error) throw error;
+  if (!data) throw new Error('The authenticated user has no public.profiles row. Profile bootstrap must be repaired before saving changes.');
   return data as ProfileRow;
 }
