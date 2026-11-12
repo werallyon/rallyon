@@ -1,6 +1,5 @@
 -- Isolated copy of the production-reviewed transactional RPC.
 -- The table and owner RLS policies are created by the preceding validation migrations.
-revoke all on function public.save_profile_and_favorite_teams(jsonb, jsonb) from public, anon;
 create or replace function public.save_profile_and_favorite_teams(
   p_profile_updates jsonb default '{}'::jsonb,
   p_favorite_teams jsonb default null
@@ -129,5 +128,6 @@ begin
 end;
 $$;
 
+revoke all on function public.save_profile_and_favorite_teams(jsonb, jsonb) from public, anon;
 revoke all on function public.save_profile_and_favorite_teams(jsonb, jsonb) from public, anon;
 grant execute on function public.save_profile_and_favorite_teams(jsonb, jsonb) to authenticated;
