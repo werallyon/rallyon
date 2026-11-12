@@ -65,7 +65,7 @@ export function mergeAuthUserWithProfile(authUser: any, profile: ProfileRow): Us
     email: authUser.email || '',
     firstName,
     lastName,
-    name: displayName || authUser?.email?.split('@')[0] || '',
+    name: displayName,
     username: p.username ?? '',
     profilePhotoUrl: avatarUrl,
     avatar: avatarUrl,
@@ -102,7 +102,7 @@ export function mergeAuthUserWithProfile(authUser: any, profile: ProfileRow): Us
 
 export async function getProfile(userId: string): Promise<ProfileRow | null> {
   if (!supabase) return null;
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+  const { data, error } = await supabase.from('profiles').select('id,username,first_name,last_name,display_name,avatar_url,onboarding_completed,onboarding_step,home_city,home_state,home_zip,latitude,longitude,favorite_sports,favorite_leagues,preferred_experience,current_intent,preferences,privacy_settings,notification_preferences,saved_venue_ids,created_at,updated_at').eq('id', userId).maybeSingle();
   if (error) throw error;
   return data as ProfileRow | null;
 }
