@@ -56,11 +56,23 @@ jobs:
       - name: Start isolated local Supabase stack
         run: npm run supabase:validation:start
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Reset local validation database
         run: npm run supabase:validation:reset
 
       - name: Verify P0-A / P0-C schema and fixtures
         run: npm run supabase:validation:verify
+
+      - name: Run local Auth and PostgREST RLS integration tests
+        run: npm run test:integration:p0-auth-rls
 
       - name: Stop local Supabase stack
         if: always() && steps.setup-supabase-cli.outcome == 'success'
