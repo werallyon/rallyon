@@ -105,7 +105,11 @@ export async function getProfile(userId: string): Promise<ProfileRow | null> {
 
 export async function getUserWithProfile(authUser: any): Promise<User> {
   if (!authUser?.id) throw new Error('Cannot load a profile without an authenticated user id.');
-  return mergeAuthUserWithProfile(authUser, await getProfile(authUser.id));
+  const profile = await getProfile(authUser.id);
+  if (!profile) {
+    throw new Error('The authenticated user has no public.profiles row. Verify the signup bootstrap trigger or repair the profile before continuing.');
+  }
+  return mergeAuthUserWithProfile(authUser, profile);
 }
 
 const PROFILE_FIELD_MAP: Record<string, keyof ProfileRow> = {
