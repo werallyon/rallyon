@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, test/p0-auth-rls-api-validation]
   pull_request:
-    branches: [main]
+    branches: [main, chore/local-supabase-validation-harness]
 
 jobs:
   build:
