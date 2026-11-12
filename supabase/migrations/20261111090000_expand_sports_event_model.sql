@@ -13,7 +13,7 @@ set sport = case
   when league in ('NBA','NCAA_BB','WNBA') then 'BASKETBALL'
   when league in ('MLB','NCAA_BASEBALL','WBC') then 'BASEBALL'
   when league = 'NHL' then 'HOCKEY'
-  when league in ('MLS','EPL','LALIGA','BUNDESLIGA','SERIEA','LIGUE1','UCL','UEL','NWSL','WSL') then 'SOCCER'
+  when league in ('MLS','EPL','LALIGA','BUNDESLIGA','SERIEA','LIGUE1','UCL','UEL','NWSL') then 'SOCCER'
   when league = 'UFC' then 'MMA'
   when league in ('ATP','WTA') then 'TENNIS'
   when league in ('PGA','LPGA','LIV','DP_WORLD') then 'GOLF'
