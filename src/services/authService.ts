@@ -232,6 +232,17 @@ class AuthService {
 
     const { profileUpdates, favoriteTeams, locationPermissionStatus, notificationPermissionStatus } = splitUserUpdatePayload(updates);
     void (async () => {
+      // Re-check the live Auth identity immediately before the RPC. The
+      // in-memory user can lag a token/account transition while an action is
+      // waiting to be persisted; never submit an old account's payload under
+      // a newly authenticated session.
+      const { data: authData, error: authError } = await supabase!.auth.getUser();
+      if (authError) throw authError;
+      if (!authData.user || authData.user.id !== id) {
+        throw new Error('Profile updates require the same currently authenticated user that initiated the change.');
+      }
+      if (this.currentUser?.id !== id || writeRevision !== this.profileWriteRevision) return;
+
       const { data: profile, error } = await supabase!.rpc('save_profile_and_favorite_teams', {
         p_profile_updates: profileUpdates,
         p_favorite_teams: favoriteTeams ?? [],
