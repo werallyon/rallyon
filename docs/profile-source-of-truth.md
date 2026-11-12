@@ -68,7 +68,7 @@ The repository's prior client code demonstrates these column names, but this PR 
 - `src/services/profileService.ts` — canonical profile mapping and update behavior.
 - `src/services/authService.ts` — auth identity hydration and stale-event protection.
 - `docs/profile-source-of-truth.md` — decision, field ownership, assumptions, dependencies, and rollout notes.
-- `tests/profile-source-of-truth.test.mjs` — regression guards for metadata precedence, missing-row behavior, and auth hydration.
+- `tests/profile-source-of-truth.test.mjs` — regression guards for metadata precedence, missing-row behavior, and auth hydration.\n- `docs/p0-a-disposable-validation.md` — schema inspection SQL and reproducible lifecycle/RLS checks for an isolated Supabase environment.
 
 ## Validation
 
@@ -80,7 +80,7 @@ npm run lint
 npm run build
 ```
 
-Also verify with a disposable/local Supabase project that a newly registered user receives a profile row, profile edits survive sign-out/sign-in, stale Auth metadata cannot overwrite the row, session restoration reads the row, and missing/partial rows fail safely. Inspect the actual trigger/function, table constraints, grants, and RLS policies before interpreting the signup result. Do not run this validation against production.
+Follow [the P0-A disposable validation runbook](p0-a-disposable-validation.md) for exact schema-inspection SQL and repeatable signup, edit, metadata-precedence, session-restoration, partial/missing-row, and RLS checks. Do not run these steps against production.
 
 ### Current validation status
 
