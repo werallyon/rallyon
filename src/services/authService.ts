@@ -42,11 +42,13 @@ class AuthService {
   private listeners = new Set<(user: User | null) => void>();
   private initialized = false;
   private authRevision = 0;
+  private profileWriteRevision = 0;
 
   constructor() {
     supabase?.auth.onAuthStateChange((_event, session) => {
       const revision = ++this.authRevision;
       if (!session?.user) {
+        this.profileWriteRevision++;
         this.currentUser = null;
         this.notify();
         return;
@@ -54,6 +56,7 @@ class AuthService {
       // Never keep a previous account's profile visible while a new identity
       // is being hydrated. Auth metadata is not a profile fallback.
       if (this.currentUser?.id !== session.user.id) {
+        this.profileWriteRevision++;
         this.currentUser = null;
         this.notify();
       }
@@ -176,7 +179,9 @@ class AuthService {
 
   updateUser(id: string, updates: Partial<User>): User | null {
     if (!this.currentUser || this.currentUser.id !== id || !supabase) return null;
-    const updated = { ...this.currentUser, ...updates, id, updatedAt: new Date().toISOString() } as User;
+    const previousUser = this.currentUser;
+    const writeRevision = ++this.profileWriteRevision;
+    const updated = { ...previousUser, ...updates, id, updatedAt: new Date().toISOString() } as User;
     this.currentUser = updated; this.notify();
     const { favoriteTeams, ...profileUpdates } = updates;
     const profileSave = updateProfile(id, profileUpdates);
@@ -184,7 +189,7 @@ class AuthService {
       ? Promise.resolve(updated.favoriteTeams)
       : replaceFavoriteTeams(id, favoriteTeams);
     void Promise.all([profileSave, favoriteTeamsSave]).then(([profile, savedTeams]) => {
-      if (this.currentUser?.id !== id) return;
+      if (this.currentUser?.id !== id || writeRevision !== this.profileWriteRevision) return;
       const authUser = {
         id,
         email: this.currentUser.email,
@@ -197,12 +202,16 @@ class AuthService {
       };
       this.notify();
     }).catch((error) => {
+      if (this.currentUser?.id === id && writeRevision === this.profileWriteRevision) {
+        this.currentUser = previousUser;
+        this.notify();
+      }
       console.error('Unable to persist profile or favorite-team changes.', error);
     });
     return updated;
   }
   completeOnboarding(id: string) { return this.updateUser(id, { onboardingCompleted: true, onboardingStep: 'complete' }); }
-  logout() { if (supabase) void supabase.auth.signOut(); this.currentUser = null; this.notify(); }
+  logout() { this.profileWriteRevision++; if (supabase) void supabase.auth.signOut(); this.currentUser = null; this.notify(); }
   deleteAccount(_id: string) { return false; }
 }
 
