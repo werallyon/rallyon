@@ -36,30 +36,6 @@ const demoUser: User = {
   savedVenueIds: ['venue_bufords', 'venue_cover3', 'venue_haymaker']
 };
 
-function mapUser(u: any): User {
-  const m = u.user_metadata || {};
-  const now = new Date().toISOString();
-  return {
-    id: u.id, email: u.email || '', firstName: m.firstName || '', lastName: m.lastName || '',
-    name: m.name || u.email?.split('@')[0] || '', username: m.username || u.email?.split('@')[0] || '',
-    profilePhotoUrl: m.profilePhotoUrl || '', avatar: m.avatar || '',
-    authProvider: m.authProvider || 'EMAIL', emailVerified: Boolean(u.email_confirmed_at),
-    onboardingCompleted: Boolean(m.onboardingCompleted), onboardingStep: m.onboardingStep || 'welcome',
-    createdAt: m.createdAt || u.created_at || now, updatedAt: now, lastActiveAt: now,
-    locationPermissionStatus: m.locationPermissionStatus || 'PROMPT',
-    notificationPermissionStatus: m.notificationPermissionStatus || 'PROMPT',
-    homeCity: m.homeCity || 'Austin', homeState: m.homeState || 'TX', homeZip: m.homeZip,
-    latitude: m.latitude ?? 30.2672, longitude: m.longitude ?? -97.7431, city: m.city || 'Austin, TX',
-    favoriteSports: m.favoriteSports || [], favoriteLeagues: m.favoriteLeagues || [], favoriteTeams: m.favoriteTeams || [],
-    preferredExperience: m.preferredExperience || ['HIGH_ENERGY'], currentIntent: m.currentIntent || 'HIGH_ENERGY',
-    preferences: m.preferences || { energy: 80, crowd: 70, social: 80, sportsIntensity: 85, viewingPreference: 90 },
-    privacySettings: m.privacySettings || { profileVisibility: 'PUBLIC', friendVisibility: 'ALL_FRIENDS', checkInVisibility: 'FRIENDS_ONLY', locationSharing: 'NEIGHBORHOOD_ONLY', presenceVisibility: 'SHOW_VENUE' },
-    privacy: m.privacy || 'FRIENDS_ONLY',
-    notificationPreferences: m.notificationPreferences || { favoriteTeamGames: true, gameStartingSoon: true, gameNearYou: true, venueTrending: true, friendsCheckingIn: true, recommendations: true },
-    savedVenueIds: m.savedVenueIds || []
-  } as User;
-}
-
 class AuthService {
   private currentUser: User | null = null;
   private listeners = new Set<(user: User | null) => void>();
@@ -67,9 +43,21 @@ class AuthService {
 
   constructor() {
     supabase?.auth.onAuthStateChange((_event, session) => {
-      this.currentUser = session?.user ? mapUser(session.user) : null;
-      if (session?.user) void this.hydrateUser(session.user);
-      this.notify();
+      if (!session?.user) {
+        this.currentUser = null;
+        this.notify();
+        return;
+      }
+      // Do not publish Auth metadata as a temporary profile. Hydrate the
+      // canonical public.profiles row before notifying consumers.
+      void this.hydrateUser(session.user).then((user) => {
+        if (this.currentUser?.id === session.user.id || !this.currentUser) {
+          this.currentUser = user;
+          this.notify();
+        }
+      }).catch((error) => {
+        console.error('Unable to load the canonical RallyOn profile.', error);
+      });
     });
   }
 
