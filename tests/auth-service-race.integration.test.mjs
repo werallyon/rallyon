@@ -141,5 +141,5 @@ test('account-switch hydration clears the old account and rejects its late compl
   hydrationA.resolve({ id: 'user-a', email: 'a@example.com' });
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(service.getCurrentUser()?.id, 'user-b');
-  assert.deepEqual(notifications.slice(-3), [null, 'user-b', 'user-b']);
+  assert.deepEqual(notifications, [null, 'user-b']);
 });
