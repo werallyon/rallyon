@@ -299,18 +299,37 @@ export async function getFavoriteTeams(userId: string): Promise<TeamReference[]>
 export async function replaceFavoriteTeams(userId: string, teams: TeamReference[]): Promise<TeamReference[]> {
   const { supabase } = await import('../lib/supabaseClient');
   if (!supabase) return teams;
-  const uniqueTeams = teams.filter((team, index) => teams.findIndex((candidate) => candidate.id === team.id) === index);
-  const { error: deleteError } = await supabase
+
+  const uniqueTeams = teams.filter(
+    (team, index) => teams.findIndex((candidate) => candidate.id === team.id) === index
+  );
+  const { data: existing, error: readError } = await supabase
     .from('user_favorite_teams')
-    .delete()
+    .select('team_id')
     .eq('user_id', userId);
-  if (deleteError) throw deleteError;
-  if (uniqueTeams.length === 0) return [];
-  const rows = uniqueTeams.map((team, index) => toFavoriteTeamRow(userId, team, index));
-  const { data, error } = await supabase
-    .from('user_favorite_teams')
-    .insert(rows)
-    .select('user_id, team_id, team_name, sport_id, league, abbrev, logo, color, sort_order');
-  if (error) throw error;
-  return (data ?? []).map((row) => mapFavoriteTeamRow(row as FavoriteTeamRow));
+  if (readError) throw readError;
+
+  // Upsert first so a failed write never deletes the user's existing selection.
+  if (uniqueTeams.length > 0) {
+    const rows = uniqueTeams.map((team, index) => toFavoriteTeamRow(userId, team, index));
+    const { error } = await supabase
+      .from('user_favorite_teams')
+      .upsert(rows, { onConflict: 'user_id,team_id' });
+    if (error) throw error;
+  }
+
+  const retainedIds = new Set(uniqueTeams.map((team) => team.id));
+  const removedIds = (existing ?? [])
+    .map((row) => row.team_id as string)
+    .filter((teamId) => !retainedIds.has(teamId));
+  for (const teamId of removedIds) {
+    const { error } = await supabase
+      .from('user_favorite_teams')
+      .delete()
+      .eq('user_id', userId)
+      .eq('team_id', teamId);
+    if (error) throw error;
+  }
+
+  return uniqueTeams;
 }
