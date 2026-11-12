@@ -10,7 +10,6 @@ declare
   v_insert_policy boolean;
   v_update_policy boolean;
   v_rls boolean;
-  v_broad_policies bigint;
   v_anon_grants bigint;
   v_bootstrap_trigger boolean;
   v_unverified_policies bigint;
@@ -39,7 +38,7 @@ begin
       and cmd = 'SELECT' and permissive = 'PERMISSIVE'
       and roles @> array['authenticated']::name[]
       and regexp_replace(lower(coalesce(qual, '')), '[[:space:]()]', '', 'g')
-          in ('auth.uid()=id', 'id=auth.uid()', 'selectauth.uid()=id', 'id=selectauth.uid()')
+          in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid')
   ) into v_select_policy;
 
   select exists (
@@ -48,7 +47,7 @@ begin
       and cmd = 'INSERT' and permissive = 'PERMISSIVE'
       and roles @> array['authenticated']::name[]
       and regexp_replace(lower(coalesce(with_check, '')), '[[:space:]()]', '', 'g')
-          in ('auth.uid()=id', 'id=auth.uid()', 'selectauth.uid()=id', 'id=selectauth.uid()')
+          in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid')
   ) into v_insert_policy;
 
   select exists (
@@ -57,9 +56,9 @@ begin
       and cmd = 'UPDATE' and permissive = 'PERMISSIVE'
       and roles @> array['authenticated']::name[]
       and regexp_replace(lower(coalesce(qual, '')), '[[:space:]()]', '', 'g')
-          in ('auth.uid()=id', 'id=auth.uid()', 'selectauth.uid()=id', 'id=selectauth.uid()')
+          in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid')
       and regexp_replace(lower(coalesce(with_check, '')), '[[:space:]()]', '', 'g')
-          in ('auth.uid()=id', 'id=auth.uid()', 'selectauth.uid()=id', 'id=selectauth.uid()')
+          in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid')
   ) into v_update_policy;
 
   if not v_select_policy or not v_insert_policy or not v_update_policy then
@@ -79,9 +78,10 @@ begin
       and pn.nspname = 'public'
       and p.proname = 'handle_new_user'
       and p.prosecdef
+      and pg_get_userbyid(p.proowner) in ('postgres', 'supabase_admin')
       and exists (
         select 1 from unnest(coalesce(p.proconfig, array[]::text[])) cfg
-        where cfg like 'search_path=%public%pg_temp%'
+        where regexp_replace(cfg, '[[:space:]]', '', 'g') = 'search_path=public,pg_temp'
       )
       and pg_get_functiondef(p.oid) ilike '%insert into public.profiles%'
       and pg_get_functiondef(p.oid) ilike '%new.id%'
@@ -99,10 +99,10 @@ begin
       cmd = 'ALL'
       or (cmd in ('SELECT', 'UPDATE', 'DELETE') and
         regexp_replace(lower(coalesce(qual, '')), '[[:space:]()]', '', 'g')
-          not in ('auth.uid()=id', 'id=auth.uid()', 'selectauth.uid()=id', 'id=selectauth.uid()'))
+          not in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid'))
       or (cmd in ('INSERT', 'UPDATE') and
         regexp_replace(lower(coalesce(with_check, '')), '[[:space:]()]', '', 'g')
-          not in ('auth.uid()=id', 'id=auth.uid()', 'selectauth.uid()=id', 'id=selectauth.uid()'))
+          not in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid'))
     );
   if v_unverified_policies > 0 then
     raise exception 'P0-C preflight: % permissive profile policies for authenticated/anon/PUBLIC do not match the exact owner predicate allowlist; inspect policy OR-composition', v_unverified_policies;
