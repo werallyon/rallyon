@@ -38,3 +38,36 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+  exact-migration-validation:
+    name: Exact PR #22 migrations on isolated local Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        id: setup-supabase-cli
+        uses: supabase/setup-cli@v3
+        with:
+          version: ^3
+
+      - name: Stage exact root migration files
+        run: |
+          mkdir -p validation/supabase/migrations
+          cp supabase/migrations/20261112120000_p0c_relational_favorite_teams.sql validation/supabase/migrations/20261112000300_p0c_relational_favorite_teams.sql
+          cp supabase/migrations/20261112140000_p0_auth_rls_review_remediation.sql validation/supabase/migrations/20261112000400_p0_transactional_profile_favorites.sql
+
+      - name: Start isolated local Supabase stack
+        run: supabase --workdir validation start
+
+      - name: Reset local database and apply exact PR #22 migrations
+        run: supabase --workdir validation db reset
+
+      - name: Verify profile contract, favorite backfill, RLS and RPC
+        run: supabase --workdir validation db query --local --file supabase/verify.sql
+
+      - name: Stop isolated local Supabase stack
+        if: always() && steps.setup-supabase-cli.outcome == 'success'
+        run: supabase --workdir validation stop
