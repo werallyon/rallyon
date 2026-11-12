@@ -108,8 +108,10 @@ test('sign-in and sign-up completion are guarded against superseded auth actions
   assert.ok(authService.includes('this.authActionRevision++; this.profileWriteRevision++;'));
 });
 
-test('no-op profile writes still require an existing canonical row', () => {
-  assert.match(profileService, /if \(!Object\.keys\(patch\)\.length\) \{[\s\S]*?if \(!profile\) throw new Error/);
+test('no direct profile-write helper remains available outside the transactional AuthService path', () => {
+  assert.equal(/export async function updateProfile/.test(profileService), false);
+  assert.equal(/\.from\('profiles'\)\.update/.test(profileService), false);
+  assert.ok(authService.includes("rpc('save_profile_and_favorite_teams'"));
 });
 
 test('canonical profile failures are not converted into synthetic Auth-only users', () => {
