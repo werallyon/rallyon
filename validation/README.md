@@ -11,11 +11,20 @@ This is a **separate Supabase CLI project** for P0-A / P0-C validation. It inten
 - Keep PR #16 and PR #18 draft/unmerged until database and app-level checks pass.
 - Root `supabase/migrations` is intentionally not replayed here: its current history is incomplete/drifted and includes production-specific cron, Vault, and Edge Function wiring.
 
-## Prerequisites (macOS)
+## Automated validation (recommended)
 
-1. Install Docker Desktop and start it.
-2. Install Supabase CLI: `brew install supabase/tap/supabase`.
-3. From the repository root, verify `docker version` and `supabase --version`.
+Every pull request runs the isolated database harness on a GitHub-hosted Ubuntu runner. The workflow installs a stable Supabase CLI v3, starts its own Docker-backed Supabase stack, resets only this local project, runs the SQL assertions, and stops the stack even if a prior step fails. It does not use Supabase credentials, link a hosted project, or touch either hosted project.
+
+The GitHub Actions run is the reproducible baseline for contributors who cannot run Docker locally.
+
+## Optional local prerequisites (macOS)
+
+1. Confirm your macOS version is supported by the current Docker Desktop release before installing it; older macOS versions may no longer be supported.
+2. Install Docker Desktop only if your machine supports it and has sufficient resources, then start it.
+3. Install Supabase CLI: `brew install supabase/tap/supabase`.
+4. From the repository root, verify `docker version` and `supabase --version`.
+
+If local Docker is unavailable, use the GitHub Actions database-validation job rather than trying to connect this harness to a hosted database.
 
 ## Start/reset
 
