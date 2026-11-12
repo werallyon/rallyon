@@ -52,3 +52,13 @@ test('auth hydration prefers a successful relational result and keeps a migratio
 test('profile writes no longer persist favoriteTeams to the legacy JSON column', () => {
   assert.equal(profileService.includes("favoriteTeams:'favorite_teams'"), false);
 });
+
+test('canonical profile failures are not converted into synthetic Auth-only users', () => {
+  const hydrator = authService.slice(
+    authService.indexOf('private async hydrateUser'),
+    authService.indexOf('private notify')
+  );
+  assert.match(hydrator, /getUserWithProfile\(authUser\)/);
+  assert.equal(/return mergeAuthUserWithProfile\(authUser\)/.test(hydrator), false);
+  assert.match(hydrator, /Relational favorite teams unavailable; retaining legacy profile values/);
+});
