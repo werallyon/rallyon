@@ -37,7 +37,11 @@ test('migration backfills legacy JSON deterministically and preserves the legacy
 test('migration refuses unsafe legacy data and unknown pre-existing relations', () => {
   assert.ok(migration.includes("found %; inspect and repair explicitly before migration"));
   assert.ok(migration.includes("user_favorite_teams already exists"));
-  assert.ok(migration.includes("v_broad_policies"));
+  assert.ok(migration.includes("v_unverified_policies"));
+  assert.ok(migration.includes("exact owner predicate allowlist"));
+  assert.ok(migration.includes("on_auth_user_created"));
+  assert.ok(migration.includes("profile schema is incompatible"));
+  assert.ok(migration.includes("PUBLIC has"));
   assert.ok(migration.includes("v_anon_grants"));
   assert.ok(migration.includes("jsonb_typeof(favorite_teams::jsonb)"));
   assert.ok(migration.includes("distinct on (p.id, t.value->>'id')"));
