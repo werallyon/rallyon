@@ -68,7 +68,7 @@ function participant(competitor: any) {
   return {
     name: source.displayName ?? source.fullName ?? source.name ?? "",
     abbrev: source.abbreviation ?? source.shortName ?? source.shortDisplayName ?? "",
-    logo: source.logo ?? source.logos?.[0]?.href ?? "",
+    logo: source.logo ?? source.logos?.[0]?.href ?? competitor?.athlete?.headshot?.href ?? "",
     seed: competitor?.seed ?? null,
     score: competitor?.score ?? null,
     winner: competitor?.winner ?? null,
