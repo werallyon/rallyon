@@ -12,7 +12,7 @@ import { StepCompletion } from './StepCompletion';
 import { TeamReference, UserIntent, PermissionStatus, NotificationPreferences } from '../../types';
 
 export const OnboardingFlow: React.FC = () => {
-  const { currentUser, updateUser, completeOnboarding } = useAuth();
+  const { currentUser, updateUser } = useAuth();
 
   // Local state to guarantee no loss of selections on backward navigation
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(1);
