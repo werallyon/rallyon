@@ -1,5 +1,6 @@
 import { User } from '../types';
 import { supabase } from '../lib/supabaseClient';
+import { isCurrentAuthAction, isCurrentAuthHydration } from './authActionGuard.js';
 import { getUserWithProfile, mergeAuthUserWithProfile } from './profileService';
 import { getFavoriteTeams, normalizeFavoriteTeams } from './teamPreferenceService';
 
@@ -49,7 +50,7 @@ class AuthService {
     supabase?.auth.onAuthStateChange((_event, session) => {
       const actionRevision = this.authActionRevision;
       const revision = ++this.authRevision;
-      if (actionRevision !== this.authActionRevision) return;
+      if (!isCurrentAuthHydration(revision, this.authRevision, actionRevision, this.authActionRevision)) return;
       if (!session?.user) {
         this.profileWriteRevision++;
         this.currentUser = null;
@@ -64,7 +65,7 @@ class AuthService {
         this.notify();
       }
       void this.hydrateUser(session.user).then((user) => {
-        if (revision === this.authRevision && actionRevision === this.authActionRevision) {
+        if (isCurrentAuthHydration(revision, this.authRevision, actionRevision, this.authActionRevision)) {
           this.currentUser = user;
           this.notify();
         }
@@ -110,7 +111,7 @@ class AuthService {
     if (actionRevision !== this.authActionRevision) return false;
     const { data, error } = await supabase!.auth.getSession();
     if (error) throw error;
-    return actionRevision === this.authActionRevision && data.session?.user.id === userId;
+    return isCurrentAuthAction(actionRevision, this.authActionRevision, userId, data.session?.user.id ?? null);
   }
   private notify() { this.listeners.forEach((cb) => cb(this.currentUser)); }
 
