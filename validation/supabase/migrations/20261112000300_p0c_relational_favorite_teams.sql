@@ -22,7 +22,7 @@ create policy user_favorite_teams_select_own on public.user_favorite_teams for s
 create policy user_favorite_teams_insert_own on public.user_favorite_teams for insert to authenticated with check ((select auth.uid()) = user_id);
 create policy user_favorite_teams_update_own on public.user_favorite_teams for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 create policy user_favorite_teams_delete_own on public.user_favorite_teams for delete to authenticated using ((select auth.uid()) = user_id);
-revoke all on table public.user_favorite_teams from anon;
+revoke all on table public.user_favorite_teams from anon, authenticated;
 grant select, insert, update, delete on table public.user_favorite_teams to authenticated;
 
 insert into public.user_favorite_teams (user_id, team_id, team_name, sport_id, league, abbrev, logo, color, sort_order)
