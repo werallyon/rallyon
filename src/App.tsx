@@ -132,6 +132,7 @@ function RallyOnMain() {
       const current = marketService.getActiveMarket();
       setActiveMarket(current);
       setCurrentCity(current.name);
+      setResolvedCityId(null);
     });
     return unsub;
   }, []);
@@ -318,7 +319,10 @@ function RallyOnMain() {
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
       <Header
         currentCity={currentCity}
-        onCityChange={setCurrentCity}
+        onCityChange={(city) => {
+          setCurrentCity(city);
+          setResolvedCityId(null);
+        }}
         isSimulating={isSimulating}
         onToggleSimulation={() => {
           signalEngine.toggleSimulation();
