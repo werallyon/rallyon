@@ -227,7 +227,8 @@ class AuthService {
     void (async () => {
       const { data: profile, error } = await supabase!.rpc('save_profile_and_favorite_teams', {
         p_profile_updates: profileUpdates,
-        p_favorite_teams: favoriteTeams === undefined ? null : favoriteTeams
+        p_favorite_teams: favoriteTeams ?? [],
+        p_replace_favorite_teams: favoriteTeams !== undefined
       });
       if (error) throw error;
       if (!profile) throw new Error('The transactional profile save returned no canonical profile row.');
