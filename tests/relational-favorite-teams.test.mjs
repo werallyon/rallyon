@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-const migration = read('supabase/migrations/20261112120000_p0c_relational_favorite_teams.sql');
+const migration = read('supabase/migrations/20261112120000_p0c_relational_favorite_teams.sql') + read('supabase/migrations/20261112140000_p0_auth_rls_review_remediation.sql');
 const favoriteService = read('src/services/teamPreferenceService.ts');
 const authService = read('src/services/authService.ts');
 const profileService = read('src/services/profileService.ts');
@@ -45,14 +45,26 @@ test('favorite-team service maps the existing TeamReference contract and persist
   ]) assert.ok(favoriteService.includes(fragment), 'missing service behavior: ' + fragment);
 });
 
-test('auth hydration prefers a successful relational result and keeps a migration fallback', () => {
+test('auth hydration treats relational favorites as authoritative and propagates failures', () => {
   assert.ok(authService.includes('getFavoriteTeams(authUser.id)'));
-  assert.ok(authService.includes('Relational favorite teams unavailable; retaining legacy profile values'));
-  assert.ok(authService.includes('replaceFavoriteTeams(id, favoriteTeams)'));
+  assert.equal(authService.includes('Relational favorite teams unavailable; retaining legacy profile values'), false);
+  assert.ok(authService.includes('save_profile_and_favorite_teams'));
 });
 
 test('profile writes no longer persist favoriteTeams to the legacy JSON column', () => {
   assert.equal(profileService.includes("favoriteTeams:'favorite_teams'"), false);
+});
+
+test('profile and favorite writes use one transactional RPC rather than independent promises', () => {
+  assert.ok(authService.includes("rpc('save_profile_and_favorite_teams'"));
+  assert.equal(authService.includes('Promise.all([profileSave, favoriteTeamsSave])'), false);
+  assert.ok(migration.includes('create or replace function public.save_profile_and_favorite_teams'));
+});
+
+test('favorite-team replacement validates input and uses the transactional RPC', () => {
+  assert.ok(favoriteService.includes('export function normalizeFavoriteTeams'));
+  assert.ok(favoriteService.includes("rpc('save_profile_and_favorite_teams'"));
+  assert.ok(favoriteService.includes('Favorite teams require non-empty IDs and names'));
 });
 
 test('optimistic profile and favorite writes roll back on persistence failure', () => {
