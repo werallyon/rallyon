@@ -28,7 +28,8 @@ The previous implementation had two competing sources:
 - Email, verification state, provider, and account creation time continue to come from the Auth identity.
 - `getUserWithProfile()` requires an actual profile row. A missing row or query/RLS failure rejects hydration; it is never converted into a synthetic default profile from Auth identity or metadata.
 - Auth-state hydration failures fail closed (no authenticated profile is published) and are logged for diagnosis.
-- Profile writes remain explicit updates. The client does not silently upsert/create missing profile rows; a missing row raises a clear error so bootstrap/schema defects are not hidden.
+- Profile writes remain explicit updates. The client does not silently upsert/create missing profile rows; a missing row raises a clear error so bootstrap/schema defects are not hidden. No-op profile writes also verify that the row still exists.
+- Optimistic UI profile edits are rolled back if persistence fails, and stale write completions cannot overwrite a newer in-memory edit.
 
 ## Field ownership
 
