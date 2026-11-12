@@ -36,12 +36,12 @@ create policy profiles_update_own on public.profiles
   for update to authenticated using ((select auth.uid()) = id)
   with check ((select auth.uid()) = id);
 
-revoke all on public.profiles from anon;
+grant all on public.profiles to anon;
 grant select, insert, update on public.profiles to authenticated;
 
 create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer
-set search_path = public, pg_temp
+returns trigger language plpgsql security invoker
+set search_path = public
 as $$
 begin
   insert into public.profiles (
