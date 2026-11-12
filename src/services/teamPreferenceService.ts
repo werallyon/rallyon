@@ -291,43 +291,54 @@ export async function getFavoriteTeams(userId: string): Promise<TeamReference[]>
 }
 
 /**
- * Replace a user's complete favorite-team selection.
- * Upsert selected rows before deleting removed rows, preserving the old selection
- * if an upsert fails. A multi-row replacement is not a single database transaction.
+ * Validate and normalize a complete favorite selection before sending it to
+ * the transactional RPC. First occurrence wins for duplicate team IDs.
+ */
+export function normalizeFavoriteTeams(teams: TeamReference[]): TeamReference[] {
+  if (!Array.isArray(teams)) throw new TypeError('Favorite teams must be an array.');
+  const seen = new Set<string>();
+  const normalized: TeamReference[] = [];
+  for (const team of teams) {
+    if (!team || typeof team !== 'object') throw new TypeError('Every favorite team must be an object.');
+    const id = typeof team.id === 'string' ? team.id.trim() : '';
+    const name = typeof team.name === 'string' ? team.name.trim() : '';
+    if (!id || !name) throw new TypeError('Favorite teams require non-empty IDs and names.');
+    for (const field of ['sportId', 'league', 'abbrev', 'logo'] as const) {
+      if (typeof team[field] !== 'string') throw new TypeError(`Favorite team ${field} must be a string.`);
+    }
+    if (seen.has(id)) continue;
+    seen.add(id);
+    normalized.push({
+      ...team,
+      id,
+      name,
+      sportId: team.sportId.trim() || 'OTHER',
+      league: team.league.trim() || 'OTHER',
+      abbrev: team.abbrev.trim(),
+      logo: team.logo.trim(),
+      ...(team.color ? { color: team.color.trim() } : {})
+    });
+  }
+  return normalized;
+}
+
+/**
+ * Replace the entire favorite selection in one Postgres transaction.
+ * The RPC derives ownership from auth.uid(); no caller-supplied user ID reaches
+ * the database write. An empty array intentionally clears the selection.
  */
 export async function replaceFavoriteTeams(userId: string, teams: TeamReference[]): Promise<TeamReference[]> {
-  if (!supabase) return teams;
-
-  const uniqueTeams = teams.filter(
-    (team, index) => teams.findIndex((candidate) => candidate.id === team.id) === index
-  );
-  const { data: existing, error: readError } = await supabase
-    .from('user_favorite_teams')
-    .select('team_id')
-    .eq('user_id', userId);
-  if (readError) throw readError;
-
-  // Upsert first so a failed write never deletes the user's existing selection.
-  if (uniqueTeams.length > 0) {
-    const rows = uniqueTeams.map((team, index) => toFavoriteTeamRow(userId, team, index));
-    const { error } = await supabase
-      .from('user_favorite_teams')
-      .upsert(rows, { onConflict: 'user_id,team_id' });
-    if (error) throw error;
+  if (!supabase) return normalizeFavoriteTeams(teams);
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!authData.user || authData.user.id !== userId) {
+    throw new Error('Favorite-team replacement requires the matching authenticated user.');
   }
-
-  const retainedIds = new Set(uniqueTeams.map((team) => team.id));
-  const removedIds = (existing ?? [])
-    .map((row) => row.team_id as string)
-    .filter((teamId) => !retainedIds.has(teamId));
-  for (const teamId of removedIds) {
-    const { error } = await supabase
-      .from('user_favorite_teams')
-      .delete()
-      .eq('user_id', userId)
-      .eq('team_id', teamId);
-    if (error) throw error;
-  }
-
-  return uniqueTeams;
+  const normalized = normalizeFavoriteTeams(teams);
+  const { error } = await supabase.rpc('save_profile_and_favorite_teams', {
+    p_profile_updates: {},
+    p_favorite_teams: normalized
+  });
+  if (error) throw error;
+  return getFavoriteTeams(userId);
 }
