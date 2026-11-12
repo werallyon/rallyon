@@ -41,6 +41,17 @@ The repository also contains `20261111050000_rallyon_sync_games_schedule_timeout
 - This combination is a significant signup-bootstrap risk. It does not by itself prove the Auth execution path fails, but the trigger's existence cannot be treated as proof of successful profile creation. Verify with disposable Auth signup before P0-A can pass.
 - Two profile UPDATE triggers, `profiles_set_updated_at` and `profiles_updated_at`, invoke the same `set_profiles_updated_at()` function. This is redundant and should be reviewed separately; do not remove either trigger as part of this validation setup.
 
+## Live sports-sync cron facts
+
+Read-only inspection of `cron.job` found two active jobs:
+
+- `rallyon-sync-games-hourly`: schedule `0 * * * *`; calls the production `sync-games` URL with the `today` window.
+- `rallyon-sync-games-upcoming-daily`: schedule `15 * * * *`; the SQL command conditionally calls the production URL only when the current Chicago-local hour is zero.
+
+This live job definition does not match the README's documented daily schedule `15 0 * * *`, nor the checked-in v4 migration's daily schedule. It appears to implement a quarter-hourly conditional gate instead. Do not alter the live cron job during this validation work. The discrepancy requires a separate operational review.
+
+The current live job commands reference the Vault secret by name; no decrypted secret value was selected or exposed.
+
 ## Local replay safety blocker
 
 The checked-in scheduling migrations v2, v3, and v4 call:
@@ -55,7 +66,7 @@ The scheduling migrations also manage a Vault-backed token. Never rotate or prin
 
 1. Obtain and preserve the exact SQL source for production-only migration entries from a trusted source, or reconstruct a schema-only baseline from catalog metadata with explicit review.
 2. Resolve the version/name mismatches for the core model, production hardening, v3 scheduling, and sports-event expansion migrations. Do not rename applied migration files casually; Supabase tracks migration versions, not just descriptive names.
-3. Determine whether the v4 timeout migration was applied outside the recorded migration ledger or whether the README is inaccurate. Verify current cron job definitions read-only, without selecting Vault secrets.
+3. Determine whether the v4 timeout migration was applied outside the recorded migration ledger or whether the README is inaccurate. Reconcile the live cron job command/schedule with README and migration source without modifying production in this task.
 4. Prepare a safe local migration path that cannot call the production URL, rotate production secrets, or write production data.
 5. Review the Auth bootstrap function's privilege model and add a disposable signup test. Any correction should be a separately reviewed migration; do not modify production as part of this audit.
 6. Once parity and replay safety are established, run local reset against the local stack only, then execute the P0-A and P0-C integration runbooks using synthetic accounts.
