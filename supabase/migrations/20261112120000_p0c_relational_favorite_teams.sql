@@ -7,6 +7,7 @@ declare
   v_bad_roots bigint;
   v_bad_items bigint;
   v_select_policy boolean;
+  v_insert_policy boolean;
   v_update_policy boolean;
   v_rls boolean;
   v_broad_policies bigint;
@@ -34,6 +35,15 @@ begin
   select exists (
     select 1 from pg_policies
     where schemaname = 'public' and tablename = 'profiles'
+      and cmd = 'INSERT' and permissive = 'PERMISSIVE'
+      and roles @> array['authenticated']::name[]
+      and lower(coalesce(with_check, '')) like '%auth.uid()%'
+      and lower(coalesce(with_check, '')) like '%id%'
+  ) into v_insert_policy;
+
+  select exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'profiles'
       and cmd = 'UPDATE' and permissive = 'PERMISSIVE'
       and roles @> array['authenticated']::name[]
       and lower(coalesce(qual, '')) like '%auth.uid()%'
@@ -42,20 +52,22 @@ begin
       and lower(coalesce(with_check, '')) like '%id%'
   ) into v_update_policy;
 
-  if not v_select_policy or not v_update_policy then
-    raise exception 'P0-C preflight: public.profiles must have authenticated owner-scoped SELECT and UPDATE policies (USING and WITH CHECK)';
+  if not v_select_policy or not v_insert_policy or not v_update_policy then
+    raise exception 'P0-C preflight: public.profiles must have authenticated owner-scoped SELECT, INSERT, and UPDATE policies (UPDATE requires USING and WITH CHECK)';
   end if;
 
   select count(*) into v_broad_policies
   from pg_policies
   where schemaname = 'public' and tablename = 'profiles'
     and permissive = 'PERMISSIVE'
-    and cmd in ('SELECT', 'UPDATE')
-    and (roles @> array['authenticated']::name[] or roles @> array['public']::name[])
+    and cmd in ('SELECT', 'INSERT', 'UPDATE')
+    and (roles @> array['authenticated']::name[] or roles @> array['anon']::name[] or roles @> array['public']::name[])
     and (
-      lower(coalesce(qual, '')) not like '%auth.uid()%'
-      or lower(coalesce(qual, '')) not like '%id%'
-      or (cmd = 'UPDATE' and (
+      (cmd in ('SELECT', 'UPDATE') and (
+        lower(coalesce(qual, '')) not like '%auth.uid()%'
+        or lower(coalesce(qual, '')) not like '%id%'
+      ))
+      or (cmd in ('INSERT', 'UPDATE') and (
         lower(coalesce(with_check, '')) not like '%auth.uid()%'
         or lower(coalesce(with_check, '')) not like '%id%'
       ))
