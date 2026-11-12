@@ -50,15 +50,23 @@ class AuthService {
         this.notify();
         return;
       }
-      // Do not publish Auth metadata as a temporary profile. Hydrate the
-      // canonical public.profiles row before notifying consumers.
+      // Never keep a previous account's profile visible while a new identity
+      // is being hydrated. Auth metadata is not a profile fallback.
+      if (this.currentUser?.id !== session.user.id) {
+        this.currentUser = null;
+        this.notify();
+      }
       void this.hydrateUser(session.user).then((user) => {
         if (revision === this.authRevision) {
           this.currentUser = user;
           this.notify();
         }
       }).catch((error) => {
-        console.error('Unable to load the canonical RallyOn profile.', error);
+        if (revision === this.authRevision) {
+          this.currentUser = null;
+          this.notify();
+        }
+        console.error('Unable to load the canonical RallyOn profile. Verify profile bootstrap and RLS.', error);
       });
     });
   }
@@ -84,8 +92,9 @@ class AuthService {
   getCurrentUser() { return this.currentUser; }
 
   private async hydrateUser(authUser: any): Promise<User> {
-    try { return await getUserWithProfile(authUser); }
-    catch { return mergeAuthUserWithProfile(authUser); }
+    // A missing row or profile query failure is a bootstrap/data-access error,
+    // not permission to synthesize a profile from Auth metadata or defaults.
+    return getUserWithProfile(authUser);
   }
   private notify() { this.listeners.forEach((cb) => cb(this.currentUser)); }
 
