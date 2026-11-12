@@ -73,7 +73,7 @@ Assumptions:
 Behavior:
 - Existing users: scans every profile row; only JSON arrays produce favorite rows.
 - SQL NULL, JSON null, empty arrays, and non-array JSON roots produce no rows.
-- Duplicate team IDs per user: composite primary key plus ON CONFLICT DO NOTHING retains the first encountered occurrence and its sort order.
+- Duplicate team IDs per user: the composite primary key plus ON CONFLICT DO NOTHING leaves one row. The current INSERT...SELECT has no ORDER BY, so the winning duplicate's metadata is not guaranteed; do not rely on first-occurrence behavior.
 - Missing/blank id or name: skipped.
 - Missing/blank sportId or league: OTHER; missing abbrev/logo: empty strings; missing/empty color: SQL NULL.
 - Malformed array elements such as strings, numbers, nulls, or objects missing id/name are ignored by the required-field filter.
@@ -122,7 +122,7 @@ Create three disposable Auth users through Supabase Auth (A, B, C). Record their
     set favorite_teams = '[
       {"id":"nfl-kc","name":"Kansas City Chiefs","sportId":"FOOTBALL","league":"NFL","abbrev":"KC","logo":"kc.svg","color":"#E31837"},
       {"id":"mls-austin","name":"Austin FC","sportId":"SOCCER","league":"MLS","abbrev":"ATX","logo":"atx.svg"},
-      {"id":"nfl-kc","name":"Kansas City Chiefs duplicate","sportId":"FOOTBALL","league":"NFL","abbrev":"KC2","logo":"dup.svg"},
+      {"id":"nfl-kc","name":"Kansas City Chiefs","sportId":"FOOTBALL","league":"NFL","abbrev":"KC","logo":"kc.svg","color":"#E31837"},
       {"id":"   ","name":"Blank ID"},
       {"id":"missing-name"},
       "not-an-object",
@@ -137,7 +137,7 @@ Create three disposable Auth users through Supabase Auth (A, B, C). Record their
     set favorite_teams = '[{"id":"valid-c","name":"Valid C"},{"id":"bad-no-name"},{"name":"bad-no-id"},42,{}]'::jsonb
     where id = '<C_UUID>'::uuid;
 
-Expected: A has exactly nfl-kc and mls-austin; the first nfl-kc wins; sort_order is 0 and 1. B has zero rows. C has exactly valid-c. Missing optional fields default as described above. Add separate users for SQL NULL and JSON null; both should yield zero rows. Test malformed JSON text (for example '{not-json') only in a separate disposable text-column rehearsal; expected outcome is migration failure.
+Expected: A has exactly nfl-kc and mls-austin; the duplicate nfl-kc collapses to one row. Since the duplicate fixture is identical, its winner is immaterial. The SQL does not currently guarantee which metadata copy wins when duplicate IDs carry different values. The two surviving rows retain relative selection order, although sort_order may have a gap because it uses original JSON ordinality. B has zero rows. C has exactly valid-c. Missing optional fields default as described above. Add separate users for SQL NULL and JSON null; both should yield zero rows. Test malformed JSON text (for example '{not-json') only in a separate disposable text-column rehearsal; expected outcome is migration failure.
 
 Inspect migrated rows:
 
@@ -238,7 +238,7 @@ Repeat with B's UUID. A and B must each see, insert, update, and delete only the
 PR #16 and PR #18 both change src/services/authService.ts and src/services/profileService.ts. Both are open/draft and based on main; do not merge either as part of this work.
 
 Integration rules:
-1. Preserve P0-A's auth-state sequencing: no temporary Auth-metadata profile; keep its auth revision/stale-hydration guard; hydrate canonical profile before notifying subscribers.
+1. Preserve P0-A's auth-state sequencing: no temporary Auth-metadata profile; keep its auth revision/stale-hydration guard; hydrate canonical profile before notifying subscribers. Also review the current P0-A hydrateUser catch path: it falls back to mergeAuthUserWithProfile(authUser) when profile loading fails. In the combined implementation, ensure a profile-fetch failure cannot silently fabricate a usable default profile or restore legacy Auth metadata; explicitly decide whether it should reject hydration and be logged.
 2. Preserve P0-A's source-of-truth decision: mutable profile attributes come from public.profiles, not Auth user_metadata.
 3. Make favoriteTeams the explicit P0-C exception: public.user_favorite_teams is canonical. Do not write favoriteTeams back to profiles.favorite_teams. After profile hydration, load relational favorites and set User.favoriteTeams from that result.
 4. A successful empty relational result is authoritative. Keep legacy JSON only as a temporary fallback when the relational query fails because the migration is not yet deployed.
