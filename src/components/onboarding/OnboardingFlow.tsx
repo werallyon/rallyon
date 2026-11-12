@@ -11,7 +11,15 @@ import { Step7Profile } from './Step7Profile';
 import { StepCompletion } from './StepCompletion';
 import { TeamReference, UserIntent, PermissionStatus, NotificationPreferences } from '../../types';
 
+// A fresh component instance per authenticated identity prevents unsaved
+// onboarding selections from one account surviving an account switch.
 export const OnboardingFlow: React.FC = () => {
+  const { currentUser } = useAuth();
+  if (!currentUser) return null;
+  return <OnboardingFlowForUser key={currentUser.id} />;
+};
+
+const OnboardingFlowForUser: React.FC = () => {
   const { currentUser, updateUser } = useAuth();
 
   // Local state to guarantee no loss of selections on backward navigation
