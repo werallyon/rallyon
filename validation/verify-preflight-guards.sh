@@ -124,6 +124,13 @@ select (
   and not has_table_privilege('anon', 'public.profiles', 'INSERT')
   and not has_table_privilege('anon', 'public.profiles', 'UPDATE')
   and not has_table_privilege('anon', 'public.profiles', 'DELETE')
+  and not exists (
+    select 1 from pg_class c
+    cross join lateral aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) acl
+    where c.oid = 'public.profiles'::regclass
+      and acl.grantee = 0
+      and acl.privilege_type in ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
+  )
   and not has_function_privilege('anon', 'public.handle_new_user()', 'EXECUTE')
   and not has_function_privilege('authenticated', 'public.handle_new_user()', 'EXECUTE')
   and not has_function_privilege('service_role', 'public.handle_new_user()', 'EXECUTE')
