@@ -64,7 +64,7 @@ jobs:
           cp supabase/migrations/20261112140000_p0_auth_rls_review_remediation.sql validation/supabase/migrations/20261112000400_p0_transactional_profile_favorites.sql
 
       - name: Start isolated local Supabase stack
-        run: supabase --workdir validation start
+        run: supabase --workdir validation start -x studio,edge-runtime,logflare,vector,analytics,imgproxy,storage-api,rest,auth,realtime,mailpit
 
       - name: Reset local database and apply exact PR #22 migrations
         run: supabase --workdir validation db reset
