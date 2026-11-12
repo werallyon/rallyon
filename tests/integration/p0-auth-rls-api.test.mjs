@@ -294,15 +294,26 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
   } finally {
     // Revoke client sessions first, then delete the synthetic Auth users with
     // the service-role key obtained only from this local CLI stack.
+    const cleanupErrors = [];
     for (const client of userClients) {
-      try { await client.auth.signOut({ scope: 'local' }); } catch { /* cleanup continues */ }
-    }
-    for (const userId of [...createdUserIds].reverse()) {
-      const { error } = await admin.auth.admin.deleteUser(userId);
-      if (error && !/not found|user not found/i.test(error.message)) {
-        throw new Error(`Failed to clean up local synthetic Auth user ${userId}: ${error.message}`);
+      try {
+        await client.auth.signOut({ scope: 'global' });
+      } catch (error) {
+        cleanupErrors.push(`session revocation failed: ${error.message}`);
       }
     }
-    await admin.auth.signOut({ scope: 'local' });
+    for (const userId of [...createdUserIds].reverse()) {
+      try {
+        const { error } = await admin.auth.admin.deleteUser(userId);
+        if (error && !/not found|user not found/i.test(error.message)) {
+          cleanupErrors.push(`user ${userId}: ${error.message}`);
+        }
+      } catch (error) {
+        cleanupErrors.push(`user ${userId}: ${error.message}`);
+      }
+    }
+    if (cleanupErrors.length > 0) {
+      throw new Error(`Local Auth integration-test cleanup failed: ${cleanupErrors.join('; ')}`);
+    }
   }
 });
