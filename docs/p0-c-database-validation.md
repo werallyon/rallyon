@@ -238,7 +238,7 @@ Repeat with B's UUID. A and B must each see, insert, update, and delete only the
 PR #16 and PR #18 both change src/services/authService.ts and src/services/profileService.ts. Both are open/draft and based on main; do not merge either as part of this work.
 
 Integration rules:
-1. Preserve P0-A's auth-state sequencing: no temporary Auth-metadata profile; keep its auth revision/stale-hydration guard; hydrate canonical profile before notifying subscribers. Also review the current P0-A hydrateUser catch path: it falls back to mergeAuthUserWithProfile(authUser) when profile loading fails. In the combined implementation, ensure a profile-fetch failure cannot silently fabricate a usable default profile or restore legacy Auth metadata; explicitly decide whether it should reject hydration and be logged.
+1. Preserve P0-A's auth-state sequencing: no temporary Auth-metadata profile; keep its auth revision/stale-hydration guard; hydrate canonical profile before notifying subscribers. The coordinated P0-A/P0-C branches now reject canonical profile loading failures; they do not fall back to mergeAuthUserWithProfile(authUser). Preserve that fail-closed behavior when the branches are integrated.
 2. Preserve P0-A's source-of-truth decision: mutable profile attributes come from public.profiles, not Auth user_metadata.
 3. Make favoriteTeams the explicit P0-C exception: public.user_favorite_teams is canonical. Do not write favoriteTeams back to profiles.favorite_teams. After profile hydration, load relational favorites and set User.favoriteTeams from that result.
 4. A successful empty relational result is authoritative. Keep legacy JSON only as a temporary fallback when the relational query fails because the migration is not yet deployed.
@@ -249,8 +249,8 @@ Before merge, create an integration branch from the then-current main after the 
 
 ## 6. Current status
 
-- PR #18 CI previously passed (tests, type check, build).
-- Database-level validation has not run; no disposable database was provisioned or modified during this preparation.
+- GitHub Actions RallyOn Build Check #117 passed on the coordinated P0-C branch head: regression tests, Edge Function type check, TypeScript type check, and production build.
+- Database-level validation has not run; no disposable database was provisioned or modified during this preparation. P0-A's separate runbook now documents the canonical profile schema/trigger/RLS and signup/session lifecycle checks that must be run alongside this favorite-team backfill/RLS procedure.
 - Actual production profiles.favorite_teams type and stored format remain unknown. Inspect safely before migration approval.
 - Production Supabase untouched.
 - This document is the only preparation artifact to be added to the PR #18 branch.
