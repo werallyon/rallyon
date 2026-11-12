@@ -4,6 +4,8 @@
 do $$
 declare
   v_favorites_type text;
+  v_favorites_not_null boolean;
+  v_favorites_has_default boolean;
   v_bad_roots bigint;
   v_bad_items bigint;
   v_select_policy boolean;
@@ -213,7 +215,8 @@ begin
       array_to_string(v_bad_profile_columns, '; ');
   end if;
 
-  select c.udt_name into v_favorites_type
+  select c.udt_name, c.is_nullable = 'NO', c.column_default is not null
+    into v_favorites_type, v_favorites_not_null, v_favorites_has_default
   from information_schema.columns c
   where c.table_schema = 'public' and c.table_name = 'profiles'
     and c.column_name = 'favorite_teams';
@@ -223,6 +226,9 @@ begin
   end if;
   if v_favorites_type not in ('json', 'jsonb') then
     raise exception 'P0-C preflight: favorite_teams must be json/jsonb, found %; inspect and repair explicitly before migration', v_favorites_type;
+  end if;
+  if not coalesce(v_favorites_not_null, false) or not coalesce(v_favorites_has_default, false) then
+    raise exception 'P0-C preflight: favorite_teams must be NOT NULL with a default so Auth bootstrap can create profiles safely';
   end if;
 
   if to_regclass('public.user_favorite_teams') is not null then
