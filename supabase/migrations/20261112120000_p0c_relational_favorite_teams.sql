@@ -65,9 +65,8 @@ begin
   end if;
 
   select count(*) into v_anon_grants
-  from information_schema.role_table_grants
-  where table_schema = 'public' and table_name = 'profiles'
-    and grantee = 'anon';
+  from unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE']) as privilege_name
+  where has_table_privilege('anon', 'public.profiles', privilege_name);
   if v_anon_grants > 0 then
     raise exception 'P0-C preflight: anon has % direct grants on public.profiles; audit grants before rollout', v_anon_grants;
   end if;
