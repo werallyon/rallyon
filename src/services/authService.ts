@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { isCurrentAuthAction as isAuthActionCurrent, isCurrentAuthHydration } from './authActionGuard.js';
 import { getUserWithProfile, mergeAuthUserWithProfile } from './profileService';
 import { getFavoriteTeams, normalizeFavoriteTeams } from './teamPreferenceService';
+import { splitUserUpdatePayload } from './userUpdatePayload.js';
 
 export interface SignUpParams {
   firstName: string;
@@ -229,7 +230,7 @@ class AuthService {
     // Demo identities are intentionally local-only and never sent to Auth/RLS.
     if (id.startsWith('usr_')) return updated;
 
-    const { favoriteTeams, ...profileUpdates } = updates;
+    const { profileUpdates, favoriteTeams, locationPermissionStatus, notificationPermissionStatus } = splitUserUpdatePayload(updates);
     void (async () => {
       const { data: profile, error } = await supabase!.rpc('save_profile_and_favorite_teams', {
         p_profile_updates: profileUpdates,
@@ -252,7 +253,10 @@ class AuthService {
       };
       this.currentUser = {
         ...mergeAuthUserWithProfile(authUser, profile),
-        favoriteTeams: savedTeams
+        favoriteTeams: savedTeams,
+        // Permission status belongs to the current device/session, not profiles.
+        locationPermissionStatus: locationPermissionStatus ?? updated.locationPermissionStatus,
+        notificationPermissionStatus: notificationPermissionStatus ?? updated.notificationPermissionStatus
       };
       this.notify();
     })().catch((error) => {
