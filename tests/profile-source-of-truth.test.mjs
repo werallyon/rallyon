@@ -52,9 +52,9 @@ test('initialization, auth-state hydration, and direct auth actions reject stale
     authService.indexOf('async initialize'),
     authService.indexOf('subscribe(')
   );
-  assert.match(initialization, /const actionRevision = this\\.authActionRevision/);
-  assert.match(initialization, /isCurrentAuthHydration\\(revision, this\\.authRevision, actionRevision, this\\.authActionRevision\\)/);
+  assert.match(initialization, /const actionRevision = this\.authActionRevision/);
+  assert.match(initialization, /isCurrentAuthHydration\\(revision, this\.authRevision, actionRevision, this\.authActionRevision\\)/);
   assert.match(authService, /isCurrentAuthHydration/);
   assert.match(authService, /isAuthActionCurrent/);
-  assert.match(authService, /this\\.isCurrentAuthAction\\(actionRevision, data\\.user\\.id\\)/);
+  assert.match(authService, /this\.isCurrentAuthAction\\(actionRevision, data\.user\.id\\)/);
 });
