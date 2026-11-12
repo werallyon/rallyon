@@ -2,9 +2,9 @@ name: RallyOn Build Check
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/p0-c-remediation-ci-base]
   pull_request:
-    branches: [main]
+    branches: [main, fix/p0-c-remediation-ci-base]
 
 jobs:
   build:
