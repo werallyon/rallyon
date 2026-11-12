@@ -14,7 +14,7 @@ The browser must not read mutable profile fields from `auth.users.raw_user_meta_
 - A profile query error or missing row fails closed. It is not converted into a synthetic user.
 - Profile edits are persisted through the invoker-rights `save_profile_and_favorite_teams` RPC. The RPC derives ownership from `auth.uid()` and commits profile changes and optional complete favorite-team replacement in one transaction.
 - The client does not create missing profiles through an upsert. Bootstrap/schema defects must be repaired through a separately reviewed database change.
-- Auth hydration and direct sign-in/sign-up completions use revision/session guards so stale asynchronous results cannot publish an older identity.
+- Initial session initialization, auth-state hydration, and direct sign-in/sign-up completions share revision/session guards so stale asynchronous results cannot publish an older identity.
 - Relational favorite teams are authoritative. A failed relational read is surfaced; legacy JSON is not used as a fallback.
 
 ## Field ownership
