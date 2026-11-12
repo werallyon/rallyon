@@ -337,7 +337,8 @@ export async function replaceFavoriteTeams(userId: string, teams: TeamReference[
   const normalized = normalizeFavoriteTeams(teams);
   const { error } = await supabase.rpc('save_profile_and_favorite_teams', {
     p_profile_updates: {},
-    p_favorite_teams: normalized
+    p_favorite_teams: normalized,
+    p_replace_favorite_teams: true
   });
   if (error) throw error;
   return normalized;
