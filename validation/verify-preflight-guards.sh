@@ -119,11 +119,14 @@ db_container="$(docker ps --filter "label=com.supabase.cli.project=rallyon-pr22-
 hardened="$(docker exec "$db_container" psql -U postgres -d postgres -Atqc "
 select (
   p.prosecdef
-  and p.proconfig @> array['search_path=public, pg_temp']::text[]
+  and p.proconfig @> array['search_path=pg_catalog, public, pg_temp']::text[]
   and not has_table_privilege('anon', 'public.profiles', 'SELECT')
   and not has_table_privilege('anon', 'public.profiles', 'INSERT')
   and not has_table_privilege('anon', 'public.profiles', 'UPDATE')
   and not has_table_privilege('anon', 'public.profiles', 'DELETE')
+  and not has_function_privilege('anon', 'public.handle_new_user()', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'public.handle_new_user()', 'EXECUTE')
+  and not has_function_privilege('service_role', 'public.handle_new_user()', 'EXECUTE')
 )::text
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
