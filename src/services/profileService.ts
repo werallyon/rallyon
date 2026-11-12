@@ -22,7 +22,6 @@ type ProfileRow = {
   longitude?: number | null;
   favorite_sports?: string[] | null;
   favorite_leagues?: string[] | null;
-  favorite_teams?: User['favoriteTeams'] | null;
   preferred_experience?: User['preferredExperience'] | null;
   current_intent?: User['currentIntent'] | null;
   preferences?: User['preferences'] | null;
@@ -88,7 +87,9 @@ export function mergeAuthUserWithProfile(authUser: any, profile: ProfileRow): Us
     city: [homeCity, homeState].filter(Boolean).join(', '),
     favoriteSports: p.favorite_sports ?? [],
     favoriteLeagues: p.favorite_leagues ?? [],
-    favoriteTeams: p.favorite_teams ?? [],
+    // Relational favorites are loaded by AuthService after canonical profile hydration.
+    // Never expose the retained legacy JSON column as application state.
+    favoriteTeams: [],
     preferredExperience: p.preferred_experience ?? ['HIGH_ENERGY'],
     currentIntent: p.current_intent ?? 'HIGH_ENERGY',
     preferences: p.preferences ?? DEFAULT_PREFERENCES,
@@ -113,49 +114,4 @@ export async function getUserWithProfile(authUser: any): Promise<User> {
     throw new Error('The authenticated user has no public.profiles row. Verify the signup bootstrap trigger or repair the profile before continuing.');
   }
   return mergeAuthUserWithProfile(authUser, profile);
-}
-
-const PROFILE_FIELD_MAP: Record<string, keyof ProfileRow> = {
-  username: 'username',
-  firstName: 'first_name',
-  lastName: 'last_name',
-  name: 'display_name',
-  profilePhotoUrl: 'avatar_url',
-  avatar: 'avatar_url',
-  onboardingCompleted: 'onboarding_completed',
-  onboardingStep: 'onboarding_step',
-  homeCity: 'home_city',
-  homeState: 'home_state',
-  homeZip: 'home_zip',
-  latitude: 'latitude',
-  longitude: 'longitude',
-  favoriteSports: 'favorite_sports',
-  favoriteLeagues: 'favorite_leagues',
-  preferredExperience: 'preferred_experience',
-  currentIntent: 'current_intent',
-  preferences: 'preferences',
-  privacySettings: 'privacy_settings',
-  notificationPreferences: 'notification_preferences',
-  savedVenueIds: 'saved_venue_ids'
-};
-
-export async function updateProfile(userId: string, updates: Partial<User>): Promise<ProfileRow | null> {
-  if (!supabase) return null;
-  const patch: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(updates)) {
-    const column = PROFILE_FIELD_MAP[key];
-    if (column) patch[column] = value;
-  }
-  if (!Object.keys(patch).length) {
-    const profile = await getProfile(userId);
-    if (!profile) throw new Error('The authenticated user has no public.profiles row. Profile bootstrap must be repaired before continuing.');
-    return profile;
-  }
-
-  // Update only: profile creation/backfill belongs to a separately reviewed,
-  // migration-backed database change, not an implicit client-side upsert.
-  const { data, error } = await supabase.from('profiles').update(patch).eq('id', userId).select('*').maybeSingle();
-  if (error) throw error;
-  if (!data) throw new Error('The authenticated user has no public.profiles row. Profile bootstrap must be repaired before saving changes.');
-  return data as ProfileRow;
 }
