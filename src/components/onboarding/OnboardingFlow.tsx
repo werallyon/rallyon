@@ -130,9 +130,10 @@ export const OnboardingFlow: React.FC = () => {
     updateUser({
       favoriteSports: selectedSports,
       favoriteTeams: selectedTeams,
-      preferredExperience: selectedExperiences
+      preferredExperience: selectedExperiences,
+      onboardingCompleted: true,
+      onboardingStep: 'complete'
     });
-    completeOnboarding();
   };
 
   const handleFinalCompletion = () => {
@@ -148,9 +149,10 @@ export const OnboardingFlow: React.FC = () => {
       notificationPreferences,
       firstName,
       username,
-      profilePhotoUrl: photoUrl
+      profilePhotoUrl: photoUrl,
+      onboardingCompleted: true,
+      onboardingStep: 'complete'
     });
-    completeOnboarding();
   };
 
   return (
