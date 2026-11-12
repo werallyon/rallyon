@@ -53,6 +53,12 @@ test('profile writes no longer persist favoriteTeams to the legacy JSON column',
   assert.equal(profileService.includes("favoriteTeams:'favorite_teams'"), false);
 });
 
+test('optimistic profile and favorite writes roll back on persistence failure', () => {
+  assert.match(authService, /private profileWriteRevision = 0/);
+  assert.match(authService, /writeRevision === this\\.profileWriteRevision/);
+  assert.match(authService, /this\\.currentUser = previousUser;\\s*this\\.notify\\(\\);/);
+});
+
 test('canonical profile failures are not converted into synthetic Auth-only users', () => {
   const hydrator = authService.slice(
     authService.indexOf('private async hydrateUser'),
