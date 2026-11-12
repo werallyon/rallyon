@@ -81,11 +81,14 @@ class AuthService {
 
   async initialize(): Promise<User | null> {
     if (!supabase) { this.initialized = true; this.notify(); return null; }
+    const actionRevision = this.authActionRevision;
     const revision = ++this.authRevision;
     const { data, error } = await supabase.auth.getSession();
     if (error) throw error;
     const hydratedUser = data.session?.user ? await this.hydrateUser(data.session.user) : null;
-    if (revision === this.authRevision) this.currentUser = hydratedUser;
+    if (isCurrentAuthHydration(revision, this.authRevision, actionRevision, this.authActionRevision)) {
+      this.currentUser = hydratedUser;
+    }
     this.initialized = true;
     this.notify();
     return this.currentUser;
