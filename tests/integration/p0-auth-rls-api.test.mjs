@@ -284,6 +284,63 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
       assert.equal(verifyA.data.team_name, 'A Private Favorite');
     });
 
+    await t.test('profile and favorite replacement are atomic and validate malformed input', async () => {
+      const initial = await userA.client.rpc('save_profile_and_favorite_teams', {
+        p_profile_updates: { name: 'Atomic Profile Before Failure' },
+        p_favorite_teams: [{
+          id: favoriteId,
+          name: 'Atomic Favorite',
+          sportId: 'FOOTBALL',
+          league: 'NFL',
+          abbrev: 'ATF',
+          logo: 'atomic.svg'
+        }]
+      });
+      assert.ifError(initial.error);
+      assert.equal(initial.data.display_name, 'Atomic Profile Before Failure');
+
+      const beforeFailure = await userA.client
+        .from('user_favorite_teams')
+        .select('team_id, team_name')
+        .eq('user_id', userA.user.id);
+      assert.ifError(beforeFailure.error);
+      assert.deepEqual(beforeFailure.data, [{ team_id: favoriteId, team_name: 'Atomic Favorite' }]);
+
+      const rejected = await userA.client.rpc('save_profile_and_favorite_teams', {
+        p_profile_updates: { name: 'MUST ROLL BACK' },
+        p_favorite_teams: [{ id: '   ', name: 'Malformed Favorite' }]
+      });
+      assert.ok(rejected.error, 'malformed favorite input must be rejected');
+
+      const afterFailureProfile = await userA.client
+        .from('profiles')
+        .select('display_name')
+        .eq('id', userA.user.id)
+        .single();
+      assert.ifError(afterFailureProfile.error);
+      assert.equal(afterFailureProfile.data.display_name, 'Atomic Profile Before Failure');
+
+      const afterFailureFavorites = await userA.client
+        .from('user_favorite_teams')
+        .select('team_id, team_name')
+        .eq('user_id', userA.user.id);
+      assert.ifError(afterFailureFavorites.error);
+      assert.deepEqual(afterFailureFavorites.data, [{ team_id: favoriteId, team_name: 'Atomic Favorite' }]);
+
+      const cleared = await userA.client.rpc('save_profile_and_favorite_teams', {
+        p_profile_updates: { name: 'Atomic Clear Succeeded' },
+        p_favorite_teams: []
+      });
+      assert.ifError(cleared.error);
+      assert.equal(cleared.data.display_name, 'Atomic Clear Succeeded');
+      const empty = await userA.client
+        .from('user_favorite_teams')
+        .select('team_id')
+        .eq('user_id', userA.user.id);
+      assert.ifError(empty.error);
+      assert.deepEqual(empty.data, [], 'an empty array must atomically clear the relational selection');
+    });
+
     await t.test('anonymous client cannot read profiles or favorite teams', async () => {
       const profileRead = await anonymous.from('profiles').select('id').eq('id', userA.user.id);
       assertNoVisibleRowsOrDenied(profileRead, 'anonymous profile read');
