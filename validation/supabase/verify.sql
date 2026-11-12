@@ -61,3 +61,55 @@ begin
      or not has_table_privilege('authenticated', 'public.user_favorite_teams', 'DELETE') then
     raise exception 'authenticated lacks required CRUD privileges on relational favorites'; end if;
 end $$;
+
+-- Exercise the exact RPC as an authenticated owner. The outer transaction is
+-- rolled back so the fixture rows remain unchanged for the next test.
+begin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'a1000000-0000-4000-8000-000000000001', true);
+do $$
+declare
+  v_name text;
+  v_favorites integer;
+begin
+  perform public.save_profile_and_favorite_teams(
+    '{"name":"RPC valid empty selection"}'::jsonb,
+    '[]'::jsonb,
+    true
+  );
+
+  select display_name into v_name
+  from public.profiles
+  where id = auth.uid();
+  if v_name <> 'RPC valid empty selection' then
+    raise exception 'Authenticated RPC did not update the canonical profile';
+  end if;
+
+  select count(*) into v_favorites
+  from public.user_favorite_teams
+  where user_id = auth.uid();
+  if v_favorites <> 0 then
+    raise exception 'Authenticated RPC did not treat an empty favorite array as authoritative';
+  end if;
+
+  begin
+    perform public.save_profile_and_favorite_teams(
+      '{"name":"MUST ROLL BACK"}'::jsonb,
+      '[{"id":"   ","name":"Malformed"}]'::jsonb,
+      true
+    );
+    raise exception 'Expected malformed favorite payload to fail';
+  exception when others then
+    if sqlerrm = 'Expected malformed favorite payload to fail' then
+      raise;
+    end if;
+  end;
+
+  select display_name into v_name
+  from public.profiles
+  where id = auth.uid();
+  if v_name <> 'RPC valid empty selection' then
+    raise exception 'Profile update was not rolled back after favorite validation failed';
+  end if;
+end $$;
+rollback;
