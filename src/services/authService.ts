@@ -188,7 +188,6 @@ class AuthService {
       const authUser = {
         id,
         email: this.currentUser.email,
-        user_metadata: {},
         email_confirmed_at: this.currentUser.emailVerified ? new Date().toISOString() : null,
         created_at: this.currentUser.createdAt
       };
