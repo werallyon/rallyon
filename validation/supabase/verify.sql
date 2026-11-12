@@ -71,6 +71,7 @@ do $$
 declare
   v_name text;
   v_favorites integer;
+  v_other_name text;
 begin
   perform public.save_profile_and_favorite_teams(
     '{"name":"RPC valid empty selection"}'::jsonb,
@@ -111,5 +112,92 @@ begin
   if v_name <> 'RPC valid empty selection' then
     raise exception 'Profile update was not rolled back after favorite validation failed';
   end if;
-end $$;
+
+  -- The RPC has no caller-selected owner parameter and rejects ownership keys.
+  begin
+    perform public.save_profile_and_favorite_teams(
+      '{"id":"b2000000-0000-4000-8000-000000000002"}'::jsonb,
+      '[]'::jsonb,
+      false
+    );
+    raise exception 'Expected client-supplied id to be rejected';
+  exception when others then
+    if sqlerrm not like 'Unsupported profile update fields:%' then raise; end if;
+  end;
+
+  begin
+    perform public.save_profile_and_favorite_teams(
+      '{"user_id":"b2000000-0000-4000-8000-000000000002"}'::jsonb,
+      '[]'::jsonb,
+      false
+    );
+    raise exception 'Expected client-supplied user_id to be rejected';
+  exception when others then
+    if sqlerrm not like 'Unsupported profile update fields:%' then raise; end if;
+  end;
+
+  select display_name into v_other_name
+  from public.profiles
+  where id = 'b2000000-0000-4000-8000-000000000002'::uuid;
+  if v_other_name <> 'P0 Bravo' then
+    raise exception 'RPC ownership injection changed another user profile';
+  end if;
+end $;
+rollback;
+
+-- Anonymous cannot execute the transactional RPC or mutate either protected table.
+begin;
+set local role anon;
+do $
+begin
+  begin
+    perform public.save_profile_and_favorite_teams('{}'::jsonb, '[]'::jsonb, true);
+    raise exception 'Expected anonymous RPC execution to be denied';
+  exception when insufficient_privilege then
+    null;
+  end;
+
+  begin
+    insert into public.profiles (id) values ('a1000000-0000-4000-8000-000000000001');
+    raise exception 'Expected anonymous profile insert to be denied';
+  exception when insufficient_privilege then
+    null;
+  end;
+
+  begin
+    update public.profiles set display_name = 'ANON WRITE';
+    raise exception 'Expected anonymous profile update to be denied';
+  exception when insufficient_privilege then
+    null;
+  end;
+
+  begin
+    delete from public.profiles;
+    raise exception 'Expected anonymous profile delete to be denied';
+  exception when insufficient_privilege then
+    null;
+  end;
+
+  begin
+    insert into public.user_favorite_teams (user_id, team_id, team_name, sport_id, league, abbrev, logo, sort_order)
+    values ('a1000000-0000-4000-8000-000000000001', 'anon-team', 'Anonymous', 'OTHER', 'OTHER', '', '', 0);
+    raise exception 'Expected anonymous favorite insert to be denied';
+  exception when insufficient_privilege then
+    null;
+  end;
+
+  begin
+    update public.user_favorite_teams set team_name = 'ANON WRITE';
+    raise exception 'Expected anonymous favorite update to be denied';
+  exception when insufficient_privilege then
+    null;
+  end;
+
+  begin
+    delete from public.user_favorite_teams;
+    raise exception 'Expected anonymous favorite delete to be denied';
+  exception when insufficient_privilege then
+    null;
+  end;
+end $;
 rollback;
