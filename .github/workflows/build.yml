@@ -82,7 +82,7 @@ jobs:
         run: bash validation/run-local-sql.sh validation/supabase/verify.sql
 
       - name: Verify real Auth, PostgREST, RLS and lifecycle behavior
-        run: node --test tests/integration/p0-auth-rls-api.test.mjs
+        run: node --import tsx --test tests/integration/p0-auth-rls-api.test.mjs
 
       - name: Verify preflight rejects unsafe policies, triggers, schema and grants
         run: bash validation/verify-preflight-guards.sh
