@@ -2,7 +2,8 @@
 -- The table and owner RLS policies are created by the preceding validation migrations.
 create or replace function public.save_profile_and_favorite_teams(
   p_profile_updates jsonb default '{}'::jsonb,
-  p_favorite_teams jsonb default null
+  p_favorite_teams jsonb default '[]'::jsonb,
+  p_replace_favorite_teams boolean default false
 )
 returns public.profiles
 language plpgsql
@@ -19,7 +20,7 @@ begin
   if p_profile_updates is null or jsonb_typeof(p_profile_updates) <> 'object' then
     raise exception 'Profile updates must be a JSON object';
   end if;
-  if p_favorite_teams is not null and jsonb_typeof(p_favorite_teams) <> 'array' then
+  if p_replace_favorite_teams and jsonb_typeof(p_favorite_teams) <> 'array' then
     raise exception 'Favorite teams must be a JSON array';
   end if;
 
@@ -105,7 +106,7 @@ begin
     raise exception 'Canonical profile row is missing for authenticated user %', v_user_id;
   end if;
 
-  if p_favorite_teams is not null then
+  if p_replace_favorite_teams then
     if exists (
       select 1 from jsonb_array_elements(p_favorite_teams) as t(value)
       where coalesce(jsonb_typeof(t.value), 'null') <> 'object'
@@ -155,6 +156,6 @@ begin
 end;
 $$;
 
-revoke all on function public.save_profile_and_favorite_teams(jsonb, jsonb) from public, anon;
-revoke all on function public.save_profile_and_favorite_teams(jsonb, jsonb) from public, anon;
-grant execute on function public.save_profile_and_favorite_teams(jsonb, jsonb) to authenticated;
+revoke all on function public.save_profile_and_favorite_teams(jsonb, jsonb, boolean) from public, anon;
+revoke all on function public.save_profile_and_favorite_teams(jsonb, jsonb, boolean) from public, anon;
+grant execute on function public.save_profile_and_favorite_teams(jsonb, jsonb, boolean) to authenticated;
