@@ -69,6 +69,47 @@ begin
     raise exception 'P0-C preflight: public.profiles must have authenticated owner-scoped SELECT, INSERT, and UPDATE policies (UPDATE requires USING and WITH CHECK)';
   end if;
 
+  -- Normalize the known legacy production bootstrap/grant shape before the
+  -- strict checks below. This is intentionally narrow: only the canonical
+  -- handle_new_user() implementation owned by postgres/supabase_admin is
+  -- eligible for hardening. Unknown trigger implementations fail closed.
+  declare
+    v_bootstrap_oid oid;
+    v_bootstrap_definition text;
+  begin
+    select p.oid, pg_get_functiondef(p.oid)
+      into v_bootstrap_oid, v_bootstrap_definition
+    from pg_trigger t
+    join pg_proc p on p.oid = t.tgfoid
+    join pg_namespace pn on pn.oid = p.pronamespace
+    where t.tgrelid = 'auth.users'::regclass
+      and not t.tgisinternal
+      and t.tgname = 'on_auth_user_created'
+      and t.tgenabled in ('O', 'A')
+      and t.tgtype = 5
+      and pn.nspname = 'public'
+      and p.proname = 'handle_new_user'
+      and p.prorettype = 'trigger'::regtype
+      and p.prolang = (select oid from pg_language where lanname = 'plpgsql')
+      and pg_get_userbyid(p.proowner) in ('postgres', 'supabase_admin');
+
+    if v_bootstrap_oid is null
+       or v_bootstrap_definition not ilike '%insert into public.profiles%'
+       or v_bootstrap_definition not ilike '%new.raw_user_meta_data%'
+       or v_bootstrap_definition not ilike '%on conflict (id) do nothing%'
+       or v_bootstrap_definition ilike '%execute %' then
+      raise exception 'P0-C preflight: legacy Auth bootstrap function is not the recognized safe profile-insert implementation; inspect it manually';
+    end if;
+
+    execute 'alter function public.handle_new_user() security definer';
+    execute 'alter function public.handle_new_user() set search_path = public, pg_temp';
+  end;
+
+  -- The live production profile table has an explicit legacy anon grant.
+  -- Remove only anon/PUBLIC access; authenticated and service_role grants
+  -- remain subject to the existing owner-scoped RLS policies.
+  revoke all privileges on table public.profiles from anon, public;
+
   select exists (
     select 1
     from pg_trigger t
