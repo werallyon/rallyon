@@ -22,10 +22,12 @@ The previous implementation had two competing sources:
 
 ## Implemented behavior
 
-- Auth-state changes now hydrate the user from `public.profiles` before notifying application consumers; stale asynchronous auth events are ignored.
+- Auth-state changes now hydrate the user from `public.profiles` before publishing an authenticated user; stale asynchronous auth events are ignored. Switching identities clears the previous account's in-memory profile while the new row loads.
 - Profile mapping uses `public.profiles` for name, username, avatar, onboarding state, home location, favorites, experience preferences, match preferences, privacy settings, notification preferences, and saved venue IDs.
 - Auth metadata is no longer a fallback for profile fields.
 - Email, verification state, provider, and account creation time continue to come from the Auth identity.
+- `getUserWithProfile()` requires an actual profile row. A missing row or query/RLS failure rejects hydration; it is never converted into a synthetic default profile from Auth identity or metadata.
+- Auth-state hydration failures fail closed (no authenticated profile is published) and are logged for diagnosis.
 - Profile writes remain explicit updates. The client does not silently upsert/create missing profile rows; a missing row raises a clear error so bootstrap/schema defects are not hidden.
 
 ## Field ownership
@@ -66,10 +68,11 @@ The repository's prior client code demonstrates these column names, but this PR 
 - `src/services/profileService.ts` — canonical profile mapping and update behavior.
 - `src/services/authService.ts` — auth identity hydration and stale-event protection.
 - `docs/profile-source-of-truth.md` — decision, field ownership, assumptions, dependencies, and rollout notes.
+- `tests/profile-source-of-truth.test.mjs` — regression guards for metadata precedence, missing-row behavior, and auth hydration.
 
 ## Validation
 
-Run locally before merge:
+Run locally before merge (these commands have not yet been executed in this hosted GitHub editing session):
 
 ```bash
 npm test
@@ -77,4 +80,8 @@ npm run lint
 npm run build
 ```
 
-Also verify with a disposable Supabase project that a newly registered user receives a profile row, profile edits survive sign-out/sign-in, and stale Auth metadata cannot overwrite the row. Do not run this validation against production.
+Also verify with a disposable/local Supabase project that a newly registered user receives a profile row, profile edits survive sign-out/sign-in, stale Auth metadata cannot overwrite the row, session restoration reads the row, and missing/partial rows fail safely. Inspect the actual trigger/function, table constraints, grants, and RLS policies before interpreting the signup result. Do not run this validation against production.
+
+### Current validation status
+
+The repository-level regression tests added by this PR are source-contract tests; they do not replace runtime integration tests. No disposable Supabase instance is currently provisioned or connected in this work session, so signup trigger behavior, real RLS behavior, and persisted session lifecycle remain unverified. Do not approve or merge until those database checks and CI have completed.
