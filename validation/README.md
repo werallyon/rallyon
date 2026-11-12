@@ -31,7 +31,7 @@ npm run test:integration:p0-auth-rls
 The test obtains `API_URL`, `ANON_KEY`, and `SERVICE_ROLE_KEY` at runtime from:
 
 ```bash
-supabase --workdir validation status --env --output-format text
+supabase --workdir validation status --output env --output-format text
 ```
 
 It does not read shell `.env` files or hosted-project credentials. Before creating any client, it validates that the API URL is plain HTTP on loopback (`127.0.0.1`, `localhost`, or `::1`) and that the local JWT roles are `anon` and `service_role`. The service-role key is held only in the Node test process and is used exclusively to delete the test users during cleanup; it is never printed or written to disk.
