@@ -74,14 +74,14 @@ begin
   from pg_policies
   where schemaname = 'public' and tablename = 'profiles'
     and permissive = 'PERMISSIVE'
-    and cmd in ('SELECT', 'INSERT', 'UPDATE')
+    and cmd in ('SELECT', 'INSERT', 'UPDATE', 'DELETE', 'ALL')
     and (roles @> array['authenticated']::name[] or roles @> array['anon']::name[] or roles @> array['public']::name[])
     and (
-      (cmd in ('SELECT', 'UPDATE') and (
+      (cmd in ('SELECT', 'UPDATE', 'DELETE', 'ALL') and (
         lower(coalesce(qual, '')) not like '%auth.uid()%'
         or lower(coalesce(qual, '')) not like '%id%'
       ))
-      or (cmd in ('INSERT', 'UPDATE') and (
+      or (cmd in ('INSERT', 'UPDATE', 'ALL') and (
         lower(coalesce(with_check, '')) not like '%auth.uid()%'
         or lower(coalesce(with_check, '')) not like '%id%'
       ))
