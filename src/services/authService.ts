@@ -1,7 +1,7 @@
 import { User } from '../types';
 import { supabase } from '../lib/supabaseClient';
-import { getUserWithProfile, mergeAuthUserWithProfile, updateProfile } from './profileService';
-import { getFavoriteTeams, replaceFavoriteTeams } from './teamPreferenceService';
+import { getUserWithProfile, mergeAuthUserWithProfile } from './profileService';
+import { getFavoriteTeams, normalizeFavoriteTeams } from './teamPreferenceService';
 
 export interface SignUpParams {
   firstName: string;
@@ -42,6 +42,7 @@ class AuthService {
   private listeners = new Set<(user: User | null) => void>();
   private initialized = false;
   private authRevision = 0;
+  private authActionRevision = 0;
   private profileWriteRevision = 0;
 
   constructor() {
@@ -96,16 +97,18 @@ class AuthService {
   getCurrentUser() { return this.currentUser; }
 
   private async hydrateUser(authUser: any): Promise<User> {
-    // Canonical profile errors must propagate. Only the optional relational
-    // favorite-team read has a legacy compatibility fallback.
+    // Once relational favorites are the active source, a read failure is not
+    // an empty result and must never expose stale legacy JSON as current data.
     const user = await getUserWithProfile(authUser);
-    try {
-      const favoriteTeams = await getFavoriteTeams(authUser.id);
-      return { ...user, favoriteTeams };
-    } catch (error) {
-      console.warn('Relational favorite teams unavailable; retaining legacy profile values.', error);
-      return user;
-    }
+    const favoriteTeams = await getFavoriteTeams(authUser.id);
+    return { ...user, favoriteTeams };
+  }
+
+  private async isCurrentAuthAction(actionRevision: number, userId: string): Promise<boolean> {
+    if (actionRevision !== this.authActionRevision) return false;
+    const { data, error } = await supabase!.auth.getSession();
+    if (error) throw error;
+    return actionRevision === this.authActionRevision && data.session?.user.id === userId;
   }
   private notify() { this.listeners.forEach((cb) => cb(this.currentUser)); }
 
@@ -131,24 +134,56 @@ class AuthService {
       username: p.username?.trim() || `${p.firstName.toLowerCase()}_${Math.floor(100 + Math.random() * 900)}`,
       authProvider: 'EMAIL', onboardingCompleted: false, onboardingStep: 'welcome'
     };
+    const actionRevision = ++this.authActionRevision;
     const { data, error } = await supabase.auth.signUp({
       email, password: p.password, options: { data: metadata, emailRedirectTo: window.location.origin }
     });
     if (error) return { success: false, error: error.message };
     if (!data.user) return { success: false, error: 'Account creation did not return a user.' };
-    if (!data.session) return { success: true, requiresEmailVerification: true, error: 'Account created. Check your email to verify your RallyOn account, then sign in.' };
-    this.currentUser = await this.hydrateUser(data.user); this.notify();
-    return { success: true, user: this.currentUser };
+    if (!data.session) {
+      if (actionRevision !== this.authActionRevision) return { success: false, error: 'Sign-up was superseded by a newer authentication action.' };
+      return { success: true, requiresEmailVerification: true, error: 'Account created. Check your email to verify your RallyOn account, then sign in.' };
+    }
+    try {
+      const revision = this.authRevision;
+      if (!(await this.isCurrentAuthAction(actionRevision, data.user.id))) {
+        return { success: false, error: 'Sign-up was superseded by a newer authentication session.' };
+      }
+      const user = await this.hydrateUser(data.user);
+      if (revision !== this.authRevision || !(await this.isCurrentAuthAction(actionRevision, data.user.id))) {
+        return { success: false, error: 'Sign-up was superseded by a newer authentication session.' };
+      }
+      this.currentUser = user;
+      this.notify();
+      return { success: true, user };
+    } catch (hydrateError) {
+      return { success: false, error: hydrateError instanceof Error ? hydrateError.message : 'Unable to load the new account profile.' };
+    }
   }
 
   async signIn(email: string, password: string): Promise<AuthResponse> {
     if (!this.validateEmail(email)) return { success: false, error: 'Please enter a valid email address.' };
     if (!password) return { success: false, error: 'Please enter your password.' };
     if (!supabase) return { success: false, error: 'Supabase is not configured.' };
+    const actionRevision = ++this.authActionRevision;
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
     if (error) return { success: false, error: error.message };
-    this.currentUser = data.user ? await this.hydrateUser(data.user) : null; this.notify();
-    return { success: Boolean(this.currentUser), user: this.currentUser || undefined };
+    if (!data.user) return { success: false, error: 'Sign-in did not return an authenticated user.' };
+    try {
+      const revision = this.authRevision;
+      if (!(await this.isCurrentAuthAction(actionRevision, data.user.id))) {
+        return { success: false, error: 'Sign-in was superseded by a newer authentication session.' };
+      }
+      const user = await this.hydrateUser(data.user);
+      if (revision !== this.authRevision || !(await this.isCurrentAuthAction(actionRevision, data.user.id))) {
+        return { success: false, error: 'Sign-in was superseded by a newer authentication session.' };
+      }
+      this.currentUser = user;
+      this.notify();
+      return { success: true, user };
+    } catch (hydrateError) {
+      return { success: false, error: hydrateError instanceof Error ? hydrateError.message : 'Unable to load the account profile.' };
+    }
   }
 
   async signInWithGoogle(): Promise<AuthResponse> {
@@ -163,7 +198,7 @@ class AuthService {
     return error ? { success: false, error: error.message } : { success: true };
   }
 
-  async signInDemoUser(): Promise<AuthResponse> { this.currentUser = demoUser; this.notify(); return { success: true, user: demoUser }; }
+  async signInDemoUser(): Promise<AuthResponse> { this.authActionRevision++; this.profileWriteRevision++; this.currentUser = demoUser; this.notify(); return { success: true, user: demoUser }; }
 
   async sendPasswordReset(email: string) {
     if (!supabase) return { success: false, message: 'Supabase is not configured.' };
@@ -182,14 +217,26 @@ class AuthService {
     const previousUser = this.currentUser;
     const writeRevision = ++this.profileWriteRevision;
     const updated = { ...previousUser, ...updates, id, updatedAt: new Date().toISOString() } as User;
-    this.currentUser = updated; this.notify();
+    this.currentUser = updated;
+    this.notify();
+
+    // Demo identities are intentionally local-only and never sent to Auth/RLS.
+    if (id.startsWith('usr_')) return updated;
+
     const { favoriteTeams, ...profileUpdates } = updates;
-    const profileSave = updateProfile(id, profileUpdates);
-    const favoriteTeamsSave = favoriteTeams === undefined || id.startsWith('usr_')
-      ? Promise.resolve(updated.favoriteTeams)
-      : replaceFavoriteTeams(id, favoriteTeams);
-    void Promise.all([profileSave, favoriteTeamsSave]).then(([profile, savedTeams]) => {
+    void (async () => {
+      const { data: profile, error } = await supabase!.rpc('save_profile_and_favorite_teams', {
+        p_profile_updates: profileUpdates,
+        p_favorite_teams: favoriteTeams === undefined ? null : favoriteTeams
+      });
+      if (error) throw error;
+      if (!profile) throw new Error('The transactional profile save returned no canonical profile row.');
+
+      const savedTeams = favoriteTeams === undefined
+        ? updated.favoriteTeams
+        : normalizeFavoriteTeams(favoriteTeams);
       if (this.currentUser?.id !== id || writeRevision !== this.profileWriteRevision) return;
+
       const authUser = {
         id,
         email: this.currentUser.email,
@@ -201,17 +248,17 @@ class AuthService {
         favoriteTeams: savedTeams
       };
       this.notify();
-    }).catch((error) => {
+    })().catch((error) => {
       if (this.currentUser?.id === id && writeRevision === this.profileWriteRevision) {
         this.currentUser = previousUser;
         this.notify();
       }
-      console.error('Unable to persist profile or favorite-team changes.', error);
+      console.error('Unable to persist the transactional profile and favorite-team update.', error);
     });
     return updated;
   }
   completeOnboarding(id: string) { return this.updateUser(id, { onboardingCompleted: true, onboardingStep: 'complete' }); }
-  logout() { this.profileWriteRevision++; if (supabase) void supabase.auth.signOut(); this.currentUser = null; this.notify(); }
+  logout() { this.authActionRevision++; this.profileWriteRevision++; if (supabase) void supabase.auth.signOut(); this.currentUser = null; this.notify(); }
   deleteAccount(_id: string) { return false; }
 }
 
