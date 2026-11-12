@@ -40,3 +40,7 @@ Do not run a broad migration push blindly. Before any production deployment:
 ## Safety boundary
 
 The compatibility migration and fixture changes are committed to the PR #22 branch. Only isolated local validation may execute them before approval. No production DDL, DML, grants, trigger changes, or migration-history changes were made during this work.
+
+## Validation detail
+
+The missing-trigger negative fixture deliberately removes the Auth trigger. The migration leaves that case to the strict trigger preflight so it fails with the dedicated missing-trigger diagnostic; it does not misclassify absence as an unknown function implementation. If a trigger exists but its function body differs from the reviewed canonical profile-insert implementation, the migration aborts before changing function privileges.
