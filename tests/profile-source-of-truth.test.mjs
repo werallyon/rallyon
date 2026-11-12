@@ -47,8 +47,14 @@ test('auth hydration treats relational favorites as authoritative and fails clos
   assert.equal(/catch/.test(hydrator), false);
 });
 
-test('auth-state and direct auth-action completions are guarded against stale sessions', () => {
+test('initialization, auth-state hydration, and direct auth actions reject stale completions', () => {
+  const initialization = authService.slice(
+    authService.indexOf('async initialize'),
+    authService.indexOf('subscribe(')
+  );
+  assert.match(initialization, /const actionRevision = this\\.authActionRevision/);
+  assert.match(initialization, /isCurrentAuthHydration\\(revision, this\\.authRevision, actionRevision, this\\.authActionRevision\\)/);
   assert.match(authService, /isCurrentAuthHydration/);
   assert.match(authService, /isAuthActionCurrent/);
-  assert.match(authService, /this\.isCurrentAuthAction\(actionRevision, data\.user\.id\)/);
+  assert.match(authService, /this\\.isCurrentAuthAction\\(actionRevision, data\\.user\\.id\\)/);
 });
