@@ -203,7 +203,7 @@ Deno.serve(async (req: Request) => {
             start_time: event.date,
             status: statusOf(event),
             live_details: event.status?.type?.state === "in" ? {
-              currentScore: { home: Number(home.score ?? 0), away: Number(away.score ?? 0) },
+              currentScore: { home: Number(home?.score ?? 0), away: Number(away?.score ?? 0) },
               period: event.status?.period ? String(event.status.period) : "",
               clock: event.status?.displayClock ?? "",
               headline: event.status?.type?.detail ?? "",
