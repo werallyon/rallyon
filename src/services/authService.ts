@@ -93,17 +93,15 @@ class AuthService {
   getCurrentUser() { return this.currentUser; }
 
   private async hydrateUser(authUser: any): Promise<User> {
+    // Canonical profile errors must propagate. Only the optional relational
+    // favorite-team read has a legacy compatibility fallback.
+    const user = await getUserWithProfile(authUser);
     try {
-      const user = await getUserWithProfile(authUser);
-      try {
-        // A successful empty relational result is authoritative; legacy JSON is
-        // only retained as a compatibility fallback while the migration is absent.
-        const favoriteTeams = await getFavoriteTeams(authUser.id);
-        return { ...user, favoriteTeams };
-      } catch (error) {
-        console.warn('Relational favorite teams unavailable; retaining legacy profile values.', error);
-        return user;
-      }
+      const favoriteTeams = await getFavoriteTeams(authUser.id);
+      return { ...user, favoriteTeams };
+    } catch (error) {
+      console.warn('Relational favorite teams unavailable; retaining legacy profile values.', error);
+      return user;
     }
   }
   private notify() { this.listeners.forEach((cb) => cb(this.currentUser)); }
