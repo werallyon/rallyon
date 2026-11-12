@@ -104,8 +104,6 @@ class AuthService {
         console.warn('Relational favorite teams unavailable; retaining legacy profile values.', error);
         return user;
       }
-    } catch {
-      return mergeAuthUserWithProfile(authUser);
     }
   }
   private notify() { this.listeners.forEach((cb) => cb(this.currentUser)); }
