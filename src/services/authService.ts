@@ -1,7 +1,7 @@
 import { User } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { getUserWithProfile, mergeAuthUserWithProfile } from './profileService';
-import { getFavoriteTeams } from './teamPreferenceService';
+import { getFavoriteTeams, normalizeFavoriteTeams } from './teamPreferenceService';
 
 export interface SignUpParams {
   firstName: string;
@@ -234,7 +234,7 @@ class AuthService {
 
       const savedTeams = favoriteTeams === undefined
         ? updated.favoriteTeams
-        : await getFavoriteTeams(id);
+        : normalizeFavoriteTeams(favoriteTeams);
       if (this.currentUser?.id !== id || writeRevision !== this.profileWriteRevision) return;
 
       const authUser = {
