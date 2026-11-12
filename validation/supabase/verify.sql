@@ -7,6 +7,8 @@ declare
   alpha_favorites integer;
   bravo_favorites integer;
   invalid_rows integer;
+  anon_privileges integer;
+  authenticated_non_crud integer;
 begin
   select count(*) into auth_count from auth.users
   where id in ('a1000000-0000-4000-8000-000000000001'::uuid,
@@ -36,5 +38,16 @@ begin
   if not (select relrowsecurity from pg_class where oid='public.user_favorite_teams'::regclass) then
     raise exception 'RLS is not enabled on user_favorite_teams';
   end if;
+  select count(*) into anon_privileges
+  from information_schema.role_table_grants
+  where table_schema='public' and table_name='user_favorite_teams'
+    and grantee='anon';
+  select count(*) into authenticated_non_crud
+  from information_schema.role_table_grants
+  where table_schema='public' and table_name='user_favorite_teams'
+    and grantee='authenticated'
+    and privilege_type not in ('SELECT','INSERT','UPDATE','DELETE');
+  if anon_privileges <> 0 then raise exception 'anon has % favorite-table grants', anon_privileges; end if;
+  if authenticated_non_crud <> 0 then raise exception 'authenticated has % non-CRUD favorite-table grants', authenticated_non_crud; end if;
   raise notice 'PASS: P0-A profile bootstrap and P0-C favorite backfill fixture checks';
 end $$;
