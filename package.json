@@ -14,7 +14,7 @@
     "supabase:validation:status": "supabase --workdir validation status",
     "supabase:validation:reset": "supabase --workdir validation db reset",
     "supabase:validation:stop": "supabase --workdir validation stop",
-    "supabase:validation:verify": "supabase --workdir validation db query --local --file validation/supabase/verify.sql",
+    "supabase:validation:verify": "supabase --workdir validation db query --local --file supabase/verify.sql",
     "test:integration:p0-auth-rls": "node --test tests/integration/p0-auth-rls-api.test.mjs"
   },
   "dependencies": {
