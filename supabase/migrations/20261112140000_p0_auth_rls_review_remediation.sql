@@ -21,7 +21,7 @@ begin
   if p_profile_updates is null or jsonb_typeof(p_profile_updates) <> 'object' then
     raise exception 'Profile updates must be a JSON object';
   end if;
-  if p_replace_favorite_teams and jsonb_typeof(p_favorite_teams) <> 'array' then
+  if p_replace_favorite_teams and coalesce(jsonb_typeof(p_favorite_teams), 'null') <> 'array' then
     raise exception 'Favorite teams must be a JSON array';
   end if;
 
