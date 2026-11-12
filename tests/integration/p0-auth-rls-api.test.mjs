@@ -3,7 +3,11 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { parse as parseDotenv } from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+import WebSocket from 'ws';
 import test from 'node:test';
+
+// Node 20 does not expose a global WebSocket; Supabase Auth clients initialize Realtime.
+if (!globalThis.WebSocket) globalThis.WebSocket = WebSocket;
 
 const PROJECT_WORKDIR = 'validation';
 
