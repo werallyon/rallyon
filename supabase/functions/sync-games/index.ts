@@ -152,8 +152,8 @@ Deno.serve(async (req: Request) => {
   const allGames: any[] = [];
   const diagnostics: any[] = [];
 
-  // Fetch the seven configured leagues concurrently for each date. This keeps
-  // the seven-day run bounded without launching 49 simultaneous ESPN requests.
+  // Fetch the configured leagues concurrently for each date. This keeps
+  // the seven-day run bounded without launching every date and league at once.
   for (const syncDate of syncDates) {
     const results = await Promise.all(LEAGUES.map(async ([sport, league, leagueCode, sportCode, eventType]) => {
       const games: any[] = [];
