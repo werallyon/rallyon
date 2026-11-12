@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { User, AuthState } from '../types';
 import { authService, SignUpParams, AuthResponse } from '../services/authService';
 
@@ -26,11 +26,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [authError, setAuthError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);\n  const authRequestRevision = useRef(0);
 
   useEffect(() => {
     let mounted = true;
-    const unsubscribe = authService.subscribe((user) => { if (mounted) setCurrentUser(user); });
+    const unsubscribe = authService.subscribe((user) => {\n      if (mounted) {\n        setCurrentUser(user);\n        if (user) setAuthError(null);\n      }\n    });
     authService.initialize()
       .catch((e: any) => { if (mounted) setAuthError(e?.message || 'Unable to initialize authentication.'); })
       .finally(() => { if (mounted) setIsLoading(false); });
@@ -52,7 +52,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true); setAuthError(null);
     try {
       const res = await authService.signUp(params);
-      if (!res.success || res.requiresEmailVerification) setAuthError(res.error || 'Please check your email to continue.');
+      if (requestRevision === authRequestRevision.current && (!res.success || res.requiresEmailVerification)) setAuthError(res.error || 'Please check your email to continue.');
       return res;
     } catch (e: any) {
       const msg = e?.message || 'An unexpected error occurred during account creation.';
@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true); setAuthError(null);
     try {
       const res = await authService.signIn(email, pass);
-      if (!res.success && res.error) setAuthError(res.error);
+      if (requestRevision === authRequestRevision.current && !res.success && res.error) setAuthError(res.error);
       return res;
     } catch (e: any) {
       const msg = e?.message || 'Unable to sign in. Please verify your credentials.';
@@ -86,7 +86,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     finally { setIsLoading(false); }
   };
 
-  const handleDemoSignIn = async () => { setIsLoading(true); setAuthError(null); try { return await authService.signInDemoUser(); } finally { setIsLoading(false); } };
+  const handleDemoSignIn = async () => { const requestRevision = ++authRequestRevision.current; setIsLoading(true); setAuthError(null); try { return await authService.signInDemoUser(); } finally { if (requestRevision === authRequestRevision.current) setIsLoading(false); } };
   const handlePasswordReset = async (email: string) => authService.sendPasswordReset(email);
   const handleResendVerification = async () => authService.resendVerificationEmail();
   const handleUpdateUser = (updates: Partial<User>) => {
@@ -101,7 +101,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (updated) setCurrentUser(updated);
     return updated;
   };
-  const handleLogout = () => { authService.logout(); setCurrentUser(null); setAuthError(null); };
+  const handleLogout = () => { authRequestRevision.current++; authService.logout(); setCurrentUser(null); setAuthError(null); setIsLoading(false); };
   const handleDeleteAccount = () => {
     if (!currentUser) return false;
     const res = authService.deleteAccount(currentUser.id);
