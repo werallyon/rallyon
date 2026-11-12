@@ -26,7 +26,7 @@ update public.games
 set event_type = case
   when league = 'UFC' then 'FIGHT'
   when league in ('ATP','WTA') then 'MATCH'
-  when league in ('PGA','LPGA','LIV') then 'TOURNAMENT'
+  when league in ('PGA','LPGA','LIV','DP_WORLD') then 'TOURNAMENT'
   when league in ('F1','NASCAR','INDYCAR') then 'RACE'
   else 'GAME'
 end;
