@@ -44,6 +44,7 @@ test('migration refuses unsafe legacy data and unknown pre-existing relations', 
   assert.ok(migration.includes("PUBLIC has"));
   assert.ok(migration.includes("has_any_column_privilege"));
   assert.ok(migration.includes("PUBLIC has % column grants"));
+  assert.ok(migration.includes("favorite_teams must be NOT NULL with a default"));
   assert.ok(migration.includes("v_anon_grants"));
   assert.ok(migration.includes("jsonb_typeof(favorite_teams::jsonb)"));
   assert.ok(migration.includes("distinct on (p.id, t.value->>'id')"));
