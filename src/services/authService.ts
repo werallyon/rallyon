@@ -39,7 +39,8 @@ const demoUser: User = {
   savedVenueIds: ['venue_bufords', 'venue_cover3', 'venue_haymaker']
 };
 
-class AuthService {
+export class AuthService {
+  private client: typeof supabase;
   private currentUser: User | null = null;
   private listeners = new Set<(user: User | null) => void>();
   private initialized = false;
@@ -47,8 +48,9 @@ class AuthService {
   private authActionRevision = 0;
   private profileWriteRevision = 0;
 
-  constructor() {
-    supabase?.auth.onAuthStateChange((_event, session) => {
+  constructor(client: typeof supabase = supabase) {
+    this.client = client;
+    this.client?.auth.onAuthStateChange((_event, session) => {
       const actionRevision = this.authActionRevision;
       const revision = ++this.authRevision;
       if (!isCurrentAuthHydration(revision, this.authRevision, actionRevision, this.authActionRevision)) return;
@@ -81,10 +83,10 @@ class AuthService {
   }
 
   async initialize(): Promise<User | null> {
-    if (!supabase) { this.initialized = true; this.notify(); return null; }
+    if (!this.client) { this.initialized = true; this.notify(); return null; }
     const actionRevision = this.authActionRevision;
     const revision = ++this.authRevision;
-    const { data, error } = await supabase.auth.getSession();
+    const { data, error } = await this.client.auth.getSession();
     if (error) throw error;
     const hydratedUser = data.session?.user ? await this.hydrateUser(data.session.user) : null;
     if (isCurrentAuthHydration(revision, this.authRevision, actionRevision, this.authActionRevision)) {
@@ -113,7 +115,7 @@ class AuthService {
 
   private async isCurrentAuthAction(actionRevision: number, userId: string): Promise<boolean> {
     if (actionRevision !== this.authActionRevision) return false;
-    const { data, error } = await supabase!.auth.getSession();
+    const { data, error } = await this.client!.auth.getSession();
     if (error) throw error;
     return isAuthActionCurrent(actionRevision, this.authActionRevision, userId, data.session?.user.id ?? null);
   }
@@ -133,7 +135,7 @@ class AuthService {
     if (!this.validateEmail(email)) return { success: false, error: 'Please enter a valid email address.' };
     if (!strength.valid) return { success: false, error: strength.message };
     if (p.confirmPassword && p.password !== p.confirmPassword) return { success: false, error: 'Passwords do not match.' };
-    if (!supabase) return { success: false, error: 'Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.' };
+    if (!this.client) return { success: false, error: 'Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.' };
 
     const metadata = {
       firstName: p.firstName.trim(), lastName: p.lastName.trim(),
@@ -142,7 +144,7 @@ class AuthService {
       authProvider: 'EMAIL', onboardingCompleted: false, onboardingStep: 'welcome'
     };
     const actionRevision = ++this.authActionRevision;
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await this.client.auth.signUp({
       email, password: p.password, options: { data: metadata, emailRedirectTo: window.location.origin }
     });
     if (error) return { success: false, error: error.message };
@@ -171,9 +173,9 @@ class AuthService {
   async signIn(email: string, password: string): Promise<AuthResponse> {
     if (!this.validateEmail(email)) return { success: false, error: 'Please enter a valid email address.' };
     if (!password) return { success: false, error: 'Please enter your password.' };
-    if (!supabase) return { success: false, error: 'Supabase is not configured.' };
+    if (!this.client) return { success: false, error: 'Supabase is not configured.' };
     const actionRevision = ++this.authActionRevision;
-    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+    const { data, error } = await this.client.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
     if (error) return { success: false, error: error.message };
     if (!data.user) return { success: false, error: 'Sign-in did not return an authenticated user.' };
     try {
@@ -194,33 +196,33 @@ class AuthService {
   }
 
   async signInWithGoogle(): Promise<AuthResponse> {
-    if (!supabase) return { success: false, error: 'Supabase is not configured.' };
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
+    if (!this.client) return { success: false, error: 'Supabase is not configured.' };
+    const { error } = await this.client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
     return error ? { success: false, error: error.message } : { success: true };
   }
 
   async signInWithApple(): Promise<AuthResponse> {
-    if (!supabase) return { success: false, error: 'Supabase is not configured.' };
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'apple', options: { redirectTo: window.location.origin } });
+    if (!this.client) return { success: false, error: 'Supabase is not configured.' };
+    const { error } = await this.client.auth.signInWithOAuth({ provider: 'apple', options: { redirectTo: window.location.origin } });
     return error ? { success: false, error: error.message } : { success: true };
   }
 
   async signInDemoUser(): Promise<AuthResponse> { this.authActionRevision++; this.profileWriteRevision++; this.currentUser = demoUser; this.notify(); return { success: true, user: demoUser }; }
 
   async sendPasswordReset(email: string) {
-    if (!supabase) return { success: false, message: 'Supabase is not configured.' };
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: window.location.origin });
+    if (!this.client) return { success: false, message: 'Supabase is not configured.' };
+    const { error } = await this.client.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: window.location.origin });
     return error ? { success: false, message: error.message } : { success: true, message: 'Password reset email sent. Check your inbox.' };
   }
 
   async resendVerificationEmail() {
-    if (!supabase || !this.currentUser?.email) return { success: false, message: 'No account is ready for verification.' };
-    const { error } = await supabase.auth.resend({ type: 'signup', email: this.currentUser.email });
+    if (!this.client || !this.currentUser?.email) return { success: false, message: 'No account is ready for verification.' };
+    const { error } = await this.client.auth.resend({ type: 'signup', email: this.currentUser.email });
     return error ? { success: false, message: error.message } : { success: true, message: 'Verification email sent.' };
   }
 
   updateUser(id: string, updates: Partial<User>): User | null {
-    if (!this.currentUser || this.currentUser.id !== id || !supabase) return null;
+    if (!this.currentUser || this.currentUser.id !== id || !this.client) return null;
     const previousUser = this.currentUser;
     const writeRevision = ++this.profileWriteRevision;
     const updated = { ...previousUser, ...updates, id, updatedAt: new Date().toISOString() } as User;
@@ -236,14 +238,14 @@ class AuthService {
       // in-memory user can lag a token/account transition while an action is
       // waiting to be persisted; never submit an old account's payload under
       // a newly authenticated session.
-      const { data: authData, error: authError } = await supabase!.auth.getUser();
+      const { data: authData, error: authError } = await this.client!.auth.getUser();
       if (authError) throw authError;
       if (!authData.user || authData.user.id !== id) {
         throw new Error('Profile updates require the same currently authenticated user that initiated the change.');
       }
       if (this.currentUser?.id !== id || writeRevision !== this.profileWriteRevision) return;
 
-      const { data: profile, error } = await supabase!.rpc('save_profile_and_favorite_teams', {
+      const { data: profile, error } = await this.client!.rpc('save_profile_and_favorite_teams', {
         p_profile_updates: profileUpdates,
         p_favorite_teams: favoriteTeams ?? [],
         p_replace_favorite_teams: favoriteTeams !== undefined
@@ -280,7 +282,7 @@ class AuthService {
     return updated;
   }
   completeOnboarding(id: string) { return this.updateUser(id, { onboardingCompleted: true, onboardingStep: 'complete' }); }
-  logout() { this.authActionRevision++; this.profileWriteRevision++; if (supabase) void supabase.auth.signOut(); this.currentUser = null; this.notify(); }
+  logout() { this.authActionRevision++; this.profileWriteRevision++; if (this.client) void this.client.auth.signOut(); this.currentUser = null; this.notify(); }
   deleteAccount(_id: string) { return false; }
 }
 
