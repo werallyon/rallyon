@@ -2,7 +2,7 @@ name: RallyOn Build Check
 
 on:
   push:
-    branches: [main, test/p0-auth-rls-api-validation]
+    branches: [main]
   pull_request:
     branches: [main, chore/local-supabase-validation-harness]
 
