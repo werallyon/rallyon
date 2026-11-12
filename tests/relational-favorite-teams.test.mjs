@@ -9,7 +9,7 @@ const authService = read('src/services/authService.ts');
 const profileService = read('src/services/profileService.ts');
 
 test('favorite teams use a user-scoped relational table with a stable composite key', () => {
-  assert.ok(migration.includes('create table if not exists public.user_favorite_teams'));
+  assert.ok(migration.includes('create table public.user_favorite_teams'));
   assert.ok(migration.includes('user_id uuid not null references auth.users(id) on delete cascade'));
   assert.ok(migration.includes('primary key (user_id, team_id)'));
   assert.ok(migration.includes('sort_order integer not null'));
@@ -26,11 +26,11 @@ test('favorite-team rows are protected by owner-only RLS policies', () => {
   assert.ok(migration.includes('(select auth.uid()) = user_id'));
 });
 
-test('migration backfills legacy JSON in original selection order without overwriting rows', () => {
-  assert.ok(migration.includes('jsonb_array_elements')) ;
+test('migration backfills legacy JSON deterministically and preserves the legacy column', () => {
+  assert.ok(migration.includes('jsonb_array_elements'));
   assert.ok(migration.includes('p.favorite_teams::jsonb'));
-  assert.ok(migration.includes('(team.ordinality - 1)::integer'));
-  assert.ok(migration.includes('on conflict (user_id, team_id) do nothing'));
+  assert.ok(migration.includes('(ordinality - 1)::integer'));
+  assert.ok(migration.includes("distinct on (p.id, t.value->>'id')"));
   assert.equal(/drop column.*favorite_teams/i.test(migration), false);
 });
 
@@ -56,8 +56,8 @@ test('favorite-team service maps the existing TeamReference contract and persist
     'export function toFavoriteTeamRow',
     "from('user_favorite_teams')",
     ".order('sort_order'",
-    "upsert(rows, { onConflict: 'user_id,team_id' })",
-    'new Set(uniqueTeams.map'
+    "rpc('save_profile_and_favorite_teams'",
+    'normalizeFavoriteTeams'
   ]) assert.ok(favoriteService.includes(fragment), 'missing service behavior: ' + fragment);
 });
 
@@ -100,7 +100,7 @@ test('canonical profile failures are not converted into synthetic Auth-only user
   );
   assert.match(hydrator, /getUserWithProfile\(authUser\)/);
   assert.equal(/return mergeAuthUserWithProfile\(authUser\)/.test(hydrator), false);
-  assert.match(hydrator, /Relational favorite teams unavailable; retaining legacy profile values/);
+  assert.equal(hydrator.includes('Relational favorite teams unavailable; retaining legacy profile values'), false);
   assert.equal(authService.includes('function mapUser'), false);
   assert.match(authService, /const revision = \+\+this\.authRevision/);
   assert.match(authService, /revision === this\.authRevision/);
