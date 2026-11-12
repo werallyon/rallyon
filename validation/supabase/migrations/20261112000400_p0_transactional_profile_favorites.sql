@@ -1,5 +1,5 @@
--- Isolated copy of the production-reviewed transactional RPC.
--- The table and owner RLS policies are created by the preceding validation migrations.
+-- Isolated local copy of the production-reviewed transactional profile/favorites RPC.
+-- Keep executable SQL synchronized with supabase/migrations/20261112140000_p0_auth_rls_review_remediation.sql.
 create or replace function public.save_profile_and_favorite_teams(
   p_profile_updates jsonb default '{}'::jsonb,
   p_favorite_teams jsonb default '[]'::jsonb,
@@ -162,6 +162,5 @@ begin
 end;
 $$;
 
-revoke all on function public.save_profile_and_favorite_teams(jsonb, jsonb, boolean) from public, anon;
 revoke all on function public.save_profile_and_favorite_teams(jsonb, jsonb, boolean) from public, anon;
 grant execute on function public.save_profile_and_favorite_teams(jsonb, jsonb, boolean) to authenticated;
