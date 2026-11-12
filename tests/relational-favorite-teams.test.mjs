@@ -93,8 +93,8 @@ test('optimistic profile and favorite writes roll back on persistence failure', 
 test('sign-in and sign-up completion are guarded against superseded auth actions', () => {
   assert.ok(authService.includes('private authActionRevision = 0'));
   assert.ok(authService.includes('private async isCurrentAuthAction'));
-  assert.ok(authService.includes('actionRevision !== this.authActionRevision'));
-  assert.ok(authService.includes('data.session?.user.id === userId'));
+  assert.ok(authService.includes('isCurrentAuthAction(actionRevision, this.authActionRevision, userId'));
+  assert.ok(authService.includes('isCurrentAuthHydration'));
   assert.ok(authService.includes('revision !== this.authRevision'));
   assert.ok(authService.includes('this.authActionRevision++; this.profileWriteRevision++;'));
 });
