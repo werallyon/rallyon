@@ -6,13 +6,40 @@ import {
 } from "../_shared/sync-utils.js";
 
 const LEAGUES = [
-  ["football", "nfl", "NFL"],
-  ["football", "college-football", "NCAA_FB"],
-  ["basketball", "nba", "NBA"],
-  ["basketball", "mens-college-basketball", "NCAA_BB"],
-  ["baseball", "mlb", "MLB"],
-  ["hockey", "nhl", "NHL"],
-  ["soccer", "usa.1", "MLS"],
+  // Football
+  ["football", "nfl", "NFL", "FOOTBALL", "GAME"],
+  ["football", "college-football", "NCAA_FB", "FOOTBALL", "GAME"],
+  // Basketball
+  ["basketball", "nba", "NBA", "BASKETBALL", "GAME"],
+  ["basketball", "mens-college-basketball", "NCAA_BB", "BASKETBALL", "GAME"],
+  ["basketball", "wnba", "WNBA", "BASKETBALL", "GAME"],
+  // Baseball / hockey
+  ["baseball", "mlb", "MLB", "BASEBALL", "GAME"],
+  ["baseball", "college-baseball", "NCAA_BASEBALL", "BASEBALL", "GAME"],
+  ["baseball", "world-baseball-classic", "WBC", "BASEBALL", "GAME"],
+  ["hockey", "nhl", "NHL", "HOCKEY", "GAME"],
+  // Soccer
+  ["soccer", "usa.1", "MLS", "SOCCER", "GAME"],
+  ["soccer", "eng.1", "EPL", "SOCCER", "GAME"],
+  ["soccer", "esp.1", "LALIGA", "SOCCER", "GAME"],
+  ["soccer", "ger.1", "BUNDESLIGA", "SOCCER", "GAME"],
+  ["soccer", "ita.1", "SERIEA", "SOCCER", "GAME"],
+  ["soccer", "fra.1", "LIGUE1", "SOCCER", "GAME"],
+  ["soccer", "uefa.champions", "UCL", "SOCCER", "GAME"],
+  ["soccer", "uefa.europa", "UEL", "SOCCER", "GAME"],
+  ["soccer", "usa.nwsl", "NWSL", "SOCCER", "GAME"],
+  // Individual / event sports
+  ["tennis", "atp", "ATP", "TENNIS", "MATCH"],
+  ["tennis", "wta", "WTA", "TENNIS", "MATCH"],
+  ["mma", "ufc", "UFC", "MMA", "FIGHT"],
+  ["golf", "pga", "PGA", "GOLF", "TOURNAMENT"],
+  ["golf", "lpga", "LPGA", "GOLF", "TOURNAMENT"],
+  ["golf", "liv", "LIV", "GOLF", "TOURNAMENT"],
+  ["golf", "eur", "DP_WORLD", "GOLF", "TOURNAMENT"],
+  // Motorsports
+  ["racing", "f1", "F1", "RACING", "RACE"],
+  ["racing", "nascar-premier", "NASCAR", "RACING", "RACE"],
+  ["racing", "irl", "INDYCAR", "RACING", "RACE"],
 ];
 
 function statusOf(event: any) {
@@ -31,8 +58,29 @@ function team(competitor: any) {
   return {
     name: source.displayName ?? source.name ?? "",
     abbrev: source.abbreviation ?? source.shortDisplayName ?? "",
-    logo: source.logo ?? source.logos?.[0]?.href ?? "",
+    logo: source.logo ?? source.logos?.[0]?.href ?? competitor?.athlete?.headshot?.href ?? "",
     record: competitor?.records?.[0]?.summary,
+  };
+}
+
+function participant(competitor: any) {
+  const source = competitor?.athlete ?? competitor?.team ?? {};
+  return {
+    name: source.displayName ?? source.fullName ?? source.name ?? "",
+    abbrev: source.abbreviation ?? source.shortName ?? source.shortDisplayName ?? "",
+    logo: source.logo ?? source.logos?.[0]?.href ?? competitor?.athlete?.headshot?.href ?? "",
+    seed: competitor?.seed ?? null,
+    score: competitor?.score ?? null,
+    winner: competitor?.winner ?? null,
+  };
+}
+
+function participantAsTeam(item: any) {
+  return {
+    name: item?.name ?? "",
+    abbrev: item?.abbrev ?? "",
+    logo: item?.logo ?? "",
+    record: undefined,
   };
 }
 
@@ -104,10 +152,10 @@ Deno.serve(async (req: Request) => {
   const allGames: any[] = [];
   const diagnostics: any[] = [];
 
-  // Fetch the seven configured leagues concurrently for each date. This keeps
-  // the seven-day run bounded without launching 49 simultaneous ESPN requests.
+  // Fetch the configured leagues concurrently for each date. This keeps
+  // the seven-day run bounded without launching every date and league at once.
   for (const syncDate of syncDates) {
-    const results = await Promise.all(LEAGUES.map(async ([sport, league, leagueCode]) => {
+    const results = await Promise.all(LEAGUES.map(async ([sport, league, leagueCode, sportCode, eventType]) => {
       const games: any[] = [];
       const issues: any[] = [];
       const url = `https://site.web.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard?limit=100&dates=${syncDate}`;
@@ -133,19 +181,29 @@ Deno.serve(async (req: Request) => {
           const competitors = competition?.competitors ?? [];
           const home = competitors.find((item: any) => item.homeAway === "home");
           const away = competitors.find((item: any) => item.homeAway === "away");
-          if (!home || !away || !event.id || !event.date) {
+          if (!event.id || !event.date) {
             invalidEvents += 1;
             continue;
           }
 
+          const participants = competitors.map(participant).filter((item: any) => item.name);
+          const isTeamGame = Boolean(home && away);
+
           games.push({
             league: leagueCode,
-            home_team: team(home),
-            away_team: team(away),
+            sport: sportCode,
+            event_type: eventType,
+            participants,
+            home_team: isTeamGame
+              ? team(home)
+              : participantAsTeam(participants[0] ?? { name: event.name ?? leagueCode }),
+            away_team: isTeamGame
+              ? team(away)
+              : participantAsTeam(participants[1] ?? { name: event.name ?? eventType }),
             start_time: event.date,
             status: statusOf(event),
             live_details: event.status?.type?.state === "in" ? {
-              currentScore: { home: Number(home.score ?? 0), away: Number(away.score ?? 0) },
+              currentScore: { home: Number(home?.score ?? 0), away: Number(away?.score ?? 0) },
               period: event.status?.period ? String(event.status.period) : "",
               clock: event.status?.displayClock ?? "",
               headline: event.status?.type?.detail ?? "",

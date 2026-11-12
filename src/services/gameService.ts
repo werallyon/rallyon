@@ -2,11 +2,20 @@ import { SportsGame } from '../types';
 import { supabase } from '../lib/supabaseClient';
 
 function mapGame(row: any): SportsGame {
+  const fallbackTeam = (participant: any, label: string) => ({
+    name: participant?.name ?? label,
+    abbrev: participant?.abbrev ?? '',
+    logo: participant?.logo ?? '',
+  });
+  const participants = Array.isArray(row.participants) ? row.participants : [];
   return {
     id: row.id,
     league: row.league,
-    homeTeam: row.home_team,
-    awayTeam: row.away_team,
+    sport: row.sport ?? undefined,
+    eventType: row.event_type ?? undefined,
+    participants: participants.length ? participants : undefined,
+    homeTeam: row.home_team ?? fallbackTeam(participants[0], 'Event'),
+    awayTeam: row.away_team ?? fallbackTeam(participants[1], 'Participants'),
     startTime: row.start_time,
     status: row.status,
     liveDetails: row.live_details ?? undefined,

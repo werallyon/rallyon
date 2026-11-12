@@ -28,12 +28,31 @@ export const ESPN_LEAGUE_MAP: Record<
   NCAA_FB: { sport: 'football', league: 'college-football', displayName: 'NCAA Football' },
   NBA: { sport: 'basketball', league: 'nba', displayName: 'NBA' },
   NCAA_BB: { sport: 'basketball', league: 'mens-college-basketball', displayName: 'NCAA Men\'s Basketball' },
+  WNBA: { sport: 'basketball', league: 'wnba', displayName: 'WNBA' },
   MLB: { sport: 'baseball', league: 'mlb', displayName: 'MLB' },
+  NCAA_BASEBALL: { sport: 'baseball', league: 'college-baseball', displayName: 'NCAA Baseball' },
+  WBC: { sport: 'baseball', league: 'world-baseball-classic', displayName: 'World Baseball Classic' },
   NHL: { sport: 'hockey', league: 'nhl', displayName: 'NHL' },
   MLS: { sport: 'soccer', league: 'usa.1', displayName: 'MLS' },
-  SOCCER: { sport: 'soccer', league: 'eng.1', displayName: 'Premier League' },
+  EPL: { sport: 'soccer', league: 'eng.1', displayName: 'Premier League' },
+  LALIGA: { sport: 'soccer', league: 'esp.1', displayName: 'LaLiga' },
+  BUNDESLIGA: { sport: 'soccer', league: 'ger.1', displayName: 'Bundesliga' },
+  SERIEA: { sport: 'soccer', league: 'ita.1', displayName: 'Serie A' },
+  LIGUE1: { sport: 'soccer', league: 'fra.1', displayName: 'Ligue 1' },
+  UCL: { sport: 'soccer', league: 'uefa.champions', displayName: 'UEFA Champions League' },
+  UEL: { sport: 'soccer', league: 'uefa.europa', displayName: 'UEFA Europa League' },
+  NWSL: { sport: 'soccer', league: 'usa.nwsl', displayName: 'NWSL' },
+  ATP: { sport: 'tennis', league: 'atp', displayName: 'ATP Tennis' },
+  WTA: { sport: 'tennis', league: 'wta', displayName: 'WTA Tennis' },
   UFC: { sport: 'mma', league: 'ufc', displayName: 'UFC / MMA' },
-  PGA: { sport: 'golf', league: 'pga', displayName: 'PGA Tour' }
+  PGA: { sport: 'golf', league: 'pga', displayName: 'PGA Tour' },
+  LPGA: { sport: 'golf', league: 'lpga', displayName: 'LPGA Tour' },
+  LIV: { sport: 'golf', league: 'liv', displayName: 'LIV Golf' },
+  DP_WORLD: { sport: 'golf', league: 'eur', displayName: 'DP World Tour' },
+  F1: { sport: 'racing', league: 'f1', displayName: 'Formula 1' },
+  NASCAR: { sport: 'racing', league: 'nascar-premier', displayName: 'NASCAR Cup Series' },
+  INDYCAR: { sport: 'racing', league: 'irl', displayName: 'IndyCar' },
+  SOCCER: { sport: 'soccer', league: 'eng.1', displayName: 'Premier League' }
 };
 
 /**
@@ -105,12 +124,31 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
       'NCAA_FB',
       'NBA',
       'NCAA_BB',
+      'WNBA',
       'MLB',
+      'NCAA_BASEBALL',
+      'WBC',
       'NHL',
       'MLS',
-      'SOCCER',
+      'EPL',
+      'LALIGA',
+      'BUNDESLIGA',
+      'SERIEA',
+      'LIGUE1',
+      'UCL',
+      'UEL',
+      'NWSL',
+      'ATP',
+      'WTA',
       'UFC',
-      'PGA'
+      'PGA',
+      'LPGA',
+      'LIV',
+      'DP_WORLD',
+      'F1',
+      'NASCAR',
+      'INDYCAR',
+      'SOCCER'
     ];
   }
 
@@ -204,8 +242,9 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
       const competition = event.competitions?.[0];
       if (!competition) return null;
 
-      const homeComp = competition.competitors?.find((c: any) => c.homeAway === 'home');
-      const awayComp = competition.competitors?.find((c: any) => c.homeAway === 'away');
+      const competitors: any[] = competition.competitors || [];
+      const homeComp = competitors.find((c: any) => c.homeAway === 'home') || competitors[0];
+      const awayComp = competitors.find((c: any) => c.homeAway === 'away') || competitors[1];
 
       if (!homeComp || !awayComp) return null;
 
@@ -216,12 +255,12 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
       const homeRankPrefix = homeRank && homeRank <= 25 ? `#${homeRank} ` : '';
       const awayRankPrefix = awayRank && awayRank <= 25 ? `#${awayRank} ` : '';
 
-      const homeName = `${homeRankPrefix}${homeComp.team?.displayName || homeComp.team?.name || 'Home Team'}`;
-      const awayName = `${awayRankPrefix}${awayComp.team?.displayName || awayComp.team?.name || 'Away Team'}`;
+      const homeName = `${homeRankPrefix}${homeComp.team?.displayName || homeComp.team?.name || homeComp.athlete?.displayName || homeComp.athlete?.fullName || 'Home Team'}`;
+      const awayName = `${awayRankPrefix}${awayComp.team?.displayName || awayComp.team?.name || awayComp.athlete?.displayName || awayComp.athlete?.fullName || 'Away Team'}`;
 
       // Check for matching team in database to enrich colors/fallbacks
-      const homeAbbrev = homeComp.team?.abbreviation || '';
-      const awayAbbrev = awayComp.team?.abbreviation || '';
+      const homeAbbrev = homeComp.team?.abbreviation || homeComp.athlete?.shortName || homeComp.athlete?.displayName?.slice(0, 3).toUpperCase() || '';
+      const awayAbbrev = awayComp.team?.abbreviation || awayComp.athlete?.shortName || awayComp.athlete?.displayName?.slice(0, 3).toUpperCase() || '';
 
       const matchedHome = TEAMS_DATABASE.find(
         (t) =>
@@ -240,6 +279,7 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
         abbrev: homeAbbrev || matchedHome?.abbrev || 'HOM',
         logo:
           homeComp.team?.logo ||
+          homeComp.athlete?.headshot?.href ||
           matchedHome?.logo ||
           `https://a.espncdn.com/i/teamlogos/${league.toLowerCase()}/500/${homeAbbrev.toLowerCase() || 'default'}.png`,
         record: homeComp.records?.[0]?.summary || '',
@@ -251,6 +291,7 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
         abbrev: awayAbbrev || matchedAway?.abbrev || 'AWY',
         logo:
           awayComp.team?.logo ||
+          awayComp.athlete?.headshot?.href ||
           matchedAway?.logo ||
           `https://a.espncdn.com/i/teamlogos/${league.toLowerCase()}/500/${awayAbbrev.toLowerCase() || 'default'}.png`,
         record: awayComp.records?.[0]?.summary || '',
@@ -380,6 +421,13 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
           headline: oddsNote || event.status?.type?.detail || undefined,
           situation
         },
+        participants: competitors.map((competitor: any) => ({
+          name: competitor.team?.displayName || competitor.team?.name || competitor.athlete?.displayName || competitor.athlete?.fullName || 'Participant',
+          abbrev: competitor.team?.abbreviation || competitor.athlete?.shortName || '',
+          logo: competitor.team?.logo || competitor.athlete?.headshot?.href || '',
+          score: competitor.score ?? null,
+          winner: competitor.winner ?? null
+        })),
         lastUpdated: new Date().toISOString()
       };
     } catch {
@@ -457,14 +505,34 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
           // Multi-league concurrent aggregation
           // Focus on active high-demand sports
           const targetLeagues: SportsLeague[] = [
-            'MLB',
-            'NCAA_FB',
             'NFL',
-            'MLS',
-            'SOCCER',
+            'NCAA_FB',
             'NBA',
+            'NCAA_BB',
+            'WNBA',
+            'MLB',
+            'NCAA_BASEBALL',
+            'WBC',
             'NHL',
-            'NCAA_BB'
+            'MLS',
+            'EPL',
+            'LALIGA',
+            'BUNDESLIGA',
+            'SERIEA',
+            'LIGUE1',
+            'UCL',
+            'UEL',
+            'NWSL',
+            'ATP',
+            'WTA',
+            'UFC',
+            'PGA',
+            'LPGA',
+            'LIV',
+            'DP_WORLD',
+            'F1',
+            'NASCAR',
+            'INDYCAR'
           ];
 
           const settleResults = await Promise.allSettled(

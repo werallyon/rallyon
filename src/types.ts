@@ -16,16 +16,21 @@ export interface IntentConfig {
 }
 
 export type SportsLeague =
-  | 'NFL'
-  | 'NCAA_FB'
-  | 'NBA'
-  | 'NCAA_BB'
-  | 'MLB'
-  | 'NHL'
-  | 'MLS'
-  | 'SOCCER'
+  | 'NFL' | 'NCAA_FB'
+  | 'NBA' | 'NCAA_BB' | 'WNBA'
+  | 'MLB' | 'NCAA_BASEBALL' | 'WBC' | 'NHL'
+  | 'MLS' | 'EPL' | 'LALIGA' | 'BUNDESLIGA' | 'SERIEA' | 'LIGUE1' | 'UCL' | 'UEL' | 'NWSL'
+  | 'ATP' | 'WTA'
   | 'UFC'
-  | 'PGA';
+  | 'PGA' | 'LPGA' | 'LIV' | 'DP_WORLD'
+  | 'F1' | 'NASCAR' | 'INDYCAR'
+  | 'SOCCER';
+
+export type SportsType =
+  | 'FOOTBALL' | 'BASKETBALL' | 'BASEBALL' | 'HOCKEY' | 'SOCCER'
+  | 'MMA' | 'TENNIS' | 'GOLF' | 'RACING' | 'OTHER';
+
+export type SportsEventType = 'GAME' | 'MATCH' | 'FIGHT' | 'TOURNAMENT' | 'RACE';
 
 export interface SportsTeam {
   name: string;
@@ -54,9 +59,21 @@ export interface BroadcastIntelligence {
   lastVerified?: string;
 }
 
+export interface SportsParticipant {
+  name: string;
+  abbrev: string;
+  logo: string;
+  seed?: string | number | null;
+  score?: string | number | null;
+  winner?: boolean | null;
+}
+
 export interface SportsGame {
   id: string;
   league: SportsLeague;
+  sport?: SportsType;
+  eventType?: SportsEventType;
+  participants?: SportsParticipant[];
   homeTeam: SportsTeam;
   awayTeam: SportsTeam;
   startTime: string; // ISO or human format
