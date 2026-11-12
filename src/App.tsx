@@ -53,6 +53,7 @@ function RallyOnMain() {
   const [currentCity, setCurrentCity] = useState(
     marketService.getActiveMarket().name
   );
+  const [resolvedCityId, setResolvedCityId] = useState<string | null>(null);
 
   // Intent defaults to user preference or HIGH_ENERGY
   const [currentIntent, setCurrentIntent] = useState<UserIntent>(() => {
@@ -112,12 +113,26 @@ function RallyOnMain() {
       .catch((error) => console.warn('Supabase favorites unavailable; using profile favorites.', error));
   }, [currentUser?.id]);
 
+  // Resolve the user's saved coordinates into the authoritative market/city context.
+  // This keeps location propagation deterministic while preserving explicit market selection.
+  useEffect(() => {
+    const latitude = currentUser?.latitude;
+    const longitude = currentUser?.longitude;
+    if (latitude == null || longitude == null) return;
+
+    const resolved = marketService.detectLocationFromCoordinates(latitude, longitude);
+    marketService.setActiveMarket(resolved.market.id);
+    setResolvedCityId(resolved.city?.id ?? null);
+    setCurrentCity(resolved.city?.name ?? resolved.market.name);
+  }, [currentUser?.latitude, currentUser?.longitude]);
+
   // Subscribe to marketService for active market changes
   useEffect(() => {
     const unsub = marketService.subscribe(() => {
       const current = marketService.getActiveMarket();
       setActiveMarket(current);
       setCurrentCity(current.name);
+      setResolvedCityId(null);
     });
     return unsub;
   }, []);
@@ -125,16 +140,19 @@ function RallyOnMain() {
   // Filter venues for active market ecosystem (Market -> City -> Venue)
   const marketVenues = useMemo(() => {
     const sourceVenues = dbVenues ?? (isDemoMode ? SEEDED_VENUES : []);
-    const filtered = marketService.filterVenuesByMarket(
-      sourceVenues,
-      activeMarket.id
-    );
-    return filtered;
-  }, [activeMarket.id, dbVenues]);
+    const marketFiltered = marketService.filterVenuesByMarket(sourceVenues, activeMarket.id);
+
+    // City is an explicit child of the active market. If a city has been resolved
+    // from the user's coordinates, prefer venues assigned to that city; retain the
+    // market-wide set when no city assignment exists so valid venues are not lost.
+    if (!resolvedCityId) return marketFiltered;
+    const cityFiltered = marketFiltered.filter((venue) => venue.city_id === resolvedCityId);
+    return cityFiltered.length > 0 ? cityFiltered : marketFiltered;
+  }, [activeMarket.id, resolvedCityId, dbVenues]);
 
   // User coordinate (from user model or default to active market center)
   const userLocation = useMemo(() => {
-    if (currentUser?.latitude && currentUser?.longitude) {
+    if (currentUser?.latitude != null && currentUser?.longitude != null) {
       return { lat: currentUser.latitude, lon: currentUser.longitude };
     }
     return { lat: activeMarket.latitude, lon: activeMarket.longitude };
@@ -301,7 +319,10 @@ function RallyOnMain() {
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
       <Header
         currentCity={currentCity}
-        onCityChange={setCurrentCity}
+        onCityChange={(city) => {
+          setCurrentCity(city);
+          setResolvedCityId(null);
+        }}
         isSimulating={isSimulating}
         onToggleSimulation={() => {
           signalEngine.toggleSimulation();
