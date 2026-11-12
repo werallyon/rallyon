@@ -412,7 +412,7 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
       assert.ifError(removed.error);
       await assert.rejects(
         () => getUserWithProfile(missingAccount.user, missingAccount.client),
-        /no public\\.profiles row/
+        /no public\.profiles row/
       );
       const otherProfile = await userB.client.from('profiles').select('id').eq('id', userB.user.id).single();
       assert.ifError(otherProfile.error);
