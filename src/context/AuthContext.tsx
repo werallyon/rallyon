@@ -26,11 +26,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [authError, setAuthError] = useState<string | null>(null);\n  const authRequestRevision = useRef(0);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const authRequestRevision = useRef(0);
 
   useEffect(() => {
     let mounted = true;
-    const unsubscribe = authService.subscribe((user) => {\n      if (mounted) {\n        setCurrentUser(user);\n        if (user) setAuthError(null);\n      }\n    });
+    const unsubscribe = authService.subscribe((user) => {
+      if (mounted) {
+        setCurrentUser(user);
+        if (user) setAuthError(null);
+      }
+    });
     authService.initialize()
       .catch((e: any) => { if (mounted) setAuthError(e?.message || 'Unable to initialize authentication.'); })
       .finally(() => { if (mounted) setIsLoading(false); });
@@ -49,6 +55,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const clearAuthError = () => setAuthError(null);
 
   const handleSignUp = async (params: SignUpParams): Promise<AuthResponse> => {
+    const requestRevision = ++authRequestRevision.current;
     setIsLoading(true); setAuthError(null);
     try {
       const res = await authService.signUp(params);
@@ -56,11 +63,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return res;
     } catch (e: any) {
       const msg = e?.message || 'An unexpected error occurred during account creation.';
-      setAuthError(msg); return { success: false, error: msg };
-    } finally { setIsLoading(false); }
+      if (requestRevision === authRequestRevision.current) setAuthError(msg); return { success: false, error: msg };
+    } finally { if (requestRevision === authRequestRevision.current) setIsLoading(false); }
   };
 
   const handleSignIn = async (email: string, pass: string): Promise<AuthResponse> => {
+    const requestRevision = ++authRequestRevision.current;
     setIsLoading(true); setAuthError(null);
     try {
       const res = await authService.signIn(email, pass);
@@ -68,22 +76,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return res;
     } catch (e: any) {
       const msg = e?.message || 'Unable to sign in. Please verify your credentials.';
-      setAuthError(msg); return { success: false, error: msg };
-    } finally { setIsLoading(false); }
+      if (requestRevision === authRequestRevision.current) setAuthError(msg); return { success: false, error: msg };
+    } finally { if (requestRevision === authRequestRevision.current) setIsLoading(false); }
   };
 
   const handleGoogleSignIn = async () => {
+    const requestRevision = ++authRequestRevision.current;
     setIsLoading(true); setAuthError(null);
     try { return await authService.signInWithGoogle(); }
-    catch (e: any) { const msg = e?.message || 'Failed to authenticate with Google.'; setAuthError(msg); return { success: false, error: msg }; }
-    finally { setIsLoading(false); }
+    catch (e: any) { const msg = e?.message || 'Failed to authenticate with Google.'; if (requestRevision === authRequestRevision.current) setAuthError(msg); return { success: false, error: msg }; }
+    finally { if (requestRevision === authRequestRevision.current) setIsLoading(false); }
   };
 
   const handleAppleSignIn = async () => {
+    const requestRevision = ++authRequestRevision.current;
     setIsLoading(true); setAuthError(null);
     try { return await authService.signInWithApple(); }
-    catch (e: any) { const msg = e?.message || 'Failed to authenticate with Apple.'; setAuthError(msg); return { success: false, error: msg }; }
-    finally { setIsLoading(false); }
+    catch (e: any) { const msg = e?.message || 'Failed to authenticate with Apple.'; if (requestRevision === authRequestRevision.current) setAuthError(msg); return { success: false, error: msg }; }
+    finally { if (requestRevision === authRequestRevision.current) setIsLoading(false); }
   };
 
   const handleDemoSignIn = async () => { const requestRevision = ++authRequestRevision.current; setIsLoading(true); setAuthError(null); try { return await authService.signInDemoUser(); } finally { if (requestRevision === authRequestRevision.current) setIsLoading(false); } };
