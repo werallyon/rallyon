@@ -102,7 +102,11 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
       }
     });
     if (data.user?.id) createdUserIds.push(data.user.id);
-    assert.ifError(error);
+    if (error) {
+      throw new Error(
+        `Local Auth signup failed for ${label}: ${error.name || 'AuthError'} ${error.status || ''} ${error.code || ''} ${error.message || String(error)}`
+      );
+    }
     assert.ok(data.user?.id, `Local Auth signup must create user ${label}`);
     assert.ok(data.session?.access_token, 'Local email confirmations must be disabled so signup returns a session');
     return { client, user: data.user };
