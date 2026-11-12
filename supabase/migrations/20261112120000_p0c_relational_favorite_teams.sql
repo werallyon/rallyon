@@ -168,6 +168,7 @@ begin
     where c.conrelid = 'public.profiles'::regclass
       and c.contype = 'f'
       and c.confrelid = 'auth.users'::regclass
+      and c.confdeltype = 'c'
       and c.conkey = array[(select a.attnum from pg_attribute a where a.attrelid = c.conrelid and a.attname = 'id' and not a.attisdropped)]::smallint[]
       and c.confkey = array[(select a.attnum from pg_attribute a where a.attrelid = c.confrelid and a.attname = 'id' and not a.attisdropped)]::smallint[]
   ) into v_has_profile_auth_fk;
@@ -177,39 +178,41 @@ begin
 
   select array_agg(required.column_name || ' expected ' || required.data_type ||
                    coalesce(' (' || required.udt_name || ')', '') ||
-                   ', found ' || coalesce(actual.data_type || ' (' || actual.udt_name || ')', 'MISSING'))
+                   ' nullable=' || required.is_nullable ||
+                   ', found ' || coalesce(actual.data_type || ' (' || actual.udt_name || ') nullable=' || actual.is_nullable, 'MISSING'))
   into v_bad_profile_columns
   from (values
-    ('id', 'uuid', 'uuid'),
-    ('username', 'text', 'text'),
-    ('first_name', 'text', 'text'),
-    ('last_name', 'text', 'text'),
-    ('display_name', 'text', 'text'),
-    ('avatar_url', 'text', 'text'),
-    ('onboarding_completed', 'boolean', 'bool'),
-    ('onboarding_step', 'text', 'text'),
-    ('home_city', 'text', 'text'),
-    ('home_state', 'text', 'text'),
-    ('home_zip', 'text', 'text'),
-    ('latitude', 'double precision', 'float8'),
-    ('longitude', 'double precision', 'float8'),
-    ('favorite_sports', 'ARRAY', '_text'),
-    ('favorite_leagues', 'ARRAY', '_text'),
-    ('preferred_experience', 'ARRAY', '_text'),
-    ('current_intent', 'text', 'text'),
-    ('preferences', 'jsonb', 'jsonb'),
-    ('privacy_settings', 'jsonb', 'jsonb'),
-    ('notification_preferences', 'jsonb', 'jsonb'),
-    ('saved_venue_ids', 'ARRAY', '_text'),
-    ('updated_at', 'timestamp with time zone', 'timestamptz')
-  ) as required(column_name, data_type, udt_name)
+    ('id', 'uuid', 'uuid', 'NO'),
+    ('username', 'text', 'text', 'YES'),
+    ('first_name', 'text', 'text', 'YES'),
+    ('last_name', 'text', 'text', 'YES'),
+    ('display_name', 'text', 'text', 'YES'),
+    ('avatar_url', 'text', 'text', 'YES'),
+    ('onboarding_completed', 'boolean', 'bool', 'NO'),
+    ('onboarding_step', 'text', 'text', 'NO'),
+    ('home_city', 'text', 'text', 'YES'),
+    ('home_state', 'text', 'text', 'YES'),
+    ('home_zip', 'text', 'text', 'YES'),
+    ('latitude', 'double precision', 'float8', 'YES'),
+    ('longitude', 'double precision', 'float8', 'YES'),
+    ('favorite_sports', 'ARRAY', '_text', 'NO'),
+    ('favorite_leagues', 'ARRAY', '_text', 'NO'),
+    ('preferred_experience', 'ARRAY', '_text', 'NO'),
+    ('current_intent', 'text', 'text', 'YES'),
+    ('preferences', 'jsonb', 'jsonb', 'NO'),
+    ('privacy_settings', 'jsonb', 'jsonb', 'NO'),
+    ('notification_preferences', 'jsonb', 'jsonb', 'NO'),
+    ('saved_venue_ids', 'ARRAY', '_text', 'NO'),
+    ('updated_at', 'timestamp with time zone', 'timestamptz', 'NO')
+  ) as required(column_name, data_type, udt_name, is_nullable)
   left join information_schema.columns actual
     on actual.table_schema = 'public'
    and actual.table_name = 'profiles'
    and actual.column_name = required.column_name
   where actual.column_name is null
      or actual.data_type <> required.data_type
-     or actual.udt_name <> required.udt_name;
+     or actual.udt_name <> required.udt_name
+     or actual.is_nullable <> required.is_nullable;
   if coalesce(array_length(v_bad_profile_columns, 1), 0) > 0 then
     raise exception 'P0-C preflight: profile schema is incompatible with the transactional RPC: %',
       array_to_string(v_bad_profile_columns, '; ');
