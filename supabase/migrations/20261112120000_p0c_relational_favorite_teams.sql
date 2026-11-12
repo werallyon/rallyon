@@ -102,7 +102,8 @@ begin
     end if;
 
     execute 'alter function public.handle_new_user() security definer';
-    execute 'alter function public.handle_new_user() set search_path = public, pg_temp';
+    execute 'alter function public.handle_new_user() set search_path = pg_catalog, public, pg_temp';
+    execute 'revoke all privileges on function public.handle_new_user() from public, anon, authenticated, service_role';
   end;
 
   -- The live production profile table has an explicit legacy anon grant.
@@ -126,13 +127,19 @@ begin
       and pg_get_userbyid(p.proowner) in ('postgres', 'supabase_admin')
       and exists (
         select 1 from unnest(coalesce(p.proconfig, array[]::text[])) cfg
-        where regexp_replace(cfg, '[[:space:]]', '', 'g') = 'search_path=public,pg_temp'
+        where regexp_replace(cfg, '[[:space:]]', '', 'g') = 'search_path=pg_catalog,public,pg_temp'
       )
       and pg_get_functiondef(p.oid) ilike '%insert into public.profiles%'
       and pg_get_functiondef(p.oid) ilike '%new.id%'
   ) into v_bootstrap_trigger;
   if not v_bootstrap_trigger then
     raise exception 'P0-C preflight: expected enabled AFTER INSERT row trigger auth.on_auth_user_created -> public.handle_new_user SECURITY DEFINER with pinned safe search_path and profile insert was not verified';
+  end if;
+
+  if has_function_privilege('anon', 'public.handle_new_user()', 'EXECUTE')
+     or has_function_privilege('authenticated', 'public.handle_new_user()', 'EXECUTE')
+     or has_function_privilege('service_role', 'public.handle_new_user()', 'EXECUTE') then
+    raise exception 'P0-C preflight: Auth bootstrap trigger function must not be directly executable by API roles';
   end if;
 
   select count(*) into v_unverified_policies
