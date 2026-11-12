@@ -47,6 +47,33 @@ begin
   if p_profile_updates ? 'savedVenueIds' and jsonb_typeof(p_profile_updates->'savedVenueIds') <> 'array' then
     raise exception 'savedVenueIds must be an array';
   end if;
+  if p_profile_updates ? 'preferences' and jsonb_typeof(p_profile_updates->'preferences') not in ('object', 'null') then
+    raise exception 'preferences must be an object or null';
+  end if;
+  if p_profile_updates ? 'privacySettings' and jsonb_typeof(p_profile_updates->'privacySettings') not in ('object', 'null') then
+    raise exception 'privacySettings must be an object or null';
+  end if;
+  if p_profile_updates ? 'notificationPreferences' and jsonb_typeof(p_profile_updates->'notificationPreferences') not in ('object', 'null') then
+    raise exception 'notificationPreferences must be an object or null';
+  end if;
+  if exists (
+    select 1 from (
+      select jsonb_array_elements(p_profile_updates->'favoriteSports') as value
+      where p_profile_updates ? 'favoriteSports'
+      union all
+      select jsonb_array_elements(p_profile_updates->'favoriteLeagues')
+      where p_profile_updates ? 'favoriteLeagues'
+      union all
+      select jsonb_array_elements(p_profile_updates->'preferredExperience')
+      where p_profile_updates ? 'preferredExperience'
+      union all
+      select jsonb_array_elements(p_profile_updates->'savedVenueIds')
+      where p_profile_updates ? 'savedVenueIds'
+    ) values_to_check
+    where jsonb_typeof(value) <> 'string'
+  ) then
+    raise exception 'Profile list fields must contain only strings';
+  end if;
 
   update public.profiles p set
     username = case when p_profile_updates ? 'username' then p_profile_updates->>'username' else p.username end,
