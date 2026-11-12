@@ -166,7 +166,9 @@ class AuthService {
         this.currentUser = mergeAuthUserWithProfile({ id, email: this.currentUser.email, user_metadata: {}, email_confirmed_at: this.currentUser.emailVerified ? new Date().toISOString() : null, created_at: this.currentUser.createdAt }, profile);
         this.notify();
       }
-    }).catch(() => undefined);
+    }).catch((error) => {
+      console.error('Unable to persist the canonical RallyOn profile update.', error);
+    });
     return updated;
   }
   completeOnboarding(id: string) { return this.updateUser(id, { onboardingCompleted: true, onboardingStep: 'complete' }); }
