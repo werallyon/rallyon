@@ -20,7 +20,9 @@ test('favorite-team rows are protected by owner-only RLS policies', () => {
   for (const operation of ['select', 'insert', 'update', 'delete']) {
     assert.ok(migration.includes('user_favorite_teams_' + operation + '_own'));
   }
-  assert.ok(migration.includes('revoke all on table public.user_favorite_teams from anon'));
+  assert.ok(migration.includes('revoke all on table public.user_favorite_teams from anon, authenticated'));
+  assert.ok(migration.includes('grant select, insert, update, delete on table public.user_favorite_teams to authenticated'));
+  assert.equal(/grant all on table public\\.user_favorite_teams to authenticated/i.test(migration), false);
   assert.ok(migration.includes('(select auth.uid()) = user_id'));
 });
 
