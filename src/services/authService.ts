@@ -163,7 +163,19 @@ class AuthService {
     this.currentUser = updated; this.notify();
     void updateProfile(id, updates).then((profile) => {
       if (profile && this.currentUser?.id === id) {
-        this.currentUser = mergeAuthUserWithProfile({ id, email: this.currentUser.email, user_metadata: {}, email_confirmed_at: this.currentUser.emailVerified ? new Date().toISOString() : null, created_at: this.currentUser.createdAt }, profile);
+        const previousUser = this.currentUser;
+        const hydratedUser = mergeAuthUserWithProfile({
+          id,
+          email: previousUser.email,
+          app_metadata: { provider: previousUser.authProvider.toLowerCase() },
+          email_confirmed_at: previousUser.emailVerified ? new Date().toISOString() : null,
+          created_at: previousUser.createdAt
+        }, profile);
+        this.currentUser = {
+          ...hydratedUser,
+          locationPermissionStatus: previousUser.locationPermissionStatus,
+          notificationPermissionStatus: previousUser.notificationPermissionStatus
+        };
         this.notify();
       }
     }).catch((error) => {
