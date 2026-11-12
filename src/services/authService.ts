@@ -1,6 +1,6 @@
 import { User } from '../types';
 import { supabase } from '../lib/supabaseClient';
-import { isCurrentAuthAction, isCurrentAuthHydration } from './authActionGuard.js';
+import { isCurrentAuthAction as isAuthActionCurrent, isCurrentAuthHydration } from './authActionGuard.js';
 import { getUserWithProfile, mergeAuthUserWithProfile } from './profileService';
 import { getFavoriteTeams, normalizeFavoriteTeams } from './teamPreferenceService';
 
@@ -111,7 +111,7 @@ class AuthService {
     if (actionRevision !== this.authActionRevision) return false;
     const { data, error } = await supabase!.auth.getSession();
     if (error) throw error;
-    return isCurrentAuthAction(actionRevision, this.authActionRevision, userId, data.session?.user.id ?? null);
+    return isAuthActionCurrent(actionRevision, this.authActionRevision, userId, data.session?.user.id ?? null);
   }
   private notify() { this.listeners.forEach((cb) => cb(this.currentUser)); }
 
