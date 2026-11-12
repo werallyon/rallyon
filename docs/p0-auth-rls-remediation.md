@@ -25,6 +25,8 @@ The replacement P0-C migration is intentionally conservative and transactional:
 
 No production database was inspected or changed as part of this branch. Before any rollout, run the preflight against a disposable copy of the exact target schema and data. Any raised preflight exception is a stop condition requiring explicit repair/review, not a reason to bypass the check.
 
+**Migration ordering is mandatory:** this branch replaces the still-unmerged PR #18 migration at version `20261112120000` so preflight runs before table creation/backfill. Do not merge or apply PR #18's original migration independently before this replacement is integrated. If the original migration has already been applied in any environment, stop: the replacement file will not rerun there. Do not apply the new RPC migration by itself as a workaround; first create and review a forward migration that audits the existing relation and establishes what legacy data was preserved before proceeding.
+
 ## Local validation
 
 PR #20's local harness now installs the transactional RPC and tests it through two independent Auth sessions and PostgREST:
