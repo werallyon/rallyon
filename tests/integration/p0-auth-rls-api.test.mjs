@@ -418,12 +418,63 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
       assert.equal(otherProfile.data.id, userB.user.id);
     });
 
-    await t.test('anonymous client cannot read profiles or favorite teams', async () => {
+    await t.test('anonymous client cannot read or mutate profiles, favorites, or invoke the RPC', async () => {
       const profileRead = await anonymous.from('profiles').select('id').eq('id', userA.user.id);
       assertNoVisibleRowsOrDenied(profileRead, 'anonymous profile read');
 
       const favoriteRead = await anonymous.from('user_favorite_teams').select('team_id').eq('user_id', userA.user.id);
       assertNoVisibleRowsOrDenied(favoriteRead, 'anonymous favorite read');
+
+      const profileInsert = await anonymous.from('profiles')
+        .insert({ id: userA.user.id, display_name: 'ANONYMOUS INSERT' }).select('id');
+      assertNoVisibleRowsOrDenied(profileInsert, 'anonymous profile insert');
+
+      const profileUpdate = await anonymous.from('profiles').update({ display_name: 'ANONYMOUS UPDATE' })
+        .eq('id', userA.user.id).select('id');
+      assertNoVisibleRowsOrDenied(profileUpdate, 'anonymous profile update');
+
+      const profileDelete = await anonymous.from('profiles').delete()
+        .eq('id', userA.user.id).select('id');
+      assertNoVisibleRowsOrDenied(profileDelete, 'anonymous profile delete');
+
+      const favoriteInsert = await anonymous.from('user_favorite_teams').insert({
+        user_id: userA.user.id,
+        team_id: `anon-${suffix}`,
+        team_name: 'Anonymous Favorite',
+        sport_id: 'OTHER',
+        league: 'OTHER',
+        abbrev: '',
+        logo: '',
+        sort_order: 0
+      }).select('team_id');
+      assertNoVisibleRowsOrDenied(favoriteInsert, 'anonymous favorite insert');
+
+      const favoriteUpdate = await anonymous.from('user_favorite_teams')
+        .update({ team_name: 'ANONYMOUS UPDATE' })
+        .eq('user_id', userA.user.id).select('team_id');
+      assertNoVisibleRowsOrDenied(favoriteUpdate, 'anonymous favorite update');
+
+      const favoriteDelete = await anonymous.from('user_favorite_teams').delete()
+        .eq('user_id', userA.user.id).select('team_id');
+      assertNoVisibleRowsOrDenied(favoriteDelete, 'anonymous favorite delete');
+
+      const rpc = await anonymous.rpc('save_profile_and_favorite_teams', {
+        p_profile_updates: { name: 'ANONYMOUS RPC' },
+        p_favorite_teams: [],
+        p_replace_favorite_teams: true
+      });
+      assert.ok(rpc.error, 'anonymous RPC execution must be denied');
+
+      const profileStillOwned = await userA.client.from('profiles')
+        .select('id,display_name').eq('id', userA.user.id).single();
+      assert.ifError(profileStillOwned.error);
+      assert.equal(profileStillOwned.data.id, userA.user.id);
+      assert.notEqual(profileStillOwned.data.display_name, 'ANONYMOUS UPDATE');
+
+      const anonymousFavoriteAbsent = await userA.client.from('user_favorite_teams')
+        .select('team_id').eq('user_id', userA.user.id).eq('team_id', `anon-${suffix}`);
+      assert.ifError(anonymousFavoriteAbsent.error);
+      assert.deepEqual(anonymousFavoriteAbsent.data, []);
     });
   } finally {
     // Revoke client sessions first, then delete the synthetic Auth users with
