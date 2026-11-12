@@ -12,6 +12,7 @@ declare
   v_rls boolean;
   v_broad_policies bigint;
   v_anon_grants bigint;
+  v_bootstrap_trigger boolean;
 begin
   if to_regclass('public.profiles') is null then
     raise exception 'P0-C preflight: public.profiles does not exist; stop and reconcile the profile schema first';
@@ -54,6 +55,19 @@ begin
 
   if not v_select_policy or not v_insert_policy or not v_update_policy then
     raise exception 'P0-C preflight: public.profiles must have authenticated owner-scoped SELECT, INSERT, and UPDATE policies (UPDATE requires USING and WITH CHECK)';
+  end if;
+
+  select exists (
+    select 1
+    from pg_trigger t
+    join pg_proc p on p.oid = t.tgfoid
+    where t.tgrelid = 'auth.users'::regclass
+      and not t.tgisinternal
+      and p.proname = 'handle_new_user'
+      and p.prosecdef
+  ) into v_bootstrap_trigger;
+  if not v_bootstrap_trigger then
+    raise exception 'P0-C preflight: auth.users must have the SECURITY DEFINER handle_new_user profile-bootstrap trigger';
   end if;
 
   select count(*) into v_broad_policies
