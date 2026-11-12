@@ -7,6 +7,7 @@ declare
   v_alpha integer;
   v_bravo integer;
   v_rls boolean;
+  v_public_grants integer;
 begin
   select count(*) into v_users from auth.users
   where id in ('a1000000-0000-4000-8000-000000000001'::uuid,
@@ -47,6 +48,13 @@ begin
      or has_table_privilege('anon', 'public.user_favorite_teams', 'UPDATE')
      or has_table_privilege('anon', 'public.user_favorite_teams', 'DELETE') then
     raise exception 'anon has effective privileges on relational favorites'; end if;
+  select count(*) into v_public_grants
+  from pg_class c
+  cross join lateral aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) acl
+  where c.oid = 'public.user_favorite_teams'::regclass
+    and acl.grantee = 0
+    and acl.privilege_type in ('SELECT','INSERT','UPDATE','DELETE');
+  if v_public_grants <> 0 then raise exception 'PUBLIC has % relational favorite table grants', v_public_grants; end if;
   if not has_table_privilege('authenticated', 'public.user_favorite_teams', 'SELECT')
      or not has_table_privilege('authenticated', 'public.user_favorite_teams', 'INSERT')
      or not has_table_privilege('authenticated', 'public.user_favorite_teams', 'UPDATE')
