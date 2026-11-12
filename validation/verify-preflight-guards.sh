@@ -93,10 +93,8 @@ expect_preflight_failure \
   "NULL or non-array favorite_teams" \
   "update public.profiles set favorite_teams = '{}'::jsonb where id = 'a1000000-0000-4000-8000-000000000001';"
 
-expect_preflight_failure \
-  "PUBLIC profile table grant" \
-  "PUBLIC has" \
-  "grant select on table public.profiles to public;"
+# PUBLIC table-level grants are a known production drift that the migration
+# must revoke; the final positive assertion below verifies they are gone.
 
 expect_preflight_failure \
   "anon profile column grant" \
