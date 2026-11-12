@@ -61,4 +61,7 @@ test('canonical profile failures are not converted into synthetic Auth-only user
   assert.match(hydrator, /getUserWithProfile\(authUser\)/);
   assert.equal(/return mergeAuthUserWithProfile\(authUser\)/.test(hydrator), false);
   assert.match(hydrator, /Relational favorite teams unavailable; retaining legacy profile values/);
+  assert.equal(authService.includes('function mapUser'), false);
+  assert.match(authService, /const revision = \+\+this\.authRevision/);
+  assert.match(authService, /revision === this\.authRevision/);
 });
