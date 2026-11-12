@@ -340,5 +340,5 @@ export async function replaceFavoriteTeams(userId: string, teams: TeamReference[
     p_favorite_teams: normalized
   });
   if (error) throw error;
-  return getFavoriteTeams(userId);
+  return normalized;
 }
