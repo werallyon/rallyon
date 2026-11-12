@@ -48,9 +48,12 @@ function resolveAuthProvider(authUser: any): User['authProvider'] {
  * Auth metadata is deliberately not used as a profile fallback. It may contain
  * legacy/duplicated values and is not kept in sync by profile edits.
  */
-export function mergeAuthUserWithProfile(authUser: any, profile?: ProfileRow | null): User {
+export function mergeAuthUserWithProfile(authUser: any, profile: ProfileRow): User {
+  if (!authUser?.id || !profile || profile.id !== authUser.id) {
+    throw new Error('A matching canonical profile row is required to map an authenticated user.');
+  }
   const now = new Date().toISOString();
-  const p: ProfileRow = profile ?? { id: authUser.id };
+  const p: ProfileRow = profile;
   const firstName = p.first_name ?? '';
   const lastName = p.last_name ?? '';
   const displayName = p.display_name ?? [firstName, lastName].filter(Boolean).join(' ');
