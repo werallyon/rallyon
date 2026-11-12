@@ -17,6 +17,8 @@ declare
   v_has_profile_pk boolean;
   v_has_profile_auth_fk boolean;
   v_public_profile_grants bigint;
+  v_anon_column_grants bigint;
+  v_public_profile_column_grants bigint;
 begin
   if to_regclass('public.profiles') is null then
     raise exception 'P0-C preflight: public.profiles does not exist; stop and reconcile the profile schema first';
@@ -112,7 +114,14 @@ begin
   from unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE']) as privilege_name
   where has_table_privilege('anon', 'public.profiles', privilege_name);
   if v_anon_grants > 0 then
-    raise exception 'P0-C preflight: anon has % effective privileges on public.profiles; audit grants before rollout', v_anon_grants;
+    raise exception 'P0-C preflight: anon has % effective table privileges on public.profiles; audit grants before rollout', v_anon_grants;
+  end if;
+
+  select count(*) into v_anon_column_grants
+  from unnest(array['SELECT', 'INSERT', 'UPDATE', 'REFERENCES']) as privilege_name
+  where has_any_column_privilege('anon', 'public.profiles', privilege_name);
+  if v_anon_column_grants > 0 then
+    raise exception 'P0-C preflight: anon has % effective column privileges on public.profiles; audit grants before rollout', v_anon_column_grants;
   end if;
 
   select count(*) into v_public_profile_grants
@@ -123,6 +132,17 @@ begin
     and acl.privilege_type in ('SELECT', 'INSERT', 'UPDATE', 'DELETE');
   if v_public_profile_grants > 0 then
     raise exception 'P0-C preflight: PUBLIC has % effective table grants on public.profiles; revoke them before rollout', v_public_profile_grants;
+  end if;
+
+  select count(*) into v_public_profile_column_grants
+  from pg_attribute a
+  cross join lateral aclexplode(coalesce(a.attacl, array[]::aclitem[])) acl
+  where a.attrelid = 'public.profiles'::regclass
+    and a.attnum > 0 and not a.attisdropped
+    and acl.grantee = 0
+    and acl.privilege_type in ('SELECT', 'INSERT', 'UPDATE', 'REFERENCES');
+  if v_public_profile_column_grants > 0 then
+    raise exception 'P0-C preflight: PUBLIC has % column grants on public.profiles; revoke them before rollout', v_public_profile_column_grants;
   end if;
 
   if not has_table_privilege('authenticated', 'public.profiles', 'SELECT')
