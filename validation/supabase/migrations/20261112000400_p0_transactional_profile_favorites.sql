@@ -115,6 +115,11 @@ begin
          or length(btrim(coalesce(t.value->>'id',''))) = 0
          or coalesce(jsonb_typeof(t.value->'name'), 'null') <> 'string'
          or length(btrim(coalesce(t.value->>'name',''))) = 0
+         or coalesce(jsonb_typeof(t.value->'sportId'), 'null') <> 'string'
+         or coalesce(jsonb_typeof(t.value->'league'), 'null') <> 'string'
+         or coalesce(jsonb_typeof(t.value->'abbrev'), 'null') <> 'string'
+         or coalesce(jsonb_typeof(t.value->'logo'), 'null') <> 'string'
+         or (t.value ? 'color' and coalesce(jsonb_typeof(t.value->'color'), 'null') not in ('string', 'null'))
     ) then
       raise exception 'Every favorite team must be an object with non-empty string id and name';
     end if;
