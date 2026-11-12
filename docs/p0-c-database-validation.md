@@ -15,7 +15,16 @@ PR #22 replaces PR #18's original SQL at the same migration version:
 
 If an environment has already recorded `20261112120000` in `supabase_migrations.schema_migrations`, the replacement SQL will not run there. Editing the historical file does not reapply it. Do not delete migration-history rows, mark migrations reverted, or manually replay the replacement to force it through.
 
-Before any deployment decision, an authorized database operator must establish the exact history rows and resulting schema in each relevant environment. If the historical version was already applied, inspect the actual table and data, then prepare a separately reviewed forward migration with a new version. Preserve the original history record and reconcile existing relational favorites with the retained legacy JSON without overwriting valid user selections.
+Before any deployment decision, an authorized database operator must establish the exact history rows and resulting schema in each relevant environment. The read-only history query is:
+
+```sql
+select version, name
+from supabase_migrations.schema_migrations
+where version in ('20261112120000', '20261112140000')
+order by version;
+```
+
+Run this independently in every relevant environment and retain the output with the deployment review. An absent row is not proof that no manual SQL was applied; compare the actual table/schema state as well. If the historical version was already applied, inspect the actual table and data, then prepare a separately reviewed forward migration with a new version. Preserve the original history record and reconcile existing relational favorites with the retained legacy JSON without overwriting valid user selections.
 
 The current review did not connect to any hosted Supabase project and cannot answer whether that historical version was applied elsewhere.
 
