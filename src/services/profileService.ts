@@ -100,16 +100,16 @@ export function mergeAuthUserWithProfile(authUser: any, profile: ProfileRow): Us
   };
 }
 
-export async function getProfile(userId: string): Promise<ProfileRow | null> {
-  if (!supabase) return null;
-  const { data, error } = await supabase.from('profiles').select('id,username,first_name,last_name,display_name,avatar_url,onboarding_completed,onboarding_step,home_city,home_state,home_zip,latitude,longitude,favorite_sports,favorite_leagues,preferred_experience,current_intent,preferences,privacy_settings,notification_preferences,saved_venue_ids,created_at,updated_at').eq('id', userId).maybeSingle();
+export async function getProfile(userId: string, client: typeof supabase = supabase): Promise<ProfileRow | null> {
+  if (!client) return null;
+  const { data, error } = await client.from('profiles').select('id,username,first_name,last_name,display_name,avatar_url,onboarding_completed,onboarding_step,home_city,home_state,home_zip,latitude,longitude,favorite_sports,favorite_leagues,preferred_experience,current_intent,preferences,privacy_settings,notification_preferences,saved_venue_ids,created_at,updated_at').eq('id', userId).maybeSingle();
   if (error) throw error;
   return data as ProfileRow | null;
 }
 
-export async function getUserWithProfile(authUser: any): Promise<User> {
+export async function getUserWithProfile(authUser: any, client: typeof supabase = supabase): Promise<User> {
   if (!authUser?.id) throw new Error('Cannot load a profile without an authenticated user id.');
-  const profile = await getProfile(authUser.id);
+  const profile = await getProfile(authUser.id, client);
   if (!profile) {
     throw new Error('The authenticated user has no public.profiles row. Verify the signup bootstrap trigger or repair the profile before continuing.');
   }
