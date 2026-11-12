@@ -33,6 +33,10 @@ test('profile updates are explicit updates and fail when no row is returned', ()
   assert.match(updater, /if \(!data\) throw new Error/);
 });
 
+test('no-op profile writes still require an existing canonical row', () => {
+  assert.match(profileService, /if \(!Object\.keys\(patch\)\.length\) \{[\s\S]*?if \(!profile\) throw new Error/);
+});
+
 test('auth hydration propagates profile failures instead of synthesizing defaults', () => {
   const hydrator = authService.slice(
     authService.indexOf('private async hydrateUser'),
