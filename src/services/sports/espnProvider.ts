@@ -48,7 +48,7 @@ export const ESPN_LEAGUE_MAP: Record<
   PGA: { sport: 'golf', league: 'pga', displayName: 'PGA Tour' },
   LPGA: { sport: 'golf', league: 'lpga', displayName: 'LPGA Tour' },
   LIV: { sport: 'golf', league: 'liv', displayName: 'LIV Golf' },
-  DP_WORLD: { sport: 'golf', league: 'dp-world-tour', displayName: 'DP World Tour' },
+  DP_WORLD: { sport: 'golf', league: 'eur', displayName: 'DP World Tour' },
   F1: { sport: 'racing', league: 'f1', displayName: 'Formula 1' },
   NASCAR: { sport: 'racing', league: 'nascar-premier', displayName: 'NASCAR Cup Series' },
   INDYCAR: { sport: 'racing', league: 'irl', displayName: 'IndyCar' },
