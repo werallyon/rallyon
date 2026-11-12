@@ -144,7 +144,11 @@ export async function updateProfile(userId: string, updates: Partial<User>): Pro
     const column = PROFILE_FIELD_MAP[key];
     if (column) patch[column] = value;
   }
-  if (!Object.keys(patch).length) return getProfile(userId);
+  if (!Object.keys(patch).length) {
+    const profile = await getProfile(userId);
+    if (!profile) throw new Error('The authenticated user has no public.profiles row. Profile bootstrap must be repaired before continuing.');
+    return profile;
+  }
 
   // Update only: profile creation/backfill belongs to a separately reviewed,
   // migration-backed database change, not an implicit client-side upsert.
