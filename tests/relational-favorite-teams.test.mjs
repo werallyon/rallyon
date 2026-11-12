@@ -45,9 +45,10 @@ test('migration refuses unsafe legacy data and unknown pre-existing relations', 
 });
 
 test('canonical profile mapper requires a matching non-null profile row', () => {
-  assert.match(profileService, /mergeAuthUserWithProfile\\(authUser: any, profile: ProfileRow\\)/);
+  assert.ok(profileService.includes('mergeAuthUserWithProfile(authUser: any, profile: ProfileRow): User'));
   assert.ok(profileService.includes('profile.id !== authUser.id'));
-  assert.equal(/profile\\?\\.id \\?\\? \\{ id: authUser.id \\}/.test(profileService), false);
+  assert.equal(profileService.includes('profile?: ProfileRow | null'), false);
+  assert.equal(profileService.includes('profile ?? { id: authUser.id }'), false);
 });
 
 test('favorite-team service maps the existing TeamReference contract and persists relationally', () => {
