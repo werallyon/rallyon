@@ -93,17 +93,21 @@ begin
       and p.prolang = (select oid from pg_language where lanname = 'plpgsql')
       and pg_get_userbyid(p.proowner) in ('postgres', 'supabase_admin');
 
-    if v_bootstrap_oid is null
-       or v_bootstrap_definition not ilike '%insert into public.profiles%'
-       or v_bootstrap_definition not ilike '%new.raw_user_meta_data%'
-       or v_bootstrap_definition not ilike '%on conflict (id) do nothing%'
-       or v_bootstrap_definition ilike '%execute %' then
-      raise exception 'P0-C preflight: legacy Auth bootstrap function is not the recognized safe profile-insert implementation; inspect it manually';
-    end if;
+    -- A missing trigger is reported by the strict trigger preflight below,
+    -- preserving its specific diagnostic. If a trigger exists, its function
+    -- must match the known-safe implementation before we change its rights.
+    if v_bootstrap_oid is not null then
+      if v_bootstrap_definition not ilike '%insert into public.profiles%'
+         or v_bootstrap_definition not ilike '%new.raw_user_meta_data%'
+         or v_bootstrap_definition not ilike '%on conflict (id) do nothing%'
+         or v_bootstrap_definition ilike '%execute %' then
+        raise exception 'P0-C preflight: legacy Auth bootstrap function is not the recognized safe profile-insert implementation; inspect it manually';
+      end if;
 
-    execute 'alter function public.handle_new_user() security definer';
-    execute 'alter function public.handle_new_user() set search_path = pg_catalog, public, pg_temp';
-    execute 'revoke all privileges on function public.handle_new_user() from public, anon, authenticated, service_role';
+      execute 'alter function public.handle_new_user() security definer';
+      execute 'alter function public.handle_new_user() set search_path = pg_catalog, public, pg_temp';
+      execute 'revoke all privileges on function public.handle_new_user() from public, anon, authenticated, service_role';
+    end if;
   end;
 
   -- The live production profile table has an explicit legacy anon grant.
