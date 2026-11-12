@@ -1,6 +1,7 @@
 import { User } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { getUserWithProfile, mergeAuthUserWithProfile, updateProfile } from './profileService';
+import { getFavoriteTeams, replaceFavoriteTeams } from './teamPreferenceService';
 
 export interface SignUpParams {
   firstName: string;
@@ -92,8 +93,20 @@ class AuthService {
   getCurrentUser() { return this.currentUser; }
 
   private async hydrateUser(authUser: any): Promise<User> {
-    try { return await getUserWithProfile(authUser); }
-    catch { return mergeAuthUserWithProfile(authUser); }
+    try {
+      const user = await getUserWithProfile(authUser);
+      try {
+        // A successful empty relational result is authoritative; legacy JSON is
+        // only retained as a compatibility fallback while the migration is absent.
+        const favoriteTeams = await getFavoriteTeams(authUser.id);
+        return { ...user, favoriteTeams };
+      } catch (error) {
+        console.warn('Relational favorite teams unavailable; retaining legacy profile values.', error);
+        return user;
+      }
+    } catch {
+      return mergeAuthUserWithProfile(authUser);
+    }
   }
   private notify() { this.listeners.forEach((cb) => cb(this.currentUser)); }
 
@@ -169,12 +182,28 @@ class AuthService {
     if (!this.currentUser || this.currentUser.id !== id || !supabase) return null;
     const updated = { ...this.currentUser, ...updates, id, updatedAt: new Date().toISOString() } as User;
     this.currentUser = updated; this.notify();
-    void updateProfile(id, updates).then((profile) => {
-      if (profile && this.currentUser?.id === id) {
-        this.currentUser = mergeAuthUserWithProfile({ id, email: this.currentUser.email, user_metadata: {}, email_confirmed_at: this.currentUser.emailVerified ? new Date().toISOString() : null, created_at: this.currentUser.createdAt }, profile);
-        this.notify();
-      }
-    }).catch(() => undefined);
+    const { favoriteTeams, ...profileUpdates } = updates;
+    const profileSave = updateProfile(id, profileUpdates);
+    const favoriteTeamsSave = favoriteTeams === undefined || id.startsWith('usr_')
+      ? Promise.resolve(updated.favoriteTeams)
+      : replaceFavoriteTeams(id, favoriteTeams);
+    void Promise.all([profileSave, favoriteTeamsSave]).then(([profile, savedTeams]) => {
+      if (this.currentUser?.id !== id) return;
+      const authUser = {
+        id,
+        email: this.currentUser.email,
+        user_metadata: {},
+        email_confirmed_at: this.currentUser.emailVerified ? new Date().toISOString() : null,
+        created_at: this.currentUser.createdAt
+      };
+      this.currentUser = {
+        ...mergeAuthUserWithProfile(authUser, profile),
+        favoriteTeams: savedTeams
+      };
+      this.notify();
+    }).catch((error) => {
+      console.error('Unable to persist profile or favorite-team changes.', error);
+    });
     return updated;
   }
   completeOnboarding(id: string) { return this.updateUser(id, { onboardingCompleted: true, onboardingStep: 'complete' }); }
