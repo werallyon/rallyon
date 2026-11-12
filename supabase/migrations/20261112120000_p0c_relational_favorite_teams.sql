@@ -261,7 +261,7 @@ create policy user_favorite_teams_update_own on public.user_favorite_teams
   with check ((select auth.uid()) = user_id);
 create policy user_favorite_teams_delete_own on public.user_favorite_teams
   for delete to authenticated using ((select auth.uid()) = user_id);
-revoke all on table public.user_favorite_teams from anon, authenticated;
+revoke all on table public.user_favorite_teams from public, anon, authenticated;
 grant select, insert, update, delete on table public.user_favorite_teams to authenticated;
 
 -- Stable backfill: first occurrence wins for duplicate team IDs; ordinality
