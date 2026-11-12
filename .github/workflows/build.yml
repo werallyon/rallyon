@@ -2,7 +2,7 @@ name: RallyOn Build Check
 
 on:
   push:
-    branches: [main]
+    branches: [main, test/p0-auth-rls-api-validation]
   pull_request:
     branches: [main]
 
