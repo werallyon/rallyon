@@ -58,3 +58,20 @@ test('initialization, auth-state hydration, and direct auth actions reject stale
   assert.match(authService, /isAuthActionCurrent/);
   assert.match(authService, /this\.isCurrentAuthAction\(actionRevision, data\.user\.id\)/);
 });
+
+test('profile service never maps legacy favorite JSON or exports a direct table-update helper', () => {
+  assert.equal(/favorite_teams/.test(profileService), false);
+  assert.equal(/export async function updateProfile/.test(profileService), false);
+  assert.equal(/\.from\('profiles'\)\.update/.test(profileService), false);
+});
+
+test('onboarding is remounted for each authenticated user identity', () => {
+  const onboarding = read('src/components/onboarding/OnboardingFlow.tsx');
+  assert.match(onboarding, /<OnboardingFlowForUser key=\{currentUser\.id\} \/>/);
+});
+
+test('profile RPC rechecks the live authenticated identity before submitting', () => {
+  const write = authService.slice(authService.indexOf('updateUser(id:'), authService.indexOf('completeOnboarding'));
+  assert.match(write, /auth\.getUser\(\)/);
+  assert.match(write, /authData\.user\.id !== id/);
+});
