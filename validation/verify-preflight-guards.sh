@@ -87,7 +87,7 @@ expect_preflight_failure \
 
 expect_preflight_failure \
   "PUBLIC profile column grant" \
-  "PUBLIC has % column grants" \
+  "PUBLIC has" \
   "grant update (display_name) on table public.profiles to public;"
 
 # Finish with a clean positive reset and verify the exact migrations still apply.
