@@ -9,7 +9,7 @@ This branch addresses the independent review findings without changing PR #16, P
 - An empty favorite-team array is an intentional clear operation.
 - Favorite-team inputs are normalized before submission; blank IDs/names and malformed required fields are rejected, and the first occurrence wins for duplicate IDs.
 - Relational favorites are authoritative. A failed relational read is surfaced as a hydration failure; it is never converted into stale legacy JSON.
-- Sign-in and sign-up completions use an action revision and re-check the current Auth session after asynchronous hydration. A superseded request cannot publish a previous identity.
+- Sign-in and sign-up completions use an action revision and re-check the current Auth session after asynchronous hydration. A superseded request cannot publish a previous identity. The pure revision/session guards are shared with auth-state hydration and covered by `tests/auth-action-race.test.mjs`.
 - The profile mapper requires a non-null canonical row whose ID matches the Auth user.
 
 ## Migration preflight
