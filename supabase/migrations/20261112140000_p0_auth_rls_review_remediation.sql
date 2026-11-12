@@ -8,7 +8,8 @@ create or replace function public.save_profile_and_favorite_teams(
 )
 returns public.profiles
 language plpgsql
-set search_path = public, pg_temp
+security invoker
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare
   v_user_id uuid := auth.uid();
