@@ -22,26 +22,27 @@ This is a **separate Supabase CLI project** for P0-A / P0-C validation. It inten
 Run from repository root:
 
 ```bash
-supabase --workdir validation start
-supabase --workdir validation status
-supabase --workdir validation db reset
+npm run supabase:validation:start
+npm run supabase:validation:status
+npm run supabase:validation:reset
+npm run supabase:validation:verify
 ```
 
-The isolated CLI config pins PostgreSQL major version 17 and uses non-default ports to avoid colliding with another local Supabase stack. `db reset` recreates only this local validation database and applies the three migrations in this directory.
+The isolated CLI config pins PostgreSQL major version 17 and uses non-default ports to avoid colliding with another local Supabase stack. Reset recreates only this local validation database and applies the three migrations in this directory. The verify command runs SQL assertions and exits with an error if the fixture counts, backfill, or RLS flags are wrong.
 
 Stop when finished:
 
 ```bash
-supabase --workdir validation stop
+npm run supabase:validation:stop
 ```
 
 ## Configure RallyOn against local Auth
 
-Use the local API URL and anon/publishable key printed by `supabase --workdir validation status`. Set them only in an untracked local `.env.local` (never commit):
+Use the local API URL and anon/publishable key printed by `npm run supabase:validation:status`. Set them only in an untracked local `.env.local` (never commit):
 
 ```dotenv
 VITE_SUPABASE_URL=http://127.0.0.1:54331
-VITE_SUPABASE_ANON_KEY=<local-anon-key-from-status>
+VITE_SUPABASE_PUBLISHABLE_KEY=<local-anon-key-from-status>
 ```
 
 Then run the app in a second terminal:
@@ -58,7 +59,7 @@ The project uses a local Auth instance with email confirmations disabled. Fixtur
 
 ## Database checks
 
-After reset, run these read-only checks in the local Studio SQL editor (http://127.0.0.1:54333):
+After reset, the verify script should pass. For manual inspection, open local Studio at http://127.0.0.1:54333 and run:
 
 ```sql
 -- Expected: two profiles, two Auth fixtures, two relational favorite rows.
