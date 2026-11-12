@@ -80,6 +80,16 @@ expect_preflight_failure \
   "PUBLIC has" \
   "grant select on table public.profiles to public;"
 
+expect_preflight_failure \
+  "anon profile column grant" \
+  "anon has" \
+  "grant select (display_name) on table public.profiles to anon;"
+
+expect_preflight_failure \
+  "PUBLIC profile column grant" \
+  "PUBLIC has % column grants" \
+  "grant update (display_name) on table public.profiles to public;"
+
 # Finish with a clean positive reset and verify the exact migrations still apply.
 supabase --workdir "$WORKDIR" db reset
 supabase --workdir "$WORKDIR" db query --local --file supabase/verify.sql
