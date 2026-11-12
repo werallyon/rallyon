@@ -1,4 +1,5 @@
 import { SportsGame, TeamReference, Venue, VenueGame } from '../types';
+import { supabase } from '../lib/supabaseClient';
 
 export interface FavoriteGameMatch {
   isFavorite: boolean;
@@ -279,25 +280,22 @@ export function toFavoriteTeamRow(userId: string, team: TeamReference, sortOrder
 
 /** Read the user's relational favorites in the order selected. */
 export async function getFavoriteTeams(userId: string): Promise<TeamReference[]> {
-  const { supabase } = await import('../lib/supabaseClient');
   if (!supabase) return [];
   const { data, error } = await supabase
     .from('user_favorite_teams')
     .select('user_id, team_id, team_name, sport_id, league, abbrev, logo, color, sort_order')
     .eq('user_id', userId)
-    .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: true });
+    .order('sort_order', { ascending: true });
   if (error) throw error;
   return (data ?? []).map((row) => mapFavoriteTeamRow(row as FavoriteTeamRow));
 }
 
 /**
  * Replace a user's complete favorite-team selection.
- * The delete + insert sequence is wrapped in a database RPC in a later hardening
- * step if transactional replacement becomes necessary; unique keys make retries safe.
+ * Upsert selected rows before deleting removed rows, preserving the old selection
+ * if an upsert fails. A multi-row replacement is not a single database transaction.
  */
 export async function replaceFavoriteTeams(userId: string, teams: TeamReference[]): Promise<TeamReference[]> {
-  const { supabase } = await import('../lib/supabaseClient');
   if (!supabase) return teams;
 
   const uniqueTeams = teams.filter(
