@@ -16,7 +16,7 @@ major_version = 17
 enabled = true
 port = 54333
 
-[inbucket]
+[local_smtp]
 enabled = true
 port = 54334
 
