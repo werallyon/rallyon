@@ -13,6 +13,11 @@ declare
   v_broad_policies bigint;
   v_anon_grants bigint;
   v_bootstrap_trigger boolean;
+  v_unverified_policies bigint;
+  v_bad_profile_columns text[];
+  v_has_profile_pk boolean;
+  v_has_profile_auth_fk boolean;
+  v_public_profile_grants bigint;
 begin
   if to_regclass('public.profiles') is null then
     raise exception 'P0-C preflight: public.profiles does not exist; stop and reconcile the profile schema first';
@@ -24,13 +29,17 @@ begin
     raise exception 'P0-C preflight: RLS is not enabled on public.profiles';
   end if;
 
+  -- Accept only the two canonical owner predicates after removing
+  -- formatting parentheses/whitespace. Any additional permissive policy for
+  -- authenticated/anon/PUBLIC must also be owner-scoped; PostgreSQL ORs
+  -- permissive policies together, so a second broad policy defeats a safe one.
   select exists (
     select 1 from pg_policies
     where schemaname = 'public' and tablename = 'profiles'
       and cmd = 'SELECT' and permissive = 'PERMISSIVE'
       and roles @> array['authenticated']::name[]
-      and lower(coalesce(qual, '')) like '%auth.uid()%'
-      and lower(coalesce(qual, '')) like '%id%'
+      and regexp_replace(lower(coalesce(qual, '')), '[[:space:]()]', '', 'g')
+          in ('auth.uid()=id', 'id=auth.uid()', 'selectauth.uid()=id', 'id=selectauth.uid()')
   ) into v_select_policy;
 
   select exists (
@@ -38,8 +47,8 @@ begin
     where schemaname = 'public' and tablename = 'profiles'
       and cmd = 'INSERT' and permissive = 'PERMISSIVE'
       and roles @> array['authenticated']::name[]
-      and lower(coalesce(with_check, '')) like '%auth.uid()%'
-      and lower(coalesce(with_check, '')) like '%id%'
+      and regexp_replace(lower(coalesce(with_check, '')), '[[:space:]()]', '', 'g')
+          in ('auth.uid()=id', 'id=auth.uid()', 'selectauth.uid()=id', 'id=selectauth.uid()')
   ) into v_insert_policy;
 
   select exists (
@@ -47,10 +56,10 @@ begin
     where schemaname = 'public' and tablename = 'profiles'
       and cmd = 'UPDATE' and permissive = 'PERMISSIVE'
       and roles @> array['authenticated']::name[]
-      and lower(coalesce(qual, '')) like '%auth.uid()%'
-      and lower(coalesce(qual, '')) like '%id%'
-      and lower(coalesce(with_check, '')) like '%auth.uid()%'
-      and lower(coalesce(with_check, '')) like '%id%'
+      and regexp_replace(lower(coalesce(qual, '')), '[[:space:]()]', '', 'g')
+          in ('auth.uid()=id', 'id=auth.uid()', 'selectauth.uid()=id', 'id=selectauth.uid()')
+      and regexp_replace(lower(coalesce(with_check, '')), '[[:space:]()]', '', 'g')
+          in ('auth.uid()=id', 'id=auth.uid()', 'selectauth.uid()=id', 'id=selectauth.uid()')
   ) into v_update_policy;
 
   if not v_select_policy or not v_insert_policy or not v_update_policy then
@@ -61,40 +70,127 @@ begin
     select 1
     from pg_trigger t
     join pg_proc p on p.oid = t.tgfoid
+    join pg_namespace pn on pn.oid = p.pronamespace
     where t.tgrelid = 'auth.users'::regclass
       and not t.tgisinternal
+      and t.tgname = 'on_auth_user_created'
+      and t.tgenabled in ('O', 'A')
+      and t.tgtype = 5 -- AFTER INSERT FOR EACH ROW
+      and pn.nspname = 'public'
       and p.proname = 'handle_new_user'
       and p.prosecdef
+      and exists (
+        select 1 from unnest(coalesce(p.proconfig, array[]::text[])) cfg
+        where cfg like 'search_path=%public%pg_temp%'
+      )
+      and pg_get_functiondef(p.oid) ilike '%insert into public.profiles%'
+      and pg_get_functiondef(p.oid) ilike '%new.id%'
   ) into v_bootstrap_trigger;
   if not v_bootstrap_trigger then
-    raise exception 'P0-C preflight: auth.users must have the SECURITY DEFINER handle_new_user profile-bootstrap trigger';
+    raise exception 'P0-C preflight: expected enabled AFTER INSERT row trigger auth.on_auth_user_created -> public.handle_new_user SECURITY DEFINER with pinned safe search_path and profile insert was not verified';
   end if;
 
-  select count(*) into v_broad_policies
+  select count(*) into v_unverified_policies
   from pg_policies
   where schemaname = 'public' and tablename = 'profiles'
     and permissive = 'PERMISSIVE'
-    and cmd in ('SELECT', 'INSERT', 'UPDATE', 'DELETE', 'ALL')
-    and (roles @> array['authenticated']::name[] or roles @> array['anon']::name[] or roles @> array['public']::name[])
+    and (roles && array['authenticated', 'anon', 'public']::name[])
     and (
-      (cmd in ('SELECT', 'UPDATE', 'DELETE', 'ALL') and (
-        lower(coalesce(qual, '')) not like '%auth.uid()%'
-        or lower(coalesce(qual, '')) not like '%id%'
-      ))
-      or (cmd in ('INSERT', 'UPDATE', 'ALL') and (
-        lower(coalesce(with_check, '')) not like '%auth.uid()%'
-        or lower(coalesce(with_check, '')) not like '%id%'
-      ))
+      cmd = 'ALL'
+      or (cmd in ('SELECT', 'UPDATE', 'DELETE') and
+        regexp_replace(lower(coalesce(qual, '')), '[[:space:]()]', '', 'g')
+          not in ('auth.uid()=id', 'id=auth.uid()', 'selectauth.uid()=id', 'id=selectauth.uid()'))
+      or (cmd in ('INSERT', 'UPDATE') and
+        regexp_replace(lower(coalesce(with_check, '')), '[[:space:]()]', '', 'g')
+          not in ('auth.uid()=id', 'id=auth.uid()', 'selectauth.uid()=id', 'id=selectauth.uid()'))
     );
-  if v_broad_policies > 0 then
-    raise exception 'P0-C preflight: found % potentially broad permissive profile SELECT/UPDATE policies; audit policy OR-composition before rollout', v_broad_policies;
+  if v_unverified_policies > 0 then
+    raise exception 'P0-C preflight: % permissive profile policies for authenticated/anon/PUBLIC do not match the exact owner predicate allowlist; inspect policy OR-composition', v_unverified_policies;
   end if;
 
   select count(*) into v_anon_grants
   from unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE']) as privilege_name
   where has_table_privilege('anon', 'public.profiles', privilege_name);
   if v_anon_grants > 0 then
-    raise exception 'P0-C preflight: anon has % direct grants on public.profiles; audit grants before rollout', v_anon_grants;
+    raise exception 'P0-C preflight: anon has % effective privileges on public.profiles; audit grants before rollout', v_anon_grants;
+  end if;
+
+  select count(*) into v_public_profile_grants
+  from pg_class c
+  cross join lateral aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) acl
+  where c.oid = 'public.profiles'::regclass
+    and acl.grantee = 0
+    and acl.privilege_type in ('SELECT', 'INSERT', 'UPDATE', 'DELETE');
+  if v_public_profile_grants > 0 then
+    raise exception 'P0-C preflight: PUBLIC has % effective table grants on public.profiles; revoke them before rollout', v_public_profile_grants;
+  end if;
+
+  if not has_table_privilege('authenticated', 'public.profiles', 'SELECT')
+     or not has_table_privilege('authenticated', 'public.profiles', 'UPDATE') then
+    raise exception 'P0-C preflight: authenticated must retain effective SELECT and UPDATE privileges on public.profiles for the invoker-rights profile RPC';
+  end if;
+
+  select exists (
+    select 1 from pg_constraint c
+    where c.conrelid = 'public.profiles'::regclass
+      and c.contype = 'p'
+      and c.conkey = array[(select a.attnum from pg_attribute a where a.attrelid = c.conrelid and a.attname = 'id' and not a.attisdropped)]::smallint[]
+  ) into v_has_profile_pk;
+  if not coalesce(v_has_profile_pk, false) then
+    raise exception 'P0-C preflight: public.profiles.id must be the sole primary key';
+  end if;
+
+  select exists (
+    select 1
+    from pg_constraint c
+    where c.conrelid = 'public.profiles'::regclass
+      and c.contype = 'f'
+      and c.confrelid = 'auth.users'::regclass
+      and c.conkey = array[(select a.attnum from pg_attribute a where a.attrelid = c.conrelid and a.attname = 'id' and not a.attisdropped)]::smallint[]
+      and c.confkey = array[(select a.attnum from pg_attribute a where a.attrelid = c.confrelid and a.attname = 'id' and not a.attisdropped)]::smallint[]
+  ) into v_has_profile_auth_fk;
+  if not coalesce(v_has_profile_auth_fk, false) then
+    raise exception 'P0-C preflight: public.profiles.id must reference auth.users.id';
+  end if;
+
+  select array_agg(required.column_name || ' expected ' || required.data_type ||
+                   coalesce(' (' || required.udt_name || ')', '') ||
+                   ', found ' || coalesce(actual.data_type || ' (' || actual.udt_name || ')', 'MISSING'))
+  into v_bad_profile_columns
+  from (values
+    ('id', 'uuid', 'uuid'),
+    ('username', 'text', 'text'),
+    ('first_name', 'text', 'text'),
+    ('last_name', 'text', 'text'),
+    ('display_name', 'text', 'text'),
+    ('avatar_url', 'text', 'text'),
+    ('onboarding_completed', 'boolean', 'bool'),
+    ('onboarding_step', 'text', 'text'),
+    ('home_city', 'text', 'text'),
+    ('home_state', 'text', 'text'),
+    ('home_zip', 'text', 'text'),
+    ('latitude', 'double precision', 'float8'),
+    ('longitude', 'double precision', 'float8'),
+    ('favorite_sports', 'ARRAY', '_text'),
+    ('favorite_leagues', 'ARRAY', '_text'),
+    ('preferred_experience', 'ARRAY', '_text'),
+    ('current_intent', 'text', 'text'),
+    ('preferences', 'jsonb', 'jsonb'),
+    ('privacy_settings', 'jsonb', 'jsonb'),
+    ('notification_preferences', 'jsonb', 'jsonb'),
+    ('saved_venue_ids', 'ARRAY', '_text'),
+    ('updated_at', 'timestamp with time zone', 'timestamptz')
+  ) as required(column_name, data_type, udt_name)
+  left join information_schema.columns actual
+    on actual.table_schema = 'public'
+   and actual.table_name = 'profiles'
+   and actual.column_name = required.column_name
+  where actual.column_name is null
+     or actual.data_type <> required.data_type
+     or actual.udt_name <> required.udt_name;
+  if coalesce(array_length(v_bad_profile_columns, 1), 0) > 0 then
+    raise exception 'P0-C preflight: profile schema is incompatible with the transactional RPC: %',
+      array_to_string(v_bad_profile_columns, '; ');
   end if;
 
   select c.udt_name into v_favorites_type
