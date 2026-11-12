@@ -145,7 +145,7 @@ The stable database fixture UUIDs are:
 - A: `a1000000-0000-4000-8000-000000000001`
 - B: `b2000000-0000-4000-8000-000000000002`
 
-The migration fixture validates deterministic first-occurrence handling for duplicate IDs and preserves an empty selection. The hardened migration now stops before creating the relational table when legacy roots are not arrays or any team entry is not an object with non-empty string ID and name; malformed entries are not silently skipped. The local verification script also asserts no anon grants and only CRUD grants for authenticated. It does not validate the production Auth signup provider flow or every possible malformed JSON payload.
+The migration fixture validates deterministic first-occurrence handling for duplicate IDs and preserves an empty selection. The hardened migration now stops before creating the relational table unless the profile table has owner-scoped SELECT/INSERT/UPDATE policies, a SECURITY DEFINER Auth bootstrap trigger, no broad permissive SELECT/INSERT/UPDATE/DELETE/ALL policy, and no effective anon grants. It also stops when legacy roots are not arrays or any team entry is not an object with non-empty string ID and name; malformed entries are not silently skipped. The local verification script also asserts no anon grants and only CRUD grants for authenticated. It does not validate the production Auth signup provider flow or every possible malformed JSON payload.
 
 ## What this harness does not prove
 
