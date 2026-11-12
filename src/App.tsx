@@ -95,15 +95,17 @@ function RallyOnMain() {
       .then(({ location }) => {
         if (!mounted) return;
         setDetectedLocation({ latitude: location.latitude, longitude: location.longitude });
-        const resolvedMarket = marketService.detectMarketFromCoordinates(
+        const resolvedLocation = marketService.detectLocationFromCoordinates(
           location.latitude,
           location.longitude
         );
-        marketService.setActiveMarket(resolvedMarket.market.id);
+        marketService.setActiveMarket(resolvedLocation.market.id);
+        if (resolvedLocation.city) {
+          setCurrentCity(resolvedLocation.city.name);
+        }
       })
-      .catch((error: any) => {
-        if (!mounted) return;
-        setLocationPermission(error?.permission || 'PROMPT');
+      .catch(() => {
+        // Location is optional. Manual market/city selection remains available.
       });
 
     return () => { mounted = false; };
