@@ -21,7 +21,7 @@ function decodeJwtPayload(token, label) {
 function getLocalCredentials() {
   const result = spawnSync(
     'supabase',
-    ['--workdir', PROJECT_WORKDIR, 'status', '--env', '--output-format', 'text'],
+    ['--workdir', PROJECT_WORKDIR, 'status', '--output', 'env', '--output-format', 'text'],
     { encoding: 'utf8', timeout: 20_000 }
   );
 
