@@ -70,7 +70,7 @@ jobs:
         run: supabase --workdir validation db reset
 
       - name: Verify profile contract, favorite backfill, RLS and RPC
-        run: supabase --workdir validation db query --local --file supabase/verify.sql
+        run: bash validation/run-local-sql.sh validation/supabase/verify.sql
 
       - name: Verify preflight rejects unsafe policies, triggers, schema and grants
         run: bash validation/verify-preflight-guards.sh
