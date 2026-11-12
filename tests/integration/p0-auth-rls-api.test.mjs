@@ -407,10 +407,11 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
     });
 
     await t.test('missing canonical profile causes application hydration to fail closed', async () => {
-      const removed = await admin.from('profiles').delete().eq('id', userA.user.id).select('id').single();
+      const missingAccount = await createSyntheticUser('missing');
+      const removed = await admin.from('profiles').delete().eq('id', missingAccount.user.id).select('id').single();
       assert.ifError(removed.error);
       await assert.rejects(
-        () => getUserWithProfile(userA.user, userA.client),
+        () => getUserWithProfile(missingAccount.user, missingAccount.client),
         /no public\\.profiles row/
       );
       const otherProfile = await userB.client.from('profiles').select('id').eq('id', userB.user.id).single();
