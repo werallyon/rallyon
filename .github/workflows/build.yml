@@ -2,9 +2,13 @@ name: RallyOn Build Check
 
 on:
   push:
-    branches: [main, fix/p0-c-remediation-ci-base, fix/p0-auth-rls-review-remediation]
+    branches: [main, fix/p0-c-remediation-ci-base]
   pull_request:
     branches: [main, fix/p0-c-remediation-ci-base]
+
+concurrency:
+  group: rallyon-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
