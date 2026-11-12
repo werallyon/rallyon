@@ -9,6 +9,8 @@ declare
   v_select_policy boolean;
   v_update_policy boolean;
   v_rls boolean;
+  v_broad_policies bigint;
+  v_anon_grants bigint;
 begin
   if to_regclass('public.profiles') is null then
     raise exception 'P0-C preflight: public.profiles does not exist; stop and reconcile the profile schema first';
@@ -44,6 +46,32 @@ begin
     raise exception 'P0-C preflight: public.profiles must have authenticated owner-scoped SELECT and UPDATE policies (USING and WITH CHECK)';
   end if;
 
+  select count(*) into v_broad_policies
+  from pg_policies
+  where schemaname = 'public' and tablename = 'profiles'
+    and permissive = 'PERMISSIVE'
+    and cmd in ('SELECT', 'UPDATE')
+    and (roles @> array['authenticated']::name[] or roles @> array['public']::name[])
+    and (
+      lower(coalesce(qual, '')) not like '%auth.uid()%'
+      or lower(coalesce(qual, '')) not like '%id%'
+      or (cmd = 'UPDATE' and (
+        lower(coalesce(with_check, '')) not like '%auth.uid()%'
+        or lower(coalesce(with_check, '')) not like '%id%'
+      ))
+    );
+  if v_broad_policies > 0 then
+    raise exception 'P0-C preflight: found % potentially broad permissive profile SELECT/UPDATE policies; audit policy OR-composition before rollout', v_broad_policies;
+  end if;
+
+  select count(*) into v_anon_grants
+  from information_schema.role_table_grants
+  where table_schema = 'public' and table_name = 'profiles'
+    and grantee = 'anon';
+  if v_anon_grants > 0 then
+    raise exception 'P0-C preflight: anon has % direct grants on public.profiles; audit grants before rollout', v_anon_grants;
+  end if;
+
   select c.udt_name into v_favorites_type
   from information_schema.columns c
   where c.table_schema = 'public' and c.table_name = 'profiles'
@@ -62,7 +90,7 @@ begin
 
   execute $q$
     select count(*) from public.profiles
-    where favorite_teams is null or jsonb_typeof(favorite_teams::jsonb) <> 'array'
+    where coalesce(jsonb_typeof(favorite_teams::jsonb), 'null') <> 'array'
   $q$ into v_bad_roots;
   if v_bad_roots > 0 then
     raise exception 'P0-C preflight: % profile rows have NULL or non-array favorite_teams; no data was migrated', v_bad_roots;
@@ -72,10 +100,10 @@ begin
     select count(*)
     from public.profiles p
     cross join lateral jsonb_array_elements(p.favorite_teams::jsonb) with ordinality as t(value, ordinality)
-    where jsonb_typeof(t.value) <> 'object'
-       or jsonb_typeof(t.value->'id') <> 'string'
+    where coalesce(jsonb_typeof(t.value), 'null') <> 'object'
+       or coalesce(jsonb_typeof(t.value->'id'), 'null') <> 'string'
        or length(btrim(coalesce(t.value->>'id', ''))) = 0
-       or jsonb_typeof(t.value->'name') <> 'string'
+       or coalesce(jsonb_typeof(t.value->'name'), 'null') <> 'string'
        or length(btrim(coalesce(t.value->>'name', ''))) = 0
   $q$ into v_bad_items;
   if v_bad_items > 0 then
@@ -221,10 +249,10 @@ begin
   if p_favorite_teams is not null then
     if exists (
       select 1 from jsonb_array_elements(p_favorite_teams) as t(value)
-      where jsonb_typeof(t.value) <> 'object'
-         or jsonb_typeof(t.value->'id') <> 'string'
+      where coalesce(jsonb_typeof(t.value), 'null') <> 'object'
+         or coalesce(jsonb_typeof(t.value->'id'), 'null') <> 'string'
          or length(btrim(coalesce(t.value->>'id',''))) = 0
-         or jsonb_typeof(t.value->'name') <> 'string'
+         or coalesce(jsonb_typeof(t.value->'name'), 'null') <> 'string'
          or length(btrim(coalesce(t.value->>'name',''))) = 0
     ) then
       raise exception 'Every favorite team must be an object with non-empty string id and name';
