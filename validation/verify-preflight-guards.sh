@@ -92,4 +92,4 @@ expect_preflight_failure \
 
 # Finish with a clean positive reset and verify the exact migrations still apply.
 supabase --workdir "$WORKDIR" db reset
-supabase --workdir "$WORKDIR" db query --local --file supabase/verify.sql
+bash validation/run-local-sql.sh validation/supabase/verify.sql
