@@ -16,7 +16,7 @@ This branch addresses the independent review findings without changing PR #16, P
 
 The replacement P0-C migration is intentionally conservative and transactional:
 
-1. Requires `public.profiles`, enabled RLS, authenticated owner-scoped SELECT and UPDATE policies (including UPDATE USING and WITH CHECK), and no potentially broad permissive SELECT/UPDATE policy.
+1. Requires `public.profiles`, enabled RLS, authenticated owner-scoped SELECT, INSERT, and UPDATE policies (including UPDATE USING and WITH CHECK), a `SECURITY DEFINER` `auth.users` profile-bootstrap trigger, and no potentially broad permissive SELECT/INSERT/UPDATE policy.
 2. Rejects effective anon grants on `public.profiles`.
 3. Accepts only `json` or `jsonb` for `favorite_teams`; it will not cast arbitrary text.
 4. Refuses to adopt a pre-existing `user_favorite_teams` table. An operator must audit its columns, keys, grants, and every policy before writing a separate adoption migration.
