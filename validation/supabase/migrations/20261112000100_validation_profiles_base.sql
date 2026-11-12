@@ -37,6 +37,8 @@ create policy profiles_update_own on public.profiles
   with check ((select auth.uid()) = id);
 
 grant all on public.profiles to anon;
+-- Model the legacy PUBLIC table grant too; the migration must revoke it.
+grant select on table public.profiles to public;
 grant select, insert, update on public.profiles to authenticated;
 
 create or replace function public.handle_new_user()
