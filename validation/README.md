@@ -5,7 +5,7 @@ This is a **separate Supabase CLI project** for P0-A / P0-C validation. It inten
 ## Safety boundary
 
 - Local Docker-backed Supabase only. Do not point these commands at production or the hosted `RallyOn-Validation` project.
-- The hosted `RallyOn-Validation` project is a separate manual integration target; its existing fixture rows are not reset by these commands.
+- The hosted `RallyOn-Validation` project is a separate manual integration target; its existing synthetic fixture rows persist and are not reset by these commands. The hosted project currently contains 2 synthetic Auth users, 2 profiles, and 2 relational favorites (both belonging to fixture A).
 - The local project contains only synthetic `example.test` users and fixture teams.
 - Do not add service-role keys or production credentials to this directory or commit them.
 - Keep PR #16 and PR #18 draft/unmerged until database and app-level checks pass.
@@ -98,7 +98,7 @@ The stable database fixture UUIDs are:
 - A: `a1000000-0000-4000-8000-000000000001`
 - B: `b2000000-0000-4000-8000-000000000002`
 
-The migration fixture validates backfill handling for duplicate IDs, blank IDs, missing names, and an empty array. It does not validate the production Auth signup provider flow or every possible malformed JSON payload.
+The migration fixture validates backfill handling for duplicate IDs, blank IDs, missing names, and an empty array. The local verification script also asserts no anon grants and only CRUD grants for authenticated. It does not validate the production Auth signup provider flow or every possible malformed JSON payload.
 
 ## What this harness does not prove
 
@@ -106,4 +106,4 @@ The migration fixture validates backfill handling for duplicate IDs, blank IDs, 
 - It does not copy or mirror production user data.
 - It does not prove signup trigger behavior through every OAuth provider.
 - It does not replace live API RLS tests through two real client sessions.
-- The hosted disposable project remains separately inspectable; never use local reset commands against it.
+- The hosted disposable project remains separately inspectable; its two synthetic users and related rows were created during earlier hosted SQL validation and are intentionally retained as fixtures. No production data was copied. Never use local reset commands against it.
