@@ -59,6 +59,10 @@ test('optimistic profile and favorite writes roll back on persistence failure', 
   assert.ok(authService.includes('this.currentUser = previousUser;'));
 });
 
+test('no-op profile writes still require an existing canonical row', () => {
+  assert.match(profileService, /if \(!Object\.keys\(patch\)\.length\) \{[\s\S]*?if \(!profile\) throw new Error/);
+});
+
 test('canonical profile failures are not converted into synthetic Auth-only users', () => {
   const hydrator = authService.slice(
     authService.indexOf('private async hydrateUser'),
