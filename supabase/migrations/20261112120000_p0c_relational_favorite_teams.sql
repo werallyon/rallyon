@@ -38,7 +38,7 @@ begin
       and cmd = 'SELECT' and permissive = 'PERMISSIVE'
       and roles @> array['authenticated']::name[]
       and regexp_replace(lower(coalesce(qual, '')), '[[:space:]()]', '', 'g')
-          in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid')
+          in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid', 'selectauth.uidasuid=id', 'id=selectauth.uidasuid')
   ) into v_select_policy;
 
   select exists (
@@ -47,7 +47,7 @@ begin
       and cmd = 'INSERT' and permissive = 'PERMISSIVE'
       and roles @> array['authenticated']::name[]
       and regexp_replace(lower(coalesce(with_check, '')), '[[:space:]()]', '', 'g')
-          in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid')
+          in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid', 'selectauth.uidasuid=id', 'id=selectauth.uidasuid')
   ) into v_insert_policy;
 
   select exists (
@@ -56,9 +56,9 @@ begin
       and cmd = 'UPDATE' and permissive = 'PERMISSIVE'
       and roles @> array['authenticated']::name[]
       and regexp_replace(lower(coalesce(qual, '')), '[[:space:]()]', '', 'g')
-          in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid')
+          in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid', 'selectauth.uidasuid=id', 'id=selectauth.uidasuid')
       and regexp_replace(lower(coalesce(with_check, '')), '[[:space:]()]', '', 'g')
-          in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid')
+          in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid', 'selectauth.uidasuid=id', 'id=selectauth.uidasuid')
   ) into v_update_policy;
 
   if not v_select_policy or not v_insert_policy or not v_update_policy then
@@ -99,10 +99,10 @@ begin
       cmd = 'ALL'
       or (cmd in ('SELECT', 'UPDATE', 'DELETE') and
         regexp_replace(lower(coalesce(qual, '')), '[[:space:]()]', '', 'g')
-          not in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid'))
+          not in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid', 'selectauth.uidasuid=id', 'id=selectauth.uidasuid'))
       or (cmd in ('INSERT', 'UPDATE') and
         regexp_replace(lower(coalesce(with_check, '')), '[[:space:]()]', '', 'g')
-          not in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid'))
+          not in ('auth.uid=id', 'id=auth.uid', 'selectauth.uid=id', 'id=selectauth.uid', 'selectauth.uidasuid=id', 'id=selectauth.uidasuid'))
     );
   if v_unverified_policies > 0 then
     raise exception 'P0-C preflight: % permissive profile policies for authenticated/anon/PUBLIC do not match the exact owner predicate allowlist; inspect policy OR-composition', v_unverified_policies;
