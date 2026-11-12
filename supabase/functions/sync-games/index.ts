@@ -58,7 +58,7 @@ function team(competitor: any) {
   return {
     name: source.displayName ?? source.name ?? "",
     abbrev: source.abbreviation ?? source.shortDisplayName ?? "",
-    logo: source.logo ?? source.logos?.[0]?.href ?? "",
+    logo: source.logo ?? source.logos?.[0]?.href ?? competitor?.athlete?.headshot?.href ?? "",
     record: competitor?.records?.[0]?.summary,
   };
 }
