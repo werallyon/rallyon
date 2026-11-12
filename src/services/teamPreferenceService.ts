@@ -234,3 +234,83 @@ export function checkVenueFavoriteTeamAffiliation(
 
   return { isAffiliated: false };
 }
+
+
+/** Database representation of a user's selected team. */
+export interface FavoriteTeamRow {
+  user_id: string;
+  team_id: string;
+  team_name: string;
+  sport_id: string;
+  league: string;
+  abbrev: string;
+  logo: string;
+  color: string | null;
+  sort_order: number;
+}
+
+/** Convert the normalized row into the existing app-facing team model. */
+export function mapFavoriteTeamRow(row: FavoriteTeamRow): TeamReference {
+  return {
+    id: row.team_id,
+    name: row.team_name,
+    sportId: row.sport_id,
+    league: row.league,
+    abbrev: row.abbrev,
+    logo: row.logo,
+    ...(row.color ? { color: row.color } : {})
+  };
+}
+
+/** Convert the existing app-facing model into a relational row. */
+export function toFavoriteTeamRow(userId: string, team: TeamReference, sortOrder: number): FavoriteTeamRow {
+  return {
+    user_id: userId,
+    team_id: team.id,
+    team_name: team.name,
+    sport_id: team.sportId,
+    league: team.league,
+    abbrev: team.abbrev,
+    logo: team.logo,
+    color: team.color ?? null,
+    sort_order: sortOrder
+  };
+}
+
+/** Read the user's relational favorites in the order selected. */
+export async function getFavoriteTeams(userId: string): Promise<TeamReference[]> {
+  const { supabase } = await import('../lib/supabaseClient');
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('user_favorite_teams')
+    .select('user_id, team_id, team_name, sport_id, league, abbrev, logo, color, sort_order')
+    .eq('user_id', userId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((row) => mapFavoriteTeamRow(row as FavoriteTeamRow));
+}
+
+/**
+ * Replace a user's complete favorite-team selection.
+ * The delete + insert sequence is wrapped in a database RPC in a later hardening
+ * step if transactional replacement becomes necessary; unique keys make retries safe.
+ */
+export async function replaceFavoriteTeams(userId: string, teams: TeamReference[]): Promise<TeamReference[]> {
+  const { supabase } = await import('../lib/supabaseClient');
+  if (!supabase) return teams;
+  const uniqueTeams = teams.filter((team, index) => teams.findIndex((candidate) => candidate.id === team.id) === index);
+  const { error: deleteError } = await supabase
+    .from('user_favorite_teams')
+    .delete()
+    .eq('user_id', userId);
+  if (deleteError) throw deleteError;
+  if (uniqueTeams.length === 0) return [];
+  const rows = uniqueTeams.map((team, index) => toFavoriteTeamRow(userId, team, index));
+  const { data, error } = await supabase
+    .from('user_favorite_teams')
+    .insert(rows)
+    .select('user_id, team_id, team_name, sport_id, league, abbrev, logo, color, sort_order');
+  if (error) throw error;
+  return (data ?? []).map((row) => mapFavoriteTeamRow(row as FavoriteTeamRow));
+}
