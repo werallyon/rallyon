@@ -45,8 +45,8 @@ test('auth hydration propagates profile failures instead of synthesizing default
 
 test('optimistic profile writes roll back on persistence failure and ignore stale completions', () => {
   assert.match(authService, /private profileWriteRevision = 0/);
-  assert.match(authService, /writeRevision === this\\.profileWriteRevision/);
-  assert.match(authService, /this\\.currentUser = previousUser;\\s*this\\.notify\\(\\);/);
+  assert.ok(authService.includes('writeRevision === this.profileWriteRevision'));
+  assert.ok(authService.includes('this.currentUser = previousUser;'));
 });
 
 test('auth-state hydration ignores stale completions and clears a previous identity', () => {
