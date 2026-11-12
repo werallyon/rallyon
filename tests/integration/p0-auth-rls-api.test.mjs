@@ -288,7 +288,19 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
       assert.equal(verifyA.data.team_name, 'A Private Favorite');
     });
 
-    await t.test('profile and favorite replacement are atomic and validate malformed input', async () => {
+    await t.test('profile-only writes preserve favorites and favorite replacement is atomic', async () => {
+      const profileOnly = await userA.client.rpc('save_profile_and_favorite_teams', {
+        p_profile_updates: { name: 'Profile Only Keeps Favorites' }
+      });
+      assert.ifError(profileOnly.error);
+      assert.equal(profileOnly.data.display_name, 'Profile Only Keeps Favorites');
+      const preserved = await userA.client
+        .from('user_favorite_teams')
+        .select('team_id')
+        .eq('user_id', userA.user.id);
+      assert.ifError(preserved.error);
+      assert.deepEqual(preserved.data, [{ team_id: favoriteId }], 'profile-only writes must not clear favorites');
+
       const initial = await userA.client.rpc('save_profile_and_favorite_teams', {
         p_profile_updates: { name: 'Atomic Profile Before Failure' },
         p_favorite_teams: [{
@@ -298,7 +310,8 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
           league: 'NFL',
           abbrev: 'ATF',
           logo: 'atomic.svg'
-        }]
+        }],
+        p_replace_favorite_teams: true
       });
       assert.ifError(initial.error);
       assert.equal(initial.data.display_name, 'Atomic Profile Before Failure');
@@ -312,7 +325,8 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
 
       const rejected = await userA.client.rpc('save_profile_and_favorite_teams', {
         p_profile_updates: { name: 'MUST ROLL BACK' },
-        p_favorite_teams: [{ id: '   ', name: 'Malformed Favorite' }]
+        p_favorite_teams: [{ id: '   ', name: 'Malformed Favorite' }],
+        p_replace_favorite_teams: true
       });
       assert.ok(rejected.error, 'malformed favorite input must be rejected');
 
@@ -333,7 +347,8 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
 
       const cleared = await userA.client.rpc('save_profile_and_favorite_teams', {
         p_profile_updates: { name: 'Atomic Clear Succeeded' },
-        p_favorite_teams: []
+        p_favorite_teams: [],
+        p_replace_favorite_teams: true
       });
       assert.ifError(cleared.error);
       assert.equal(cleared.data.display_name, 'Atomic Clear Succeeded');
