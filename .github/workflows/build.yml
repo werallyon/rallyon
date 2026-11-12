@@ -68,6 +68,9 @@ jobs:
       - name: Verify profile contract, favorite backfill, RLS and RPC
         run: supabase --workdir validation db query --local --file supabase/verify.sql
 
+      - name: Verify preflight rejects unsafe policies, triggers, schema and grants
+        run: bash validation/verify-preflight-guards.sh
+
       - name: Stop isolated local Supabase stack
         if: always() && steps.setup-supabase-cli.outcome == 'success'
         run: supabase --workdir validation stop
