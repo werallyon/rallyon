@@ -25,6 +25,15 @@ values ('40000000-0000-4000-8000-000000000002');
 do $$
 begin
   begin
+    insert into public.games (id, league_id)
+    values ('40000000-0000-4000-8000-000000000006',
+            '20000000-0000-4000-8000-000000000099');
+    raise exception 'Unknown canonical league unexpectedly accepted';
+  exception when foreign_key_violation then
+    null;
+  end;
+
+  begin
     insert into public.games (id, league_id, home_team_id)
     values ('40000000-0000-4000-8000-000000000003',
             '20000000-0000-4000-8000-000000000001',
