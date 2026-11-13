@@ -38,3 +38,30 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+  supabase-validation:
+    name: Local Supabase database validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        id: setup-supabase-cli
+        uses: supabase/setup-cli@v3
+        with:
+          version: ^3
+
+      - name: Start isolated local Supabase stack
+        run: npm run supabase:validation:start
+
+      - name: Reset local validation database
+        run: npm run supabase:validation:reset
+
+      - name: Verify P0-A / P0-C schema and fixtures
+        run: npm run supabase:validation:verify
+
+      - name: Stop local Supabase stack
+        if: always() && steps.setup-supabase-cli.outcome == 'success'
+        run: npm run supabase:validation:stop
