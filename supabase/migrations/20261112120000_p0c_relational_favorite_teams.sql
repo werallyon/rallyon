@@ -100,8 +100,8 @@ begin
       -- Match the complete production-observed function body, not merely
       -- a few substrings. This prevents hardening an altered function that
       -- also performs unreviewed writes or side effects.
-      if regexp_replace(lower(v_bootstrap_source), '[[:space:]]+', ' ', 'g')
-         <> regexp_replace(lower($expected$begin
+      if btrim(regexp_replace(lower(v_bootstrap_source), '[[:space:]]+', ' ', 'g'))
+         <> btrim(regexp_replace(lower($expected$begin
   insert into public.profiles (
     id, username, first_name, last_name, display_name, avatar_url,
     onboarding_completed, onboarding_step
@@ -118,7 +118,7 @@ begin
   )
   on conflict (id) do nothing;
   return new;
-end;$expected$), '[[:space:]]+', ' ', 'g') then
+end;$expected$), '[[:space:]]+', ' ', 'g')) then
         raise exception 'P0-C preflight: legacy Auth bootstrap function differs from the exact reviewed profile-insert implementation; inspect it manually';
       end if;
 
