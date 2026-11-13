@@ -2,6 +2,7 @@
 -- One invoker-rights RPC is the transaction boundary for profile edits and
 -- complete favorite replacement. auth.uid() is the only owner identifier.
 create or replace function public.save_profile_and_favorite_teams(
+  p_expected_user_id uuid,
   p_profile_updates jsonb default '{}'::jsonb,
   p_favorite_teams jsonb default '[]'::jsonb,
   p_replace_favorite_teams boolean default false
@@ -18,6 +19,11 @@ declare
 begin
   if v_user_id is null then
     raise exception 'Authentication required';
+  end if;
+  -- Bind the request to the identity that initiated it. If the browser's
+  -- Supabase session changes while an async write is queued, fail closed.
+  if p_expected_user_id is null or v_user_id is distinct from p_expected_user_id then
+    raise exception 'Authenticated identity does not match the profile write owner';
   end if;
   if p_profile_updates is null or jsonb_typeof(p_profile_updates) <> 'object' then
     raise exception 'Profile updates must be a JSON object';
@@ -163,5 +169,5 @@ begin
 end;
 $$;
 
-revoke all on function public.save_profile_and_favorite_teams(jsonb, jsonb, boolean) from public, anon;
-grant execute on function public.save_profile_and_favorite_teams(jsonb, jsonb, boolean) to authenticated;
+revoke all on function public.save_profile_and_favorite_teams(uuid, jsonb, jsonb, boolean) from public, anon;
+grant execute on function public.save_profile_and_favorite_teams(uuid, jsonb, jsonb, boolean) to authenticated;
