@@ -123,9 +123,15 @@ create table if not exists public.team_provider_ids (
 
 -- Add canonical references to events without removing or rewriting legacy payload fields.
 alter table public.games
-  add column if not exists league_id uuid references public.leagues(id) on delete restrict,
-  add column if not exists home_team_id uuid references public.teams(id) on delete set null,
-  add column if not exists away_team_id uuid references public.teams(id) on delete set null;
+  add column if not exists league_id uuid,
+  add column if not exists home_team_id uuid,
+  add column if not exists away_team_id uuid;
+
+-- Enforce the league reference even when a compatible UUID column already
+-- existed before this migration and ADD COLUMN IF NOT EXISTS therefore skipped it.
+alter table public.games
+  add constraint games_league_reference_fk
+    foreign key (league_id) references public.leagues(id) on delete restrict;
 
 -- A game participant must belong to the same canonical league as the game.
 -- Nullable columns preserve legacy rows and staged adoption; a populated team
