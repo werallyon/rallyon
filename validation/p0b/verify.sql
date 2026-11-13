@@ -19,7 +19,7 @@ values ('20000000-0000-4000-8000-000000000001', 'fixture-provider', 'league-exte
 insert into public.team_provider_ids (team_id, provider, external_id)
 values ('30000000-0000-4000-8000-000000000001', 'fixture-provider', 'team-external-1');
 
-do $
+do $$
 begin
   begin
     insert into public.sport_provider_ids (sport_id, provider, external_id)
