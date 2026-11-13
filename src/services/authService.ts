@@ -254,6 +254,7 @@ export class AuthService {
       if (writeEpoch !== this.profileWriteRevision || this.currentUser?.id !== id) return;
 
       const { data: profile, error } = await this.client!.rpc('save_profile_and_favorite_teams', {
+        p_expected_user_id: id,
         p_profile_updates: profileUpdates,
         p_favorite_teams: favoriteTeams ?? [],
         p_replace_favorite_teams: favoriteTeams !== undefined
