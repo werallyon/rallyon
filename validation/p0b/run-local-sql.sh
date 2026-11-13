@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SQL_FILE="${1:?Usage: run-local-sql.sh <sql-file>}"
-PROJECT_ID="rallyon-p0b-validation"
+PROJECT_ID="${SUPABASE_PROJECT_ID:-rallyon-p0b-validation}"
 if [[ ! -f "$SQL_FILE" ]]; then
   echo "SQL file not found: $SQL_FILE" >&2
   exit 2
