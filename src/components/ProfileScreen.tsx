@@ -97,8 +97,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setTimeout(() => setSaveSuccessMsg(null), 3500);
   };
 
-  const handleSaveProfile = () => {
-    updateUser({
+  const handleSaveProfile = async () => {
+    const result = await updateUser({
       firstName: editFirstName.trim(),
       lastName: editLastName.trim(),
       name: `${editFirstName.trim()} ${editLastName.trim()}`,
@@ -106,6 +106,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       profilePhotoUrl: selectedAvatar,
       avatar: selectedAvatar
     });
+    if (!result.success) return;
     setIsEditingProfile(false);
     showFeedback('Profile updated successfully.');
   };
