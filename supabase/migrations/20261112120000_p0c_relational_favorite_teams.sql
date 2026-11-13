@@ -110,8 +110,22 @@ begin
     end if;
   end;
 
+  -- Inspect column ACLs before revoking known table-level anon/PUBLIC drift.
+  -- PostgreSQL's table-level REVOKE can otherwise make a separate column ACL
+  -- disappear from effective-privilege checks before the strict preflight sees it.
+  select count(*) into v_anon_column_grants
+  from pg_attribute a
+  cross join lateral aclexplode(a.attacl) acl
+  where a.attrelid = 'public.profiles'::regclass
+    and a.attnum > 0 and not a.attisdropped
+    and acl.grantee = 'anon'::regrole
+    and acl.privilege_type in ('SELECT', 'INSERT', 'UPDATE', 'REFERENCES');
+  if v_anon_column_grants > 0 then
+    raise exception 'P0-C preflight: anon has % explicit column grants on public.profiles; audit grants before rollout', v_anon_column_grants;
+  end if;
+
   -- The live production profile table has an explicit legacy anon grant.
-  -- Remove only anon/PUBLIC access; authenticated and service_role grants
+  -- Remove only anon/PUBLIC table access; authenticated and service_role grants
   -- remain subject to the existing owner-scoped RLS policies.
   revoke all privileges on table public.profiles from anon, public;
 
@@ -169,13 +183,6 @@ begin
   where has_table_privilege('anon', 'public.profiles', privilege_name);
   if v_anon_grants > 0 then
     raise exception 'P0-C preflight: anon has % effective table privileges on public.profiles; audit grants before rollout', v_anon_grants;
-  end if;
-
-  select count(*) into v_anon_column_grants
-  from unnest(array['SELECT', 'INSERT', 'UPDATE', 'REFERENCES']) as privilege_name
-  where has_any_column_privilege('anon', 'public.profiles', privilege_name);
-  if v_anon_column_grants > 0 then
-    raise exception 'P0-C preflight: anon has % effective column privileges on public.profiles; audit grants before rollout', v_anon_column_grants;
   end if;
 
   select count(*) into v_public_profile_grants
