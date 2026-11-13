@@ -202,6 +202,8 @@ revoke all privileges on table public.sports, public.leagues, public.teams
   from public, anon, authenticated;
 grant select on table public.sports, public.leagues, public.teams
   to anon, authenticated;
+grant all privileges on table public.sports, public.leagues, public.teams
+  to service_role;
 
 revoke all privileges on table public.sport_provider_ids,
   public.league_provider_ids, public.team_provider_ids
