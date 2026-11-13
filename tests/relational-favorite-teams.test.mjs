@@ -89,6 +89,9 @@ test('profile and favorite writes use one transactional RPC rather than independ
   assert.ok(authService.includes("rpc('save_profile_and_favorite_teams'"));
   assert.equal(authService.includes('Promise.all([profileSave, favoriteTeamsSave])'), false);
   assert.ok(migration.includes('create or replace function public.save_profile_and_favorite_teams'));
+  assert.ok(migration.includes('p_expected_user_id uuid'));
+  assert.ok(migration.includes('Authenticated identity does not match the profile write owner'));
+
 });
 
 test('favorite-team replacement validates input and uses the transactional RPC', () => {
