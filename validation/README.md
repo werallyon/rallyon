@@ -45,6 +45,7 @@ The suite verifies:
 - B cannot read, update, or delete A's favorite-team row.
 - A successful empty favorites query returns `[]` without an error (and must not be interpreted as a reason to fall back to legacy data).
 - The authenticated `save_profile_and_favorite_teams` RPC updates the canonical profile and replaces the complete relational favorite selection in one transaction.
+- The RPC rejects a caller-supplied expected user ID that does not match the authenticated session identity; the test confirms the failed attempt leaves the profile unchanged.
 - Malformed favorite input is rejected and rolls back the accompanying profile update; an empty array atomically clears favorites.
 - An anonymous client cannot read profiles or favorite-team rows.
 - Both Auth users are signed out and deleted in a `finally` cleanup path; Auth foreign-key cascades remove their profiles and favorites.
