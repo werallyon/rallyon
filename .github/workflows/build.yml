@@ -17,6 +17,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate unique root Supabase migration versions
+        run: bash scripts/check-migration-version-uniqueness.sh
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
