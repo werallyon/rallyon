@@ -107,9 +107,9 @@ const OnboardingFlowForUser: React.FC = () => {
   };
 
   // Step transitions
-  const goToNextStep = () => {
-    // Persist current state incrementally
-    updateUser({
+  const goToNextStep = async () => {
+    // Persist current state incrementally; do not advance on a failed transaction.
+    const result = await updateUser({
       favoriteSports: selectedSports,
       favoriteTeams: selectedTeams,
       preferredExperience: selectedExperiences.length > 0 ? selectedExperiences : ['HIGH_ENERGY'],
@@ -125,6 +125,7 @@ const OnboardingFlowForUser: React.FC = () => {
       profilePhotoUrl: photoUrl,
       avatar: photoUrl || currentUser.avatar
     });
+    if (!result.success) return;
 
     setCurrentStepIndex((prev) => Math.min(prev + 1, 8));
   };
@@ -133,9 +134,9 @@ const OnboardingFlowForUser: React.FC = () => {
     setCurrentStepIndex((prev) => Math.max(prev - 1, 1));
   };
 
-  const handleSkipToCompletion = () => {
-    // Quick bypass: complete onboarding right away
-    updateUser({
+  const handleSkipToCompletion = async () => {
+    // Quick bypass: complete onboarding only after the transaction commits.
+    await updateUser({
       favoriteSports: selectedSports,
       favoriteTeams: selectedTeams,
       preferredExperience: selectedExperiences,
@@ -144,8 +145,8 @@ const OnboardingFlowForUser: React.FC = () => {
     });
   };
 
-  const handleFinalCompletion = () => {
-    updateUser({
+  const handleFinalCompletion = async () => {
+    await updateUser({
       favoriteSports: selectedSports,
       favoriteTeams: selectedTeams,
       preferredExperience: selectedExperiences,
