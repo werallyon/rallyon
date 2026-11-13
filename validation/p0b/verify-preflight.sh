@@ -30,6 +30,8 @@ expect_failure "validation/p0b/fixtures/preexisting-sports.sql" \
   "refusing to adopt pre-existing canonical/provider relations"
 expect_failure "validation/p0b/fixtures/incompatible-games-reference.sql" \
   "incompatible pre-existing game reference columns"
+expect_failure "validation/p0b/fixtures/populated-game-references.sql" \
+  "pre-existing canonical game-reference columns contain data"
 
 # Leave the local project in a clean, successfully migrated state.
 supabase --workdir "$WORKDIR" db reset
