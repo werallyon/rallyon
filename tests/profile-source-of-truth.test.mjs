@@ -94,8 +94,8 @@ test('profile display name does not fall back to Auth email identity', () => {
 test('AuthContext publishes profile edits only through AuthService commit notifications', () => {
   const context = read('src/context/AuthContext.tsx');
   const updateHandler = context.slice(context.indexOf('const handleUpdateUser'), context.indexOf('const handleLogout'));
-  assert.match(updateHandler, /return authService\.updateUser\(currentUser\.id, updates\)/);
-  assert.match(updateHandler, /return authService\.completeOnboarding\(currentUser\.id\)/);
+  assert.match(updateHandler, /await authService\.updateUser\(currentUser\.id, updates\)/);
+  assert.match(updateHandler, /await authService\.completeOnboarding\(currentUser\.id\)/);
   assert.equal(/setCurrentUser\(updated\)/.test(updateHandler), false);
 });
 
