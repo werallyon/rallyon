@@ -301,7 +301,7 @@ export class AuthService {
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Unable to save your profile. Please try again.'
+          error: error instanceof Error ? error.message : (typeof (error as { message?: unknown })?.message === 'string' ? (error as { message: string }).message : 'Unable to save your profile. Please try again.')
         };
       }
     };
