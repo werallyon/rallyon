@@ -38,3 +38,34 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+  p0b-migration-validation:
+    name: P0-B schema constraints and ACLs on isolated local Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        id: setup-supabase-cli
+        uses: supabase/setup-cli@v3
+        with:
+          version: ^3
+
+      - name: Stage exact P0-B migration
+        run: |
+          cp supabase/migrations/20261113120000_p0b_canonical_sports_leagues_teams.sql validation/p0b/supabase/migrations/20261113000100_p0b_canonical_sports_leagues_teams.sql
+
+      - name: Start isolated local Supabase stack
+        run: supabase --workdir validation/p0b start
+
+      - name: Reset local database and apply exact P0-B migration
+        run: supabase --workdir validation/p0b db reset
+
+      - name: Verify league-scoped constraints, legacy nullability, RLS and effective ACLs
+        run: bash validation/p0b/run-local-sql.sh validation/p0b/verify.sql
+
+      - name: Stop isolated local Supabase stack
+        if: always() && steps.setup-supabase-cli.outcome == 'success'
+        run: supabase --workdir validation/p0b stop
