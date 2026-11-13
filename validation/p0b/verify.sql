@@ -11,6 +11,36 @@ insert into public.teams (id, league_id, name, slug) values
   ('30000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 'Team A', 'team-a'),
   ('30000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', 'Team B', 'team-b');
 
+-- Provider IDs are unique within each entity type and provider.
+insert into public.sport_provider_ids (sport_id, provider, external_id)
+values ('10000000-0000-4000-8000-000000000001', 'fixture-provider', 'sport-external-1');
+insert into public.league_provider_ids (league_id, provider, external_id)
+values ('20000000-0000-4000-8000-000000000001', 'fixture-provider', 'league-external-1');
+insert into public.team_provider_ids (team_id, provider, external_id)
+values ('30000000-0000-4000-8000-000000000001', 'fixture-provider', 'team-external-1');
+
+do $
+begin
+  begin
+    insert into public.sport_provider_ids (sport_id, provider, external_id)
+    values ('10000000-0000-4000-8000-000000000001', 'fixture-provider', 'sport-external-1');
+    raise exception 'Duplicate sport provider ID unexpectedly accepted';
+  exception when unique_violation then null;
+  end;
+  begin
+    insert into public.league_provider_ids (league_id, provider, external_id)
+    values ('20000000-0000-4000-8000-000000000001', 'fixture-provider', 'league-external-1');
+    raise exception 'Duplicate league provider ID unexpectedly accepted';
+  exception when unique_violation then null;
+  end;
+  begin
+    insert into public.team_provider_ids (team_id, provider, external_id)
+    values ('30000000-0000-4000-8000-000000000001', 'fixture-provider', 'team-external-1');
+    raise exception 'Duplicate team provider ID unexpectedly accepted';
+  exception when unique_violation then null;
+  end;
+end $;
+
 -- Same-league participant references are valid.
 insert into public.games (id, league_id, home_team_id, away_team_id)
 values ('40000000-0000-4000-8000-000000000001',
