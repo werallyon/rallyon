@@ -16,7 +16,7 @@ Project `nqdrfwvxomecduxmmzrc` was inspected without executing DDL or modifying 
 
 ## Migration behavior added
 
-The pending P0-C migration now recognizes only the observed canonical bootstrap function (trusted owner, PL/pgSQL trigger function, exact profile insert/upsert behavior). It then:
+The pending P0-C migration now recognizes only the observed canonical bootstrap function (trusted owner, PL/pgSQL trigger function, and a complete normalized `pg_proc.prosrc` comparison against the production-observed function body). It does not rely on a few matching substrings; any additional statement or side effect causes the migration to abort before changing function privileges. It then:
 
 1. Changes that function to SECURITY DEFINER with `search_path=pg_catalog, public, pg_temp`.
 2. Revokes direct EXECUTE from PUBLIC, anon, authenticated, and service_role; the function is intended to be invoked by its Auth trigger only.
@@ -43,4 +43,4 @@ The compatibility migration and fixture changes are committed to the PR #22 bran
 
 ## Validation detail
 
-The missing-trigger negative fixture deliberately removes the Auth trigger. The migration leaves that case to the strict trigger preflight so it fails with the dedicated missing-trigger diagnostic; it does not misclassify absence as an unknown function implementation. If a trigger exists but its function body differs from the reviewed canonical profile-insert implementation, the migration aborts before changing function privileges.
+The missing-trigger negative fixture deliberately removes the Auth trigger. The migration leaves that case to the strict trigger preflight so it fails with the dedicated missing-trigger diagnostic; it does not misclassify absence as an unknown function implementation. If a trigger exists but its complete function body differs from the reviewed production-observed profile-insert implementation, the migration aborts before changing function privileges.
