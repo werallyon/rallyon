@@ -75,10 +75,10 @@ begin
   -- eligible for hardening. Unknown trigger implementations fail closed.
   declare
     v_bootstrap_oid oid;
-    v_bootstrap_definition text;
+    v_bootstrap_source text;
   begin
-    select p.oid, pg_get_functiondef(p.oid)
-      into v_bootstrap_oid, v_bootstrap_definition
+    select p.oid, p.prosrc
+      into v_bootstrap_oid, v_bootstrap_source
     from pg_trigger t
     join pg_proc p on p.oid = t.tgfoid
     join pg_namespace pn on pn.oid = p.pronamespace
@@ -97,11 +97,29 @@ begin
     -- preserving its specific diagnostic. If a trigger exists, its function
     -- must match the known-safe implementation before we change its rights.
     if v_bootstrap_oid is not null then
-      if v_bootstrap_definition not ilike '%insert into public.profiles%'
-         or v_bootstrap_definition not ilike '%new.raw_user_meta_data%'
-         or v_bootstrap_definition not ilike '%on conflict (id) do nothing%'
-         or v_bootstrap_definition ilike '%execute %' then
-        raise exception 'P0-C preflight: legacy Auth bootstrap function is not the recognized safe profile-insert implementation; inspect it manually';
+      -- Match the complete production-observed function body, not merely
+      -- a few substrings. This prevents hardening an altered function that
+      -- also performs unreviewed writes or side effects.
+      if regexp_replace(lower(v_bootstrap_source), '[[:space:]]+', ' ', 'g')
+         <> regexp_replace(lower($expected$begin
+  insert into public.profiles (
+    id, username, first_name, last_name, display_name, avatar_url,
+    onboarding_completed, onboarding_step
+  )
+  values (
+    new.id,
+    new.raw_user_meta_data->>'username',
+    new.raw_user_meta_data->>'firstName',
+    new.raw_user_meta_data->>'lastName',
+    coalesce(new.raw_user_meta_data->>'name', new.raw_user_meta_data->>'displayName'),
+    coalesce(new.raw_user_meta_data->>'avatar', new.raw_user_meta_data->>'profilePhotoUrl'),
+    coalesce((new.raw_user_meta_data->>'onboardingCompleted')::boolean, false),
+    coalesce(new.raw_user_meta_data->>'onboardingStep', 'welcome')
+  )
+  on conflict (id) do nothing;
+  return new;
+end;$expected$), '[[:space:]]+', ' ', 'g') then
+        raise exception 'P0-C preflight: legacy Auth bootstrap function differs from the exact reviewed profile-insert implementation; inspect it manually';
       end if;
 
       execute 'alter function public.handle_new_user() security definer';
