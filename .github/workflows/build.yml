@@ -66,6 +66,9 @@ jobs:
       - name: Verify league-scoped constraints, legacy nullability, RLS and effective ACLs
         run: bash validation/p0b/run-local-sql.sh validation/p0b/verify.sql
 
+      - name: Verify migration fails closed on unknown or incompatible pre-existing schema
+        run: bash validation/p0b/verify-preflight.sh
+
       - name: Stop isolated local Supabase stack
         if: always() && steps.setup-supabase-cli.outcome == 'success'
         run: supabase --workdir validation/p0b stop
