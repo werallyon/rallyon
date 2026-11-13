@@ -325,8 +325,9 @@ export function normalizeFavoriteTeams(teams: TeamReference[]): TeamReference[] 
 
 /**
  * Replace the entire favorite selection in one Postgres transaction.
- * The RPC derives ownership from auth.uid(); no caller-supplied user ID reaches
- * the database write. An empty array intentionally clears the selection.
+ * The RPC derives ownership from auth.uid() and compares it with the identity
+ * that initiated this request, preventing queued writes crossing an account
+ * switch. An empty array intentionally clears the selection.
  */
 export async function replaceFavoriteTeams(userId: string, teams: TeamReference[]): Promise<TeamReference[]> {
   if (!supabase) return normalizeFavoriteTeams(teams);
