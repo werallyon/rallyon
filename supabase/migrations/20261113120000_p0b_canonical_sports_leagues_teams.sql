@@ -4,6 +4,8 @@ do $$
 declare
   v_existing text[] := array[]::text[];
   v_bad_game_columns text[];
+  v_existing_game_columns text[];
+  v_has_populated_game_refs boolean;
 begin
   select array_agg(name) into v_existing
   from unnest(array[
@@ -28,7 +30,26 @@ begin
     raise exception 'P0-B preflight: incompatible pre-existing game reference columns: %',
       array_to_string(v_bad_game_columns, '; ');
   end if;
-end $$;
+
+  select array_agg(column_name order by column_name)
+    into v_existing_game_columns
+  from information_schema.columns
+  where table_schema = 'public' and table_name = 'games'
+    and column_name in ('league_id','home_team_id','away_team_id');
+
+  if coalesce(array_length(v_existing_game_columns, 1), 0) not in (0, 3) then
+    raise exception 'P0-B preflight: only part of the canonical game-reference column set exists; reconcile manually: %',
+      array_to_string(v_existing_game_columns, ', ');
+  end if;
+
+  if coalesce(array_length(v_existing_game_columns, 1), 0) = 3 then
+    execute 'select exists (select 1 from public.games where league_id is not null or home_team_id is not null or away_team_id is not null)'
+      into v_has_populated_game_refs;
+    if v_has_populated_game_refs then
+      raise exception 'P0-B preflight: pre-existing canonical game-reference columns contain data but canonical relations are absent; reconcile references explicitly before migration';
+    end if;
+  end if;
+end $;
 
 -- P0-B: canonical sports, leagues, and teams reference model.
 -- Review-only migration: do not apply to production until this PR is approved.
