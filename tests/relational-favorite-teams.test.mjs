@@ -103,8 +103,8 @@ test('favorite-team replacement validates input and uses the transactional RPC',
 test('persisted profile writes are serialized and publish only after canonical commit', () => {
   assert.match(authService, /private profileWriteRevision = 0/);
   assert.match(authService, /private profileWriteQueue: Promise<void> = Promise\.resolve\(\)/);
-  assert.ok(authService.includes('this.profileWriteQueue = this.profileWriteQueue'));
-  assert.ok(authService.includes('.then(persist)'));
+  assert.ok(authService.includes('const writeResult = this.profileWriteQueue.then(persist, persist)'));
+  assert.ok(authService.includes('this.profileWriteQueue = writeResult.then(() => undefined)'));
   assert.ok(authService.includes('Do not publish optimistic state for persisted accounts'));
   assert.equal(authService.includes('this.currentUser = previousUser;'), false);
 });
