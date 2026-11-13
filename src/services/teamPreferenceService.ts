@@ -279,9 +279,9 @@ export function toFavoriteTeamRow(userId: string, team: TeamReference, sortOrder
 }
 
 /** Read the user's relational favorites in the order selected. */
-export async function getFavoriteTeams(userId: string): Promise<TeamReference[]> {
-  if (!supabase) return [];
-  const { data, error } = await supabase
+export async function getFavoriteTeams(userId: string, client: typeof supabase = supabase): Promise<TeamReference[]> {
+  if (!client) return [];
+  const { data, error } = await client
     .from('user_favorite_teams')
     .select('user_id, team_id, team_name, sport_id, league, abbrev, logo, color, sort_order')
     .eq('user_id', userId)
