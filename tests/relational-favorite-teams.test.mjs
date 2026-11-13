@@ -76,7 +76,7 @@ test('favorite-team service maps the existing TeamReference contract and persist
 });
 
 test('auth hydration treats relational favorites as authoritative and propagates failures', () => {
-  assert.ok(authService.includes('getFavoriteTeams(authUser.id)'));
+  assert.ok(authService.includes('getFavoriteTeams(authUser.id, this.client)'));
   assert.equal(authService.includes('Relational favorite teams unavailable; retaining legacy profile values'), false);
   assert.ok(authService.includes('save_profile_and_favorite_teams'));
 });
