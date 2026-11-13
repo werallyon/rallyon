@@ -124,6 +124,17 @@ begin
     raise exception 'P0-C preflight: anon has % explicit column grants on public.profiles; audit grants before rollout', v_anon_column_grants;
   end if;
 
+  select count(*) into v_public_profile_column_grants
+  from pg_attribute a
+  cross join lateral aclexplode(a.attacl) acl
+  where a.attrelid = 'public.profiles'::regclass
+    and a.attnum > 0 and not a.attisdropped
+    and acl.grantee = 0
+    and acl.privilege_type in ('SELECT', 'INSERT', 'UPDATE', 'REFERENCES');
+  if v_public_profile_column_grants > 0 then
+    raise exception 'P0-C preflight: PUBLIC has % column grants on public.profiles; revoke them before rollout', v_public_profile_column_grants;
+  end if;
+
   -- The live production profile table has an explicit legacy anon grant.
   -- Remove only anon/PUBLIC table access; authenticated and service_role grants
   -- remain subject to the existing owner-scoped RLS policies.
@@ -193,17 +204,6 @@ begin
     and acl.privilege_type in ('SELECT', 'INSERT', 'UPDATE', 'DELETE');
   if v_public_profile_grants > 0 then
     raise exception 'P0-C preflight: PUBLIC has % effective table grants on public.profiles; revoke them before rollout', v_public_profile_grants;
-  end if;
-
-  select count(*) into v_public_profile_column_grants
-  from pg_attribute a
-  cross join lateral aclexplode(a.attacl) acl
-  where a.attrelid = 'public.profiles'::regclass
-    and a.attnum > 0 and not a.attisdropped
-    and acl.grantee = 0
-    and acl.privilege_type in ('SELECT', 'INSERT', 'UPDATE', 'REFERENCES');
-  if v_public_profile_column_grants > 0 then
-    raise exception 'P0-C preflight: PUBLIC has % column grants on public.profiles; revoke them before rollout', v_public_profile_column_grants;
   end if;
 
   if not has_table_privilege('authenticated', 'public.profiles', 'SELECT')
