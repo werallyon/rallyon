@@ -39,7 +39,7 @@ begin
     raise exception 'Duplicate team provider ID unexpectedly accepted';
   exception when unique_violation then null;
   end;
-end $;
+end $$;
 
 -- Same-league participant references are valid.
 insert into public.games (id, league_id, home_team_id, away_team_id)
