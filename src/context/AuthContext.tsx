@@ -14,8 +14,10 @@ interface AuthContextType {
   signInDemoUser: () => Promise<AuthResponse>;
   sendPasswordReset: (email: string) => Promise<{ success: boolean; message: string }>;
   resendVerificationEmail: () => Promise<{ success: boolean; message: string }>;
-  updateUser: (updates: Partial<User>) => User | null;
-  completeOnboarding: () => User | null;
+  updateUser: (updates: Partial<User>) => Promise<AuthResponse>;
+  completeOnboarding: () => Promise<AuthResponse>;
+  profileSaveError: string | null;
+  clearProfileSaveError: () => void;
   logout: () => void;
   deleteAccount: () => boolean;
   clearAuthError: () => void;
@@ -27,6 +29,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
   const authRequestRevision = useRef(0);
 
   useEffect(() => {
@@ -106,19 +109,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const handleDemoSignIn = async () => { const requestRevision = ++authRequestRevision.current; setIsLoading(true); setAuthError(null); try { return await authService.signInDemoUser(); } finally { if (requestRevision === authRequestRevision.current) setIsLoading(false); } };
   const handlePasswordReset = async (email: string) => authService.sendPasswordReset(email);
   const handleResendVerification = async () => authService.resendVerificationEmail();
-  const handleUpdateUser = (updates: Partial<User>) => {
-    if (!currentUser) return null;
+  const handleUpdateUser = async (updates: Partial<User>): Promise<AuthResponse> => {
+    if (!currentUser) return { success: false, error: 'You must be signed in to save profile changes.' };
     // AuthService publishes persisted profile state only after its transactional
-    // RPC commits. The subscription above is the sole source of context updates.
-    return authService.updateUser(currentUser.id, updates);
+    // RPC commits. The returned result and shared notice expose persistence failures.
+    const result = await authService.updateUser(currentUser.id, updates);
+    setProfileSaveError(result.success ? null : result.error || 'Unable to save your profile. Please retry.');
+    return result;
   };
-  const handleCompleteOnboarding = () => {
-    if (!currentUser) return null;
+  const handleCompleteOnboarding = async (): Promise<AuthResponse> => {
+    if (!currentUser) return { success: false, error: 'You must be signed in to complete onboarding.' };
     // Do not bypass the canonical persistence boundary with an optimistic
     // context update; AuthService notifies subscribers after commit.
-    return authService.completeOnboarding(currentUser.id);
+    const result = await authService.completeOnboarding(currentUser.id);
+    setProfileSaveError(result.success ? null : result.error || 'Unable to complete onboarding. Please retry.');
+    return result;
   };
-  const handleLogout = () => { authRequestRevision.current++; authService.logout(); setCurrentUser(null); setAuthError(null); setIsLoading(false); };
+  const handleLogout = () => { authRequestRevision.current++; authService.logout(); setCurrentUser(null); setAuthError(null); setProfileSaveError(null); setIsLoading(false); };
   const handleDeleteAccount = () => {
     if (!currentUser) return false;
     const res = authService.deleteAccount(currentUser.id);
@@ -131,7 +138,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     signInWithGoogle: handleGoogleSignIn, signInWithApple: handleAppleSignIn, signInDemoUser: handleDemoSignIn,
     sendPasswordReset: handlePasswordReset, resendVerificationEmail: handleResendVerification,
     updateUser: handleUpdateUser, completeOnboarding: handleCompleteOnboarding, logout: handleLogout,
-    deleteAccount: handleDeleteAccount, clearAuthError
+    deleteAccount: handleDeleteAccount, clearAuthError, profileSaveError, clearProfileSaveError: () => setProfileSaveError(null)
   }}>{children}</AuthContext.Provider>;
 };
 
