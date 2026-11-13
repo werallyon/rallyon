@@ -105,7 +105,8 @@ test('persisted profile writes are serialized and publish only after canonical c
   assert.match(authService, /private profileWriteQueue: Promise<void> = Promise\.resolve\(\)/);
   assert.ok(authService.includes('const writeResult = this.profileWriteQueue.then(persist, persist)'));
   assert.ok(authService.includes('this.profileWriteQueue = writeResult.then(() => undefined)'));
-  assert.ok(authService.includes('A failed transaction is returned to the caller'));
+  assert.ok(authService.includes('A failed transaction is'));
+  assert.ok(authService.includes('returned to the caller; it is never converted into a successful-looking'));
   assert.equal(authService.includes('this.currentUser = previousUser;'), false);
 });
 
