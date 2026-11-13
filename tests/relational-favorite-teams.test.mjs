@@ -42,7 +42,9 @@ test('migration refuses unsafe legacy data and unknown pre-existing relations', 
   assert.ok(migration.includes("on_auth_user_created"));
   assert.ok(migration.includes("profile schema is incompatible"));
   assert.ok(migration.includes("PUBLIC has"));
-  assert.ok(migration.includes("has_any_column_privilege"));
+  assert.ok(migration.includes("cross join lateral aclexplode(a.attacl) acl"));
+  assert.ok(migration.includes("acl.grantee = 'anon'::regrole"));
+  assert.ok(migration.includes("acl.grantee = 0"));
   assert.ok(migration.includes("PUBLIC has % column grants"));
   assert.ok(migration.includes("favorite_teams must be NOT NULL with a default"));
   assert.ok(migration.includes("required.is_nullable"));
