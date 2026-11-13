@@ -49,7 +49,7 @@ begin
       raise exception 'P0-B preflight: pre-existing canonical game-reference columns contain data but canonical relations are absent; reconcile references explicitly before migration';
     end if;
   end if;
-end $;
+end $$;
 
 -- P0-B: canonical sports, leagues, and teams reference model.
 -- Review-only migration: do not apply to production until this PR is approved.
