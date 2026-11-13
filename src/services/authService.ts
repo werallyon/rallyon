@@ -47,6 +47,10 @@ export class AuthService {
   private authRevision = 0;
   private authActionRevision = 0;
   private profileWriteRevision = 0;
+  // Persist profile mutations in invocation order. This prevents overlapping RPCs
+  // from committing out of order and makes rollback unnecessary: persisted users
+  // are published only after their canonical transaction succeeds.
+  private profileWriteQueue: Promise<void> = Promise.resolve();
 
   constructor(client: typeof supabase = supabase) {
     this.client = client;
@@ -223,27 +227,31 @@ export class AuthService {
 
   updateUser(id: string, updates: Partial<User>): User | null {
     if (!this.currentUser || this.currentUser.id !== id || !this.client) return null;
-    const previousUser = this.currentUser;
-    const writeRevision = ++this.profileWriteRevision;
-    const updated = { ...previousUser, ...updates, id, updatedAt: new Date().toISOString() } as User;
-    this.currentUser = updated;
-    this.notify();
+
+    const updated = { ...this.currentUser, ...updates, id, updatedAt: new Date().toISOString() } as User;
 
     // Demo identities are intentionally local-only and never sent to Auth/RLS.
-    if (id.startsWith('usr_')) return updated;
+    if (id.startsWith('usr_')) {
+      this.currentUser = updated;
+      this.notify();
+      return updated;
+    }
 
     const { profileUpdates, favoriteTeams, locationPermissionStatus, notificationPermissionStatus } = splitUserUpdatePayload(updates);
-    void (async () => {
-      // Re-check the live Auth identity immediately before the RPC. The
-      // in-memory user can lag a token/account transition while an action is
-      // waiting to be persisted; never submit an old account's payload under
-      // a newly authenticated session.
+    const writeEpoch = this.profileWriteRevision;
+
+    // Do not publish optimistic state for persisted accounts. If a write fails,
+    // the last canonical profile remains visible; a later queued write cannot
+    // accidentally restore an earlier uncommitted snapshot.
+    const persist = async () => {
+      if (writeEpoch !== this.profileWriteRevision || this.currentUser?.id !== id) return;
+
       const { data: authData, error: authError } = await this.client!.auth.getUser();
       if (authError) throw authError;
       if (!authData.user || authData.user.id !== id) {
         throw new Error('Profile updates require the same currently authenticated user that initiated the change.');
       }
-      if (this.currentUser?.id !== id || writeRevision !== this.profileWriteRevision) return;
+      if (writeEpoch !== this.profileWriteRevision || this.currentUser?.id !== id) return;
 
       const { data: profile, error } = await this.client!.rpc('save_profile_and_favorite_teams', {
         p_profile_updates: profileUpdates,
@@ -252,33 +260,34 @@ export class AuthService {
       });
       if (error) throw error;
       if (!profile) throw new Error('The transactional profile save returned no canonical profile row.');
+      if (writeEpoch !== this.profileWriteRevision || this.currentUser?.id !== id) return;
 
+      const committedUser = this.currentUser;
+      if (!committedUser || committedUser.id !== id) return;
       const savedTeams = favoriteTeams === undefined
-        ? updated.favoriteTeams
+        ? committedUser.favoriteTeams
         : normalizeFavoriteTeams(favoriteTeams);
-      if (this.currentUser?.id !== id || writeRevision !== this.profileWriteRevision) return;
-
       const authUser = {
         id,
-        email: this.currentUser.email,
-        email_confirmed_at: this.currentUser.emailVerified ? new Date().toISOString() : null,
-        created_at: this.currentUser.createdAt
+        email: committedUser.email,
+        email_confirmed_at: committedUser.emailVerified ? new Date().toISOString() : null,
+        created_at: committedUser.createdAt
       };
       this.currentUser = {
         ...mergeAuthUserWithProfile(authUser, profile),
         favoriteTeams: savedTeams,
         // Permission status belongs to the current device/session, not profiles.
-        locationPermissionStatus: locationPermissionStatus ?? updated.locationPermissionStatus,
-        notificationPermissionStatus: notificationPermissionStatus ?? updated.notificationPermissionStatus
+        locationPermissionStatus: locationPermissionStatus ?? committedUser.locationPermissionStatus,
+        notificationPermissionStatus: notificationPermissionStatus ?? committedUser.notificationPermissionStatus
       };
       this.notify();
-    })().catch((error) => {
-      if (this.currentUser?.id === id && writeRevision === this.profileWriteRevision) {
-        this.currentUser = previousUser;
-        this.notify();
-      }
-      console.error('Unable to persist the transactional profile and favorite-team update.', error);
-    });
+    };
+
+    this.profileWriteQueue = this.profileWriteQueue
+      .then(persist)
+      .catch((error) => {
+        console.error('Unable to persist the transactional profile and favorite-team update.', error);
+      });
     return updated;
   }
   completeOnboarding(id: string) { return this.updateUser(id, { onboardingCompleted: true, onboardingStep: 'complete' }); }
