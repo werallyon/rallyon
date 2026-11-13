@@ -225,8 +225,13 @@ export class AuthService {
     return error ? { success: false, message: error.message } : { success: true, message: 'Verification email sent.' };
   }
 
-  updateUser(id: string, updates: Partial<User>): User | null {
-    if (!this.currentUser || this.currentUser.id !== id || !this.client) return null;
+  updateUser(id: string, updates: Partial<User>): Promise<AuthResponse> {
+    if (!this.currentUser || this.currentUser.id !== id) {
+      return Promise.resolve({ success: false, error: 'The profile is no longer available for this account.' });
+    }
+    if (!this.client && !id.startsWith('usr_')) {
+      return Promise.resolve({ success: false, error: 'Supabase is not configured. Your changes were not saved.' });
+    }
 
     const updated = { ...this.currentUser, ...updates, id, updatedAt: new Date().toISOString() } as User;
 
@@ -234,64 +239,78 @@ export class AuthService {
     if (id.startsWith('usr_')) {
       this.currentUser = updated;
       this.notify();
-      return updated;
+      return Promise.resolve({ success: true, user: updated });
     }
 
     const { profileUpdates, favoriteTeams, locationPermissionStatus, notificationPermissionStatus } = splitUserUpdatePayload(updates);
     const writeEpoch = this.profileWriteRevision;
 
-    // Do not publish optimistic state for persisted accounts. If a write fails,
-    // the last canonical profile remains visible; a later queued write cannot
-    // accidentally restore an earlier uncommitted snapshot.
-    const persist = async () => {
-      if (writeEpoch !== this.profileWriteRevision || this.currentUser?.id !== id) return;
+    // Persist profile mutations in invocation order. A failed transaction is
+    // returned to the caller; it is never converted into a successful-looking
+    // User object or swallowed as a console-only warning.
+    const persist = async (): Promise<AuthResponse> => {
+      try {
+        if (writeEpoch !== this.profileWriteRevision || this.currentUser?.id !== id) {
+          return { success: false, error: 'This profile save was superseded by an authentication change. Please retry.' };
+        }
 
-      const { data: authData, error: authError } = await this.client!.auth.getUser();
-      if (authError) throw authError;
-      if (!authData.user || authData.user.id !== id) {
-        throw new Error('Profile updates require the same currently authenticated user that initiated the change.');
+        const { data: authData, error: authError } = await this.client!.auth.getUser();
+        if (authError) throw authError;
+        if (!authData.user || authData.user.id !== id) {
+          throw new Error('Profile updates require the same currently authenticated user that initiated the change.');
+        }
+        if (writeEpoch !== this.profileWriteRevision || this.currentUser?.id !== id) {
+          return { success: false, error: 'This profile save was superseded by an authentication change. Please retry.' };
+        }
+
+        const { data: profile, error } = await this.client!.rpc('save_profile_and_favorite_teams', {
+          p_expected_user_id: id,
+          p_profile_updates: profileUpdates,
+          p_favorite_teams: favoriteTeams ?? [],
+          p_replace_favorite_teams: favoriteTeams !== undefined
+        });
+        if (error) throw error;
+        if (!profile) throw new Error('The transactional profile save returned no canonical profile row.');
+
+        if (writeEpoch !== this.profileWriteRevision || this.currentUser?.id !== id) {
+          return { success: false, error: 'The save completed after the account changed. Sign in again to refresh your profile.' };
+        }
+
+        const committedUser = this.currentUser;
+        if (!committedUser || committedUser.id !== id) {
+          return { success: false, error: 'The profile changed before the save could be published. Please retry.' };
+        }
+        const savedTeams = favoriteTeams === undefined
+          ? committedUser.favoriteTeams
+          : normalizeFavoriteTeams(favoriteTeams);
+        const authUser = {
+          id,
+          email: committedUser.email,
+          email_confirmed_at: committedUser.emailVerified ? new Date().toISOString() : null,
+          created_at: committedUser.createdAt
+        };
+        this.currentUser = {
+          ...mergeAuthUserWithProfile(authUser, profile),
+          favoriteTeams: savedTeams,
+          // Permission status belongs to the current device/session, not profiles.
+          locationPermissionStatus: locationPermissionStatus ?? committedUser.locationPermissionStatus,
+          notificationPermissionStatus: notificationPermissionStatus ?? committedUser.notificationPermissionStatus
+        };
+        this.notify();
+        return { success: true, user: this.currentUser };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unable to save your profile. Please try again.'
+        };
       }
-      if (writeEpoch !== this.profileWriteRevision || this.currentUser?.id !== id) return;
-
-      const { data: profile, error } = await this.client!.rpc('save_profile_and_favorite_teams', {
-        p_expected_user_id: id,
-        p_profile_updates: profileUpdates,
-        p_favorite_teams: favoriteTeams ?? [],
-        p_replace_favorite_teams: favoriteTeams !== undefined
-      });
-      if (error) throw error;
-      if (!profile) throw new Error('The transactional profile save returned no canonical profile row.');
-      if (writeEpoch !== this.profileWriteRevision || this.currentUser?.id !== id) return;
-
-      const committedUser = this.currentUser;
-      if (!committedUser || committedUser.id !== id) return;
-      const savedTeams = favoriteTeams === undefined
-        ? committedUser.favoriteTeams
-        : normalizeFavoriteTeams(favoriteTeams);
-      const authUser = {
-        id,
-        email: committedUser.email,
-        email_confirmed_at: committedUser.emailVerified ? new Date().toISOString() : null,
-        created_at: committedUser.createdAt
-      };
-      this.currentUser = {
-        ...mergeAuthUserWithProfile(authUser, profile),
-        favoriteTeams: savedTeams,
-        // Permission status belongs to the current device/session, not profiles.
-        locationPermissionStatus: locationPermissionStatus ?? committedUser.locationPermissionStatus,
-        notificationPermissionStatus: notificationPermissionStatus ?? committedUser.notificationPermissionStatus
-      };
-      this.notify();
     };
 
-    this.profileWriteQueue = this.profileWriteQueue
-      .then(persist)
-      .catch((error) => {
-        console.error('Unable to persist the transactional profile and favorite-team update.', error);
-      });
-    return updated;
+    const writeResult = this.profileWriteQueue.then(persist, persist);
+    this.profileWriteQueue = writeResult.then(() => undefined);
+    return writeResult;
   }
-  completeOnboarding(id: string) { return this.updateUser(id, { onboardingCompleted: true, onboardingStep: 'complete' }); }
+  completeOnboarding(id: string): Promise<AuthResponse> { return this.updateUser(id, { onboardingCompleted: true, onboardingStep: 'complete' }); }
   logout() { this.authActionRevision++; this.profileWriteRevision++; if (this.client) void this.client.auth.signOut(); this.currentUser = null; this.notify(); }
   deleteAccount(_id: string) { return false; }
 }
