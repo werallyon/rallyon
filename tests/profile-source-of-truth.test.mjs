@@ -42,8 +42,8 @@ test('auth hydration treats relational favorites as authoritative and fails clos
     authService.indexOf('private async hydrateUser'),
     authService.indexOf('private async isCurrentAuthAction')
   );
-  assert.match(hydrator, /await getUserWithProfile\(authUser\)/);
-  assert.match(hydrator, /await getFavoriteTeams\(authUser\.id\)/);
+  assert.match(hydrator, /await getUserWithProfile\(authUser, this.client\)/);
+  assert.match(hydrator, /await getFavoriteTeams\(authUser\.id, this.client\)/);
   assert.equal(/catch/.test(hydrator), false);
 });
 
