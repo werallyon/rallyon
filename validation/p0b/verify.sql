@@ -78,8 +78,27 @@ begin
     raise exception 'Taxonomy SELECT must be granted to anon and authenticated';
   end if;
   if has_table_privilege('anon', 'public.sports', 'INSERT')
-     or has_table_privilege('authenticated', 'public.sports', 'INSERT') then
+     or has_table_privilege('anon', 'public.sports', 'UPDATE')
+     or has_table_privilege('anon', 'public.sports', 'DELETE')
+     or has_table_privilege('authenticated', 'public.sports', 'INSERT')
+     or has_table_privilege('authenticated', 'public.sports', 'UPDATE')
+     or has_table_privilege('authenticated', 'public.sports', 'DELETE') then
     raise exception 'Client roles must not be able to write taxonomy';
+  end if;
+
+  if exists (
+    select 1
+    from pg_class c
+    cross join lateral aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) acl
+    where c.oid in (
+      'public.sports'::regclass, 'public.leagues'::regclass, 'public.teams'::regclass,
+      'public.sport_provider_ids'::regclass, 'public.league_provider_ids'::regclass,
+      'public.team_provider_ids'::regclass
+    )
+    and acl.grantee = 0
+    and acl.privilege_type in ('SELECT','INSERT','UPDATE','DELETE')
+  ) then
+    raise exception 'PUBLIC has direct privileges on a canonical or provider relation';
   end if;
   if not has_table_privilege('service_role', 'public.sports', 'SELECT')
      or not has_table_privilege('service_role', 'public.sports', 'INSERT')
