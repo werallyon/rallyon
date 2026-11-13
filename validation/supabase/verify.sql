@@ -87,6 +87,20 @@ begin
     raise exception 'Authenticated RPC did not update the canonical profile';
   end if;
 
+  begin
+    perform public.save_profile_and_favorite_teams(
+      'b2000000-0000-4000-8000-000000000002'::uuid,
+      '{"name":"WRONG INITIATING IDENTITY"}'::jsonb,
+      '[]'::jsonb,
+      false
+    );
+    raise exception 'Expected RPC to reject a mismatched initiating identity';
+  exception when others then
+    if sqlerrm <> 'Authenticated identity does not match the profile write owner' then
+      raise;
+    end if;
+  end;
+
   select count(*) into v_favorites
   from public.user_favorite_teams
   where user_id = auth.uid();
