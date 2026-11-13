@@ -38,3 +38,51 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+  p0b-migration-validation:
+    name: P0-B schema constraints and ACLs on isolated local Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SUPABASE_PROJECT_ID: rallyon-p0b-${{ github.run_id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        id: setup-supabase-cli
+        uses: supabase/setup-cli@v3
+        with:
+          version: ^3
+
+      - name: Configure unique isolated Supabase project and ports
+        env:
+          SUPABASE_PROJECT_ID: rallyon-p0b-${{ github.run_id }}
+        run: |
+          BASE_PORT=$((30000 + GITHUB_RUN_ID % 10000))
+          sed -i "s/^project_id = .*/project_id = \"${SUPABASE_PROJECT_ID}\"/" validation/p0b/supabase/config.toml
+          sed -i "s/^port = 54351$/port = $((BASE_PORT + 1))/" validation/p0b/supabase/config.toml
+          sed -i "s/^port = 54352$/port = $((BASE_PORT + 2))/" validation/p0b/supabase/config.toml
+          sed -i "s/^shadow_port = 54350$/shadow_port = $BASE_PORT/" validation/p0b/supabase/config.toml
+          sed -i "s/^port = 54353$/port = $((BASE_PORT + 3))/" validation/p0b/supabase/config.toml
+          sed -i "s/^port = 54354$/port = $((BASE_PORT + 4))/" validation/p0b/supabase/config.toml
+
+      - name: Stage exact P0-B migration
+        run: |
+          cp supabase/migrations/20261113120000_p0b_canonical_sports_leagues_teams.sql validation/p0b/supabase/migrations/20261113000100_p0b_canonical_sports_leagues_teams.sql
+
+      - name: Start isolated local Supabase stack
+        run: supabase --workdir validation/p0b start
+
+      - name: Reset local database and apply exact P0-B migration
+        run: supabase --workdir validation/p0b db reset
+
+      - name: Verify league-scoped constraints, legacy nullability, RLS and effective ACLs
+        run: bash validation/p0b/run-local-sql.sh validation/p0b/verify.sql
+
+      - name: Verify migration fails closed on unknown or incompatible pre-existing schema
+        run: bash validation/p0b/verify-preflight.sh
+
+      - name: Stop isolated local Supabase stack
+        if: always() && steps.setup-supabase-cli.outcome == 'success'
+        run: supabase --workdir validation/p0b stop
