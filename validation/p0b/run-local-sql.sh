@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Uses the per-workflow project ID exported by the P0-B validation job.
+
 SQL_FILE="${1:?Usage: run-local-sql.sh <sql-file>}"
 PROJECT_ID="${SUPABASE_PROJECT_ID:-rallyon-p0b-validation}"
 if [[ ! -f "$SQL_FILE" ]]; then
