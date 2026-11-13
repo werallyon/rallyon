@@ -108,8 +108,8 @@ export class AuthService {
   private async hydrateUser(authUser: any): Promise<User> {
     // Once relational favorites are the active source, a read failure is not
     // an empty result and must never expose stale legacy JSON as current data.
-    const user = await getUserWithProfile(authUser);
-    const favoriteTeams = await getFavoriteTeams(authUser.id);
+    const user = await getUserWithProfile(authUser, this.client);
+    const favoriteTeams = await getFavoriteTeams(authUser.id, this.client);
     return { ...user, favoriteTeams };
   }
 
