@@ -123,7 +123,7 @@ test('canonical profile failures are not converted into synthetic Auth-only user
     authService.indexOf('private async hydrateUser'),
     authService.indexOf('private notify')
   );
-  assert.match(hydrator, /getUserWithProfile\(authUser\)/);
+  assert.match(hydrator, /getUserWithProfile\(authUser, this.client\)/);
   assert.equal(/return mergeAuthUserWithProfile\(authUser\)/.test(hydrator), false);
   assert.equal(hydrator.includes('Relational favorite teams unavailable; retaining legacy profile values'), false);
   assert.equal(authService.includes('function mapUser'), false);
