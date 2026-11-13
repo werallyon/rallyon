@@ -295,6 +295,7 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
 
     await t.test('profile-only writes preserve favorites and favorite replacement is atomic', async () => {
       const profileOnly = await userA.client.rpc('save_profile_and_favorite_teams', {
+        p_expected_user_id: userA.user.id,
         p_profile_updates: { name: 'Profile Only Keeps Favorites' }
       });
       assert.ifError(profileOnly.error);
@@ -307,6 +308,7 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
       assert.deepEqual(preserved.data, [{ team_id: favoriteId }], 'profile-only writes must not clear favorites');
 
       const initial = await userA.client.rpc('save_profile_and_favorite_teams', {
+        p_expected_user_id: userA.user.id,
         p_profile_updates: { name: 'Atomic Profile Before Failure' },
         p_favorite_teams: [{
           id: favoriteId,
@@ -329,6 +331,7 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
       assert.deepEqual(beforeFailure.data, [{ team_id: favoriteId, team_name: 'Atomic Favorite' }]);
 
       const rejected = await userA.client.rpc('save_profile_and_favorite_teams', {
+        p_expected_user_id: userA.user.id,
         p_profile_updates: { name: 'MUST ROLL BACK' },
         p_favorite_teams: [{ id: '   ', name: 'Malformed Favorite' }],
         p_replace_favorite_teams: true
@@ -351,6 +354,7 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
       assert.deepEqual(afterFailureFavorites.data, [{ team_id: favoriteId, team_name: 'Atomic Favorite' }]);
 
       const cleared = await userA.client.rpc('save_profile_and_favorite_teams', {
+        p_expected_user_id: userA.user.id,
         p_profile_updates: { name: 'Atomic Clear Succeeded' },
         p_favorite_teams: [],
         p_replace_favorite_teams: true
@@ -373,12 +377,21 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
 
       for (const field of ['id', 'user_id']) {
         const rejected = await userA.client.rpc('save_profile_and_favorite_teams', {
+          p_expected_user_id: userA.user.id,
           p_profile_updates: { [field]: userB.user.id, name: 'UNAUTHORIZED CROSS-ACCOUNT WRITE' },
           p_favorite_teams: [],
           p_replace_favorite_teams: false
         });
         assert.ok(rejected.error, `RPC must reject caller-supplied ${field}`);
       }
+
+      const staleIdentity = await userA.client.rpc('save_profile_and_favorite_teams', {
+        p_expected_user_id: userB.user.id,
+        p_profile_updates: { name: 'MUST NOT APPLY TO THE NEW SESSION' },
+        p_favorite_teams: [],
+        p_replace_favorite_teams: false
+      });
+      assert.ok(staleIdentity.error, 'RPC must reject a payload bound to a different initiating identity');
 
       const afterA = await userA.client.from('profiles').select('display_name').eq('id', userA.user.id).single();
       const afterB = await userB.client.from('profiles').select('display_name').eq('id', userB.user.id).single();
@@ -460,6 +473,7 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
       assertNoVisibleRowsOrDenied(favoriteDelete, 'anonymous favorite delete');
 
       const rpc = await anonymous.rpc('save_profile_and_favorite_teams', {
+        p_expected_user_id: userA.user.id,
         p_profile_updates: { name: 'ANONYMOUS RPC' },
         p_favorite_teams: [],
         p_replace_favorite_teams: true
