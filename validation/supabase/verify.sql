@@ -41,7 +41,7 @@ begin
 
   select relrowsecurity into v_rls from pg_class where oid = 'public.user_favorite_teams'::regclass;
   if not coalesce(v_rls, false) then raise exception 'RLS is not enabled on relational favorites'; end if;
-  if to_regprocedure('public.save_profile_and_favorite_teams(jsonb,jsonb,boolean)') is null then
+  if to_regprocedure('public.save_profile_and_favorite_teams(uuid,jsonb,jsonb,boolean)') is null then
     raise exception 'Transactional profile/favorites RPC is missing'; end if;
   if has_table_privilege('anon', 'public.user_favorite_teams', 'SELECT')
      or has_table_privilege('anon', 'public.user_favorite_teams', 'INSERT')
@@ -74,6 +74,7 @@ declare
   v_other_name text;
 begin
   perform public.save_profile_and_favorite_teams(
+    'a1000000-0000-4000-8000-000000000001'::uuid,
     '{"name":"RPC valid empty selection"}'::jsonb,
     '[]'::jsonb,
     true
@@ -95,6 +96,7 @@ begin
 
   begin
     perform public.save_profile_and_favorite_teams(
+      'a1000000-0000-4000-8000-000000000001'::uuid,
       '{"name":"MUST ROLL BACK"}'::jsonb,
       '[{"id":"   ","name":"Malformed"}]'::jsonb,
       true
@@ -116,6 +118,7 @@ begin
   -- The RPC has no caller-selected owner parameter and rejects ownership keys.
   begin
     perform public.save_profile_and_favorite_teams(
+      'a1000000-0000-4000-8000-000000000001'::uuid,
       '{"id":"b2000000-0000-4000-8000-000000000002"}'::jsonb,
       '[]'::jsonb,
       false
@@ -127,6 +130,7 @@ begin
 
   begin
     perform public.save_profile_and_favorite_teams(
+      'a1000000-0000-4000-8000-000000000001'::uuid,
       '{"user_id":"b2000000-0000-4000-8000-000000000002"}'::jsonb,
       '[]'::jsonb,
       false
@@ -151,7 +155,7 @@ set local role anon;
 do $$
 begin
   begin
-    perform public.save_profile_and_favorite_teams('{}'::jsonb, '[]'::jsonb, true);
+    perform public.save_profile_and_favorite_teams('a1000000-0000-4000-8000-000000000001'::uuid, '{}'::jsonb, '[]'::jsonb, true);
     raise exception 'Expected anonymous RPC execution to be denied';
   exception when insufficient_privilege then
     null;
