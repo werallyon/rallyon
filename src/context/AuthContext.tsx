@@ -108,15 +108,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const handleResendVerification = async () => authService.resendVerificationEmail();
   const handleUpdateUser = (updates: Partial<User>) => {
     if (!currentUser) return null;
-    const updated = authService.updateUser(currentUser.id, updates);
-    if (updated) setCurrentUser(updated);
-    return updated;
+    // AuthService publishes persisted profile state only after its transactional
+    // RPC commits. The subscription above is the sole source of context updates.
+    return authService.updateUser(currentUser.id, updates);
   };
   const handleCompleteOnboarding = () => {
     if (!currentUser) return null;
-    const updated = authService.completeOnboarding(currentUser.id);
-    if (updated) setCurrentUser(updated);
-    return updated;
+    // Do not bypass the canonical persistence boundary with an optimistic
+    // context update; AuthService notifies subscribers after commit.
+    return authService.completeOnboarding(currentUser.id);
   };
   const handleLogout = () => { authRequestRevision.current++; authService.logout(); setCurrentUser(null); setAuthError(null); setIsLoading(false); };
   const handleDeleteAccount = () => {
