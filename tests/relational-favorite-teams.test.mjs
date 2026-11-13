@@ -97,10 +97,13 @@ test('favorite-team replacement validates input and uses the transactional RPC',
   assert.ok(favoriteService.includes('Favorite teams require non-empty IDs and names'));
 });
 
-test('optimistic profile and favorite writes roll back on persistence failure', () => {
+test('persisted profile writes are serialized and publish only after canonical commit', () => {
   assert.match(authService, /private profileWriteRevision = 0/);
-  assert.ok(authService.includes('writeRevision === this.profileWriteRevision'));
-  assert.ok(authService.includes('this.currentUser = previousUser;'));
+  assert.match(authService, /private profileWriteQueue: Promise<void> = Promise\.resolve\(\)/);
+  assert.ok(authService.includes('this.profileWriteQueue = this.profileWriteQueue'));
+  assert.ok(authService.includes('.then(persist)'));
+  assert.ok(authService.includes('Do not publish optimistic state for persisted accounts'));
+  assert.equal(authService.includes('this.currentUser = previousUser;'), false);
 });
 
 test('sign-in and sign-up completion are guarded against superseded auth actions', () => {
