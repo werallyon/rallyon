@@ -72,6 +72,12 @@ begin
      or has_table_privilege('authenticated', 'public.sports', 'INSERT') then
     raise exception 'Client roles must not be able to write taxonomy';
   end if;
+  if not has_table_privilege('service_role', 'public.sports', 'SELECT')
+     or not has_table_privilege('service_role', 'public.sports', 'INSERT')
+     or not has_table_privilege('service_role', 'public.sports', 'UPDATE')
+     or not has_table_privilege('service_role', 'public.sports', 'DELETE') then
+    raise exception 'service_role lacks required write privileges on canonical taxonomy';
+  end if;
 
   foreach v_table in array array['sport_provider_ids','league_provider_ids','team_provider_ids'] loop
     if has_table_privilege('anon', 'public.' || v_table, 'SELECT')
