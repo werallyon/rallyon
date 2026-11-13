@@ -40,7 +40,7 @@ test('migration refuses unsafe legacy data and unknown pre-existing relations', 
   assert.ok(migration.includes("v_unverified_policies"));
   assert.ok(migration.includes("exact owner predicate allowlist"));
   assert.ok(migration.includes("on_auth_user_created"));
-  assert.ok(migration.includes("regexp_replace(lower(v_bootstrap_source)"));
+  assert.ok(migration.includes("btrim(regexp_replace(lower(v_bootstrap_source)"));
   assert.ok(migration.includes("exact reviewed profile-insert implementation"));
   assert.ok(migration.includes("profile schema is incompatible"));
   assert.ok(migration.includes("PUBLIC has"));
