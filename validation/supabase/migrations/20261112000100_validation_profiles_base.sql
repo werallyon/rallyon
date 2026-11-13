@@ -49,7 +49,8 @@ grant select, insert, update on public.profiles to authenticated;
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
-set search_path = public
+security definer
+set search_path = public, pg_temp
 as $$
 begin
   insert into public.profiles (

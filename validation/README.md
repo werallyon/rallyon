@@ -17,6 +17,44 @@ Every pull request runs the isolated database harness on a GitHub-hosted Ubuntu 
 
 The GitHub Actions run is the reproducible baseline for contributors who cannot run Docker locally.
 
+## Auth and PostgREST API integration tests
+
+The dedicated integration suite creates two independent synthetic users through the **local Auth signup API**. It then exercises the local PostgREST API with each user's own access token and a separate anonymous client.
+
+After starting and resetting the local stack, run:
+
+```bash
+npm ci
+npm run test:integration:p0-auth-rls
+```
+
+The test obtains `API_URL`, `ANON_KEY`, and `SERVICE_ROLE_KEY` at runtime from:
+
+```bash
+supabase --workdir validation status --output env --output-format text
+```
+
+It does not read shell `.env` files or hosted-project credentials. Before creating any client, it validates that the API URL is plain HTTP on loopback (`127.0.0.1`, `localhost`, or `::1`) and that the local JWT roles are `anon` and `service_role`. The service-role key is held only in the Node test process and is used exclusively to delete the test users during cleanup; it is never printed or written to disk.
+
+The suite verifies:
+
+- Auth signup creates exactly one profile for each synthetic user through the local profile bootstrap trigger.
+- A and B can each read and update their own profile.
+- A cannot read, update, or delete B's profile.
+- A can insert, read, update, and delete A's favorite-team row.
+- B cannot read, update, or delete A's favorite-team row.
+- A successful empty favorites query returns `[]` without an error (and must not be interpreted as a reason to fall back to legacy data).
+- The authenticated `save_profile_and_favorite_teams` RPC updates the canonical profile and replaces the complete relational favorite selection in one transaction.
+- Malformed favorite input is rejected and rolls back the accompanying profile update; an empty array atomically clears favorites.
+- An anonymous client cannot read profiles or favorite-team rows.
+- Both Auth users are signed out and deleted in a `finally` cleanup path; Auth foreign-key cascades remove their profiles and favorites.
+
+Each run uses random `example.test` email addresses, a unique username suffix, and a random password. A hard loopback guard prevents the suite from sending test requests to production or any hosted Supabase endpoint.
+
+The same command runs in the GitHub Actions `supabase-validation` job **after** local database reset and SQL fixture verification. It needs no repository secrets, Supabase access token, hosted URL, or database password.
+
+Expected result: all Auth/RLS subtests pass and no `rallyon-p0-*@example.test` users remain after the run. If cleanup fails, the test job fails rather than silently leaving test accounts behind.
+
 ## Optional local prerequisites (macOS)
 
 1. Confirm your macOS version is supported by the current Docker Desktop release before installing it; older macOS versions may no longer be supported.
@@ -37,7 +75,7 @@ npm run supabase:validation:reset
 npm run supabase:validation:verify
 ```
 
-The isolated CLI config pins PostgreSQL major version 17 and uses non-default ports to avoid colliding with another local Supabase stack. Reset recreates only this local validation database and applies the three migrations in this directory. The verify command runs SQL assertions and exits with an error if the fixture counts, backfill, or RLS flags are wrong.
+The isolated CLI config pins PostgreSQL major version 17 and uses non-default ports to avoid colliding with another local Supabase stack. Reset recreates only this local validation database and applies the four migrations in this directory. The verify command runs SQL assertions and exits with an error if the fixture counts, backfill, or RLS flags are wrong.
 
 Stop when finished:
 
@@ -107,7 +145,7 @@ The stable database fixture UUIDs are:
 - A: `a1000000-0000-4000-8000-000000000001`
 - B: `b2000000-0000-4000-8000-000000000002`
 
-The migration fixture validates backfill handling for duplicate IDs, blank IDs, missing names, and an empty array. The local verification script also asserts no anon grants and only CRUD grants for authenticated. It does not validate the production Auth signup provider flow or every possible malformed JSON payload.
+The migration fixture validates deterministic first-occurrence handling for duplicate IDs and preserves an empty selection. The hardened migration now stops before creating the relational table unless the profile table has owner-scoped SELECT/INSERT/UPDATE policies, a SECURITY DEFINER Auth bootstrap trigger, no broad permissive SELECT/INSERT/UPDATE/DELETE/ALL policy, and no effective anon grants. It also stops when legacy roots are not arrays or any team entry is not an object with non-empty string ID and name; malformed entries are not silently skipped. The local verification script also asserts no anon grants and only CRUD grants for authenticated. It does not validate the production Auth signup provider flow or every possible malformed JSON payload.
 
 ## What this harness does not prove
 
