@@ -294,10 +294,28 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
 
     await t.test('profile-only writes preserve favorites and favorite replacement is atomic', async () => {
       const profileOnly = await userA.client.rpc('save_profile_and_favorite_teams', {
+        p_expected_user_id: userA.user.id,
         p_profile_updates: { name: 'Profile Only Keeps Favorites' }
       });
       assert.ifError(profileOnly.error);
       assert.equal(profileOnly.data.display_name, 'Profile Only Keeps Favorites');
+
+      const mismatchedIdentity = await userA.client.rpc('save_profile_and_favorite_teams', {
+        p_expected_user_id: userB.user.id,
+        p_profile_updates: { name: 'MUST NOT COMMIT FOR A' }
+      });
+      assert.ok(mismatchedIdentity.error, 'RPC must reject an initiating identity that differs from auth.uid()');
+      const unchangedAfterIdentityMismatch = await userA.client
+        .from('profiles')
+        .select('display_name')
+        .eq('id', userA.user.id)
+        .single();
+      assert.ifError(unchangedAfterIdentityMismatch.error);
+      assert.equal(
+        unchangedAfterIdentityMismatch.data.display_name,
+        'Profile Only Keeps Favorites',
+        'identity mismatch must not mutate the initiating user profile'
+      );
       const preserved = await userA.client
         .from('user_favorite_teams')
         .select('team_id')
@@ -306,6 +324,7 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
       assert.deepEqual(preserved.data, [{ team_id: favoriteId }], 'profile-only writes must not clear favorites');
 
       const initial = await userA.client.rpc('save_profile_and_favorite_teams', {
+        p_expected_user_id: userA.user.id,
         p_profile_updates: { name: 'Atomic Profile Before Failure' },
         p_favorite_teams: [{
           id: favoriteId,
@@ -328,6 +347,7 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
       assert.deepEqual(beforeFailure.data, [{ team_id: favoriteId, team_name: 'Atomic Favorite' }]);
 
       const rejected = await userA.client.rpc('save_profile_and_favorite_teams', {
+        p_expected_user_id: userA.user.id,
         p_profile_updates: { name: 'MUST ROLL BACK' },
         p_favorite_teams: [{ id: '   ', name: 'Malformed Favorite' }],
         p_replace_favorite_teams: true
@@ -350,6 +370,7 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
       assert.deepEqual(afterFailureFavorites.data, [{ team_id: favoriteId, team_name: 'Atomic Favorite' }]);
 
       const cleared = await userA.client.rpc('save_profile_and_favorite_teams', {
+        p_expected_user_id: userA.user.id,
         p_profile_updates: { name: 'Atomic Clear Succeeded' },
         p_favorite_teams: [],
         p_replace_favorite_teams: true
