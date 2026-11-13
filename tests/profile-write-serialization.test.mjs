@@ -44,8 +44,8 @@ test('a failed earlier profile write cannot leak optimistic state into a later f
     notificationPermissionStatus: 'PROMPT'
   };
 
-  service.updateUser(userId, { firstName: 'Uncommitted Name' });
-  service.updateUser(userId, { homeCity: 'Committed City' });
+  const firstSave = service.updateUser(userId, { firstName: 'Uncommitted Name' });
+  const secondSave = service.updateUser(userId, { homeCity: 'Committed City' });
 
   // Persisted profile state is not optimistically published.
   assert.equal(service.getCurrentUser().firstName, 'Canonical');
@@ -54,6 +54,9 @@ test('a failed earlier profile write cannot leak optimistic state into a later f
   assert.equal(rpcCalls, 1, 'writes are serialized');
 
   firstRpc.resolve({ data: null, error: { message: 'simulated first-write failure' } });
+  const firstResult = await firstSave;
+  assert.equal(firstResult.success, false);
+  assert.match(firstResult.error, /simulated first-write failure/);
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(rpcCalls, 2, 'the second write starts after the first has settled');
 
@@ -79,7 +82,9 @@ test('a failed earlier profile write cannot leak optimistic state into a later f
     },
     error: null
   });
+  const secondResult = await secondSave;
   await service.profileWriteQueue;
+  assert.equal(secondResult.success, true);
 
   assert.equal(service.getCurrentUser().firstName, 'Canonical');
   assert.equal(service.getCurrentUser().homeCity, 'Committed City');
