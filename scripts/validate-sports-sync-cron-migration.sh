@@ -14,9 +14,10 @@ if [[ ! -f "$MIGRATION" ]]; then
   exit 1
 fi
 
-DB_CONTAINER="$(docker ps --filter "label=com.supabase.cli.project=rallyon-cron-migration-validation" --format '{{.Names}}' | grep -E '(^|_)db_' | head -n 1)"
+PROJECT_ID="$(basename "$WORKDIR")"
+DB_CONTAINER="$(docker ps --filter "label=com.supabase.cli.project=$PROJECT_ID" --format '{{.Names}}' | grep -E '(^|_)db_' | head -n 1)"
 if [[ -z "$DB_CONTAINER" ]]; then
-  echo "Could not find the isolated Cron validation database container" >&2
+  echo "Could not find the isolated Cron validation database container for project label $PROJECT_ID" >&2
   exit 1
 fi
 
