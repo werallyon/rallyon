@@ -100,7 +100,7 @@ test("production hardening migration creates sync token table before applying de
 });
  
 test("final Cron migration replaces the two existing jobs with a longer HTTP timeout", async () => {
-  const migration = await readFile(new URL("../supabase/migrations/20261111050000_rallyon_sync_games_schedule_timeout_v4.sql", import.meta.url), "utf8");
+  const migration = await readFile(new URL("../supabase/migrations/20261114170000_rallyon_sync_games_schedule_timeout_v4.sql", import.meta.url), "utf8");
   assert.match(migration, /cron\.unschedule/);
   assert.equal((migration.match(/cron\.schedule\(/g) ?? []).length, 2);
   assert.match(migration, /timeout_milliseconds := 120000/);
