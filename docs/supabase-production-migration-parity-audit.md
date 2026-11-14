@@ -7,7 +7,7 @@
 
 ## Executive decision
 
-**Production rollout remains NO-GO.** The proposed P0-B/P0-C/P0-A changes now have passing isolated CI, and read-only production preflight checks match their intended starting schema. However, the hosted migration ledger does not have a one-to-one source match with the current repository. Four historical migration SQL files are absent from every inspected repository branch/tree, and several candidate files have version mismatches.
+**Production rollout remains NO-GO.** The proposed P0-B/P0-C/P0-A changes now have passing isolated CI, and read-only production preflight checks match their intended starting schema. However, the hosted migration ledger does not have a one-to-one source match with the current repository. Five historical migration SQL files are absent from every inspected repository branch/tree, and several candidate files have version mismatches.
 
 Do not run a broad `supabase db push`, root `supabase db reset`, migration repair, or production migration until the historical SQL provenance and complete forward-only plan are resolved.
 
@@ -30,7 +30,7 @@ Production currently reports these 10 entries:
 
 The current root migration directory also contained an unrecorded `20261111050000_rallyon_sync_games_schedule_timeout_v4.sql`. PR #28 replaces that pending out-of-order filename with `20261114170000_rallyon_sync_games_schedule_timeout_v4.sql`, which sorts after the hosted maximum. This is not yet applied to production.
 
-The four missing SQL files were not found in the current main tree, merged PR #6 tree, backup PR #6 branch, or the other inspected development branches. The Supabase migration ledger stores version/name metadata, not the original SQL body. Exact checksums and source cannot be recovered from the ledger alone. Obtain those SQL files from an authoritative backup, deployment artifact, or operator-controlled source; do not invent replacements or mark history applied.
+The five missing SQL files were not found in the current main tree, merged PR #6 tree, backup PR #6 branch, or the other inspected development branches. The Supabase migration ledger stores version/name metadata, not the original SQL body. Exact checksums and source cannot be recovered from the ledger alone. Obtain those SQL files from an authoritative backup, deployment artifact, or operator-controlled source; do not invent replacements or mark history applied.
 
 ## Proposed forward-only migration order
 
