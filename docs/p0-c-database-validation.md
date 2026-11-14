@@ -6,35 +6,35 @@
 
 Code review and branch CI may continue independently. Keep PR #22 draft until the integration owner has reviewed the completed checks. Do not interpret merging as permission to deploy.
 
-## Migration-history blocker — version `20261112120000`
+## Migration-history reconciliation — forward-only versions `20261114150000` and `20261114151000`
 
 PR #22 replaces PR #18's original SQL at the same migration version:
 
-- `supabase/migrations/20261112120000_p0c_relational_favorite_teams.sql`
-- `supabase/migrations/20261112140000_p0_auth_rls_review_remediation.sql`
+- `supabase/migrations/20261114150000_p0c_relational_favorite_teams.sql`
+- `supabase/migrations/20261114151000_p0_auth_rls_review_remediation.sql`
 
-If an environment has already recorded `20261112120000` in `supabase_migrations.schema_migrations`, the replacement SQL will not run there. Editing the historical file does not reapply it. Do not delete migration-history rows, mark migrations reverted, or manually replay the replacement to force it through.
+The earlier proposed versions `20261112120000` and `20261112140000` were older than the latest hosted production version `20261112152519`. They were not recorded in the inspected production ledger and have been replaced with the forward-only versions above, both newer than the hosted maximum. Do not revive the older filenames or delete migration-history rows, mark migrations reverted, or manually replay historical SQL.
 
 Before any deployment decision, an authorized database operator must establish the exact history rows and resulting schema in each relevant environment. The read-only history query is:
 
 ```sql
 select version, name
 from supabase_migrations.schema_migrations
-where version in ('20261112120000', '20261112140000')
+where version in ('20261114150000', '20261114151000')
 order by version;
 ```
 
 Run this independently in every relevant environment and retain the output with the deployment review. An absent row is not proof that no manual SQL was applied; compare the actual table/schema state as well. If the historical version was already applied, inspect the actual table and data, then prepare a separately reviewed forward migration with a new version. Preserve the original history record and reconcile existing relational favorites with the retained legacy JSON without overwriting valid user selections.
 
-The current review did not connect to any hosted Supabase project and cannot answer whether that historical version was applied elsewhere.
+The connected production project was inspected read-only on 2026-11-14: its ledger has 10 entries ending at `20261112152519`, and neither new forward-only version is recorded. The same history check is still required in any other deployment environment before rollout.
 
 ## Hardened preflight
 
-The current `20261112120000` migration fails closed unless it verifies:
+The current `20261114150000` migration fails closed unless it verifies:
 
 - `public.profiles` exists and RLS is enabled.
 - Authenticated SELECT, INSERT, and UPDATE policies use an exact allowlisted owner predicate; every applicable permissive policy for authenticated, anon, or PUBLIC is checked because permissive policies combine with OR semantics.
-- The Auth bootstrap is the enabled `AFTER INSERT FOR EACH ROW` trigger `auth.on_auth_user_created`, invoking `public.handle_new_user` as SECURITY DEFINER, owned by a trusted Supabase administrative role, with a pinned `public, pg_temp` search path and a profile insert body.
+- The Auth bootstrap is the enabled `AFTER INSERT FOR EACH ROW` trigger `auth.on_auth_user_created`, invoking the exact reviewed legacy `public.handle_new_user` body owned by `postgres` or `supabase_admin`; it then hardens that function to SECURITY DEFINER with pinned `pg_catalog, public, pg_temp` search_path and revokes direct API EXECUTE.
 - No effective anon or PUBLIC table/column grants expose `public.profiles`; authenticated retains the table privileges required by the invoker-rights RPC.
 - `profiles.id` is the sole primary key and references `auth.users.id`.
 - All profile columns and types referenced by the transactional RPC exist and match the application contract.
@@ -62,10 +62,10 @@ This is a synthetic reconstruction, not a production schema dump. It proves that
 ## Safe production plan — only after explicit approval
 
 1. Keep production deployment blocked.
-2. Have the database owner perform read-only inspection of `supabase_migrations.schema_migrations` for versions `20261112120000` and `20261112140000` in each relevant environment.
+2. Confirm that versions `20261114150000` and `20261114151000` are absent from each target environment's migration ledger; production was checked read-only and both are absent.
 3. Inspect the exact target's profile columns/types/nullability/defaults, PK/FK, all policies and their role coverage, effective table/column grants (including inherited roles and PUBLIC), Auth trigger definition/enabled state, function owner/body/search_path, and any existing favorite relation.
 4. Arrange a verified backup/PITR recovery point and confirm restoration procedures.
-5. If version `20261112120000` is absent, rehearse the exact proposed sequence against a faithful schema-only clone with synthetic data. If present, design a new forward migration based on the actual resulting schema; do not edit or replay history.
+5. Rehearse the exact forward-only versions against a faithful schema-only clone with synthetic data. If another environment already has a conflicting schema or migration state, design a separate forward migration based on that actual state; do not edit or replay history.
 6. Compare legacy JSON and relational rows, including duplicate IDs, optional metadata, ordering, empty arrays, malformed records, and orphaned profile IDs. Resolve all discrepancies explicitly.
 7. Validate Auth signup, two-user PostgREST ownership, anonymous denial, transactional rollback, and application profile/favorite lifecycle.
 8. Deploy only the approved migration path through the normal migration runner in a controlled window.
@@ -81,7 +81,7 @@ This is a synthetic reconstruction, not a production schema dump. It proves that
 
 ## Current boundaries
 
-- No hosted or production Supabase project was accessed or modified during this review.
+- Production Supabase was inspected read-only; no hosted or production Supabase changes were made.
 - No production migration was applied.
 - PR #16 and PR #18 remain separate review history; do not independently apply PR #18's original migration.
-- PR #22 remains a draft integration candidate. Production deployment remains NO-GO until migration history and target-schema compatibility are established.
+- PR #22 remains a draft integration candidate. Production deployment remains NO-GO until the remaining historical SQL provenance, migration history, and target-schema compatibility are established.
