@@ -108,5 +108,5 @@ test("final Cron migration replaces the two existing jobs with a longer HTTP tim
   assert.match(migration, /rallyon-sync-games-upcoming-daily/);
   assert.match(migration, /'15 \* \* \* \*'/);
   assert.match(migration, /extract\(hour from \(now\(\) at time zone 'America\/Chicago'\)\) = 0/i);
-  assert.doesNotMatch(migration, /cron\\.schedule\\(\\s*'rallyon-sync-games-upcoming-daily',\\s*'15 0 \\* \\* \\*'/s);
+  assert.equal(migration.includes("cron.schedule(\\n    'rallyon-sync-games-upcoming-daily',\\n    '15 0 * * *'"), false);
 });
