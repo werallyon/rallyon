@@ -59,7 +59,7 @@ jobs:
         env:
           SUPABASE_PROJECT_ID: rallyon-p0b-${{ github.run_id }}
         run: |
-          BASE_PORT=$((30000 + GITHUB_RUN_ID % 10000))
+          BASE_PORT=$((20000 + GITHUB_RUN_ID % 10000))
           sed -i "s/^project_id = .*/project_id = \"${SUPABASE_PROJECT_ID}\"/" validation/p0b/supabase/config.toml
           sed -i "s/^port = 54351$/port = $((BASE_PORT + 1))/" validation/p0b/supabase/config.toml
           sed -i "s/^port = 54352$/port = $((BASE_PORT + 2))/" validation/p0b/supabase/config.toml
