@@ -6,7 +6,7 @@ This note records the production-specific compatibility work added to the P0-A/P
 
 Project `nqdrfwvxomecduxmmzrc` was inspected without executing DDL or modifying data.
 
-- Migration versions `20261112120000` and `20261112140000` are absent from `supabase_migrations.schema_migrations`.
+- Migration versions `20261114150000` and `20261114151000` are absent from `supabase_migrations.schema_migrations`.
 - The existing `public.profiles` table has the expected UUID primary key and Auth foreign key, JSONB `favorite_teams` with a NOT NULL/default contract, and owner-scoped SELECT/INSERT/UPDATE policies.
 - `public.user_favorite_teams` and the transactional RPC are absent.
 - `auth.on_auth_user_created` invokes `public.handle_new_user()`.
