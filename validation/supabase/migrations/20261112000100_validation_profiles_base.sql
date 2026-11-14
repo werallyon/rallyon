@@ -1,6 +1,7 @@
 -- Isolated P0-A validation baseline. This is deliberately separate from
 -- production migrations under /supabase/migrations.
--- Mirrors the production profiles columns, PK/FK, signup bootstrap, and owner RLS.
+-- Mirrors the production profiles columns, PK/FK, signup bootstrap, owner RLS,
+-- and the exact pre-hardening trigger/ACL drift observed in production.
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   username text unique,
@@ -41,16 +42,17 @@ create policy profiles_update_own
   using ((select auth.uid()) = id)
   with check ((select auth.uid()) = id);
 
-revoke all on public.profiles from anon;
+-- Match the live project's legacy grants; P0-C must remove these safely.
+grant select, insert, update, delete on public.profiles to anon;
 grant select, insert, update on public.profiles to authenticated;
 
--- Mirrors the current signup bootstrap behavior. Auth metadata is used only
--- to initialize the new row; application reads must use public.profiles.
+-- Exact production-observed legacy trigger contract. The migration must
+-- verify the complete function body before changing its rights/search_path.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
-security definer
-set search_path = public, pg_temp
+security invoker
+set search_path = public
 as $$
 begin
   insert into public.profiles (
