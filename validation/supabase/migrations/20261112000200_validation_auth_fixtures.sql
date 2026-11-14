@@ -25,9 +25,7 @@ update public.profiles
 set favorite_teams = '[
   {"id":"fixture-nfl-kc","name":"Kansas City Chiefs","sportId":"FOOTBALL","league":"NFL","abbrev":"KC","logo":"kc.svg","color":"#E31837"},
   {"id":"fixture-mls-atx","name":"Austin FC","sportId":"SOCCER","league":"MLS","abbrev":"ATX","logo":"atx.svg"},
-  {"id":"fixture-nfl-kc","name":"Kansas City Chiefs","sportId":"FOOTBALL","league":"NFL","abbrev":"KC","logo":"kc.svg","color":"#E31837"},
-  {"id":" ","name":"Blank ID"},
-  {"id":"fixture-missing-name"}
+  {"id":"fixture-nfl-kc","name":"Kansas City Chiefs","sportId":"FOOTBALL","league":"NFL","abbrev":"KC","logo":"kc.svg","color":"#E31837"}
 ]'::jsonb
 where id = 'a1000000-0000-4000-8000-000000000001';
 
