@@ -92,7 +92,7 @@ Use the isolated `validation/` Supabase workdir for Auth/RLS migration tests. Do
 - PR #17 Build Check #338 passed the canonical sports migration replay and positive/negative SQL verification on an isolated local Supabase stack.
 - PR #20 Build Check #347 passed the local Auth/PostgREST/RLS API integration suite after staging the exact PR #22 P0-C and RPC migration SQL byte-for-byte; the fixture reproduced the production legacy trigger and anon profile grants.
 - PR #22 Build Check #361 passed the exact root migration staging, local Supabase reset, profile/favorite/RLS/RPC verification, real Auth/PostgREST lifecycle tests, negative preflight cases, clean positive reset, and stack shutdown.
-- PR #28 Build Check #353 passed sports-sync regression tests, including preservation of the Chicago-local daily guard and the new forward-only migration path.
+- PR #28 Build Check #368 passed the actual forward-only Cron timeout migration inside an uncommitted transaction on an isolated local Supabase stack; both job schedules, 120-second timeouts, request windows, and the Chicago-local guard were verified, then the transaction was rolled back and no Cron job rows remained.
 
 CI proves the tested local fixture contract. It does not establish missing migration source provenance or authorize production rollout.
 
