@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-const migration = read('supabase/migrations/20261112120000_p0c_relational_favorite_teams.sql') + read('supabase/migrations/20261112140000_p0_auth_rls_review_remediation.sql');
+const migration = read('supabase/migrations/20261114150000_p0c_relational_favorite_teams.sql') + read('supabase/migrations/20261114151000_p0_auth_rls_review_remediation.sql');
 const favoriteService = read('src/services/teamPreferenceService.ts');
 const authService = read('src/services/authService.ts');
 const profileService = read('src/services/profileService.ts');
