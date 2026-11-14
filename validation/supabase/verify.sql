@@ -9,6 +9,11 @@ declare
   invalid_rows integer;
   anon_privileges integer;
   authenticated_non_crud integer;
+  anon_profile_privileges integer;
+  public_profile_privileges integer;
+  bootstrap_security_definer boolean;
+  bootstrap_safe_search_path boolean;
+  bootstrap_api_execute boolean;
 begin
   select count(*) into auth_count from auth.users
   where id in ('a1000000-0000-4000-8000-000000000001'::uuid,
@@ -49,5 +54,51 @@ begin
     and privilege_type not in ('SELECT','INSERT','UPDATE','DELETE');
   if anon_privileges <> 0 then raise exception 'anon has % favorite-table grants', anon_privileges; end if;
   if authenticated_non_crud <> 0 then raise exception 'authenticated has % non-CRUD favorite-table grants', authenticated_non_crud; end if;
+
+  select count(*) into anon_profile_privileges
+  from unnest(array['SELECT','INSERT','UPDATE','DELETE']) privilege_name
+  where has_table_privilege('anon','public.profiles',privilege_name);
+  if anon_profile_privileges <> 0 then
+    raise exception 'anon retains % effective profile-table privileges after P0-C', anon_profile_privileges;
+  end if;
+
+  select count(*) into public_profile_privileges
+  from pg_class c
+  cross join lateral aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) acl
+  where c.oid='public.profiles'::regclass
+    and acl.grantee=0
+    and acl.privilege_type in ('SELECT','INSERT','UPDATE','DELETE');
+  if public_profile_privileges <> 0 then
+    raise exception 'PUBLIC retains % effective profile-table grants after P0-C', public_profile_privileges;
+  end if;
+
+  select p.prosecdef,
+         exists (
+           select 1 from unnest(coalesce(p.proconfig,array[]::text[])) cfg
+           where regexp_replace(cfg,'[[:space:]]','','g')='search_path=pg_catalog,public,pg_temp'
+         )
+    into bootstrap_security_definer, bootstrap_safe_search_path
+  from pg_trigger t
+  join pg_proc p on p.oid=t.tgfoid
+  where t.tgrelid='auth.users'::regclass
+    and not t.tgisinternal
+    and t.tgname='on_auth_user_created'
+    and t.tgenabled in ('O','A')
+    and t.tgtype=5
+    and p.proname='handle_new_user';
+  if not coalesce(bootstrap_security_definer,false) then
+    raise exception 'Auth bootstrap function is not SECURITY DEFINER after P0-C';
+  end if;
+  if not coalesce(bootstrap_safe_search_path,false) then
+    raise exception 'Auth bootstrap function does not have the pinned safe search_path after P0-C';
+  end if;
+
+  select has_function_privilege('anon','public.handle_new_user()','EXECUTE')
+      or has_function_privilege('authenticated','public.handle_new_user()','EXECUTE')
+      or has_function_privilege('service_role','public.handle_new_user()','EXECUTE')
+    into bootstrap_api_execute;
+  if bootstrap_api_execute then
+    raise exception 'API roles retain direct EXECUTE on Auth bootstrap trigger function';
+  end if;
   raise notice 'PASS: P0-A profile bootstrap and P0-C favorite backfill fixture checks';
 end $$;
