@@ -77,7 +77,7 @@ Do not interpret source-contract tests or a successful frontend build as evidenc
 
 ## Migration ordering
 
-The current combined remediation branch replaces PR #18's original migration at version `20261112120000` with a preflight-guarded version and adds a transactional RPC migration. Do not apply the original PR #18 migration independently. If that historical migration has already been applied in any environment, stop and prepare a reviewed forward migration rather than editing/replaying history.
+The current combined remediation branch uses forward-only root migration versions `20261114150000` (relational favorites) and `20261114151000` (transactional profile/favorites RPC), both newer than the inspected production ledger maximum `20261112152519`. The earlier proposed versions `20261112120000` and `20261112140000` were not recorded in the inspected production ledger and have been removed from the branch. Do not apply PR #18's original migration independently or revive the old versions. Check every target environment's migration ledger and actual schema before rollout.
 
 ## Production safety
 
