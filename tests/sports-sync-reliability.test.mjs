@@ -106,4 +106,7 @@ test("final Cron migration replaces the two existing jobs with a longer HTTP tim
   assert.match(migration, /timeout_milliseconds := 120000/);
   assert.match(migration, /rallyon-sync-games-hourly/);
   assert.match(migration, /rallyon-sync-games-upcoming-daily/);
+  assert.match(migration, /'15 \* \* \* \*'/);
+  assert.match(migration, /extract\(hour from \(now\(\) at time zone 'America\/Chicago'\)\) = 0/i);
+  assert.doesNotMatch(migration, /'15 0 \* \* \*'/);
 });
