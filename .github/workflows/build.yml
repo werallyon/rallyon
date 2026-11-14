@@ -2,9 +2,13 @@ name: RallyOn Build Check
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/p0-c-remediation-ci-base]
   pull_request:
-    branches: [main]
+    branches: [main, fix/p0-c-remediation-ci-base]
+
+concurrency:
+  group: rallyon-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -12,6 +16,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate unique root Supabase migration versions
+        run: bash scripts/check-migration-version-uniqueness.sh
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -38,3 +45,51 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+  exact-migration-validation:
+    name: Exact PR #22 migrations on isolated local Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        id: setup-supabase-cli
+        uses: supabase/setup-cli@v3
+        with:
+          version: ^3
+
+      - name: Stage exact root migration files
+        run: |
+          mkdir -p validation/supabase/migrations
+          cp supabase/migrations/20261114150000_p0c_relational_favorite_teams.sql validation/supabase/migrations/20261112000300_p0c_relational_favorite_teams.sql
+          cp supabase/migrations/20261114151000_p0_auth_rls_review_remediation.sql validation/supabase/migrations/20261112000400_p0_transactional_profile_favorites.sql
+
+      - name: Start isolated local Supabase stack
+        run: supabase --workdir validation start
+
+      - name: Reset local database and apply exact PR #22 migrations
+        run: supabase --workdir validation db reset
+
+      - name: Verify profile contract, favorite backfill, RLS and RPC
+        run: bash validation/run-local-sql.sh validation/supabase/verify.sql
+
+      - name: Verify real Auth, PostgREST, RLS and lifecycle behavior
+        run: node --import tsx --test tests/integration/p0-auth-rls-api.test.mjs
+
+      - name: Verify preflight rejects unsafe policies, triggers, schema and grants
+        run: bash validation/verify-preflight-guards.sh
+
+      - name: Stop isolated local Supabase stack
+        if: always() && steps.setup-supabase-cli.outcome == 'success'
+        run: supabase --workdir validation stop

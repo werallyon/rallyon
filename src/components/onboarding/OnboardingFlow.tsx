@@ -11,8 +11,16 @@ import { Step7Profile } from './Step7Profile';
 import { StepCompletion } from './StepCompletion';
 import { TeamReference, UserIntent, PermissionStatus, NotificationPreferences } from '../../types';
 
+// A fresh component instance per authenticated identity prevents unsaved
+// onboarding selections from one account surviving an account switch.
 export const OnboardingFlow: React.FC = () => {
-  const { currentUser, updateUser, completeOnboarding } = useAuth();
+  const { currentUser } = useAuth();
+  if (!currentUser) return null;
+  return <OnboardingFlowForUser key={currentUser.id} />;
+};
+
+const OnboardingFlowForUser: React.FC = () => {
+  const { currentUser, updateUser } = useAuth();
 
   // Local state to guarantee no loss of selections on backward navigation
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(1);
@@ -99,9 +107,9 @@ export const OnboardingFlow: React.FC = () => {
   };
 
   // Step transitions
-  const goToNextStep = () => {
-    // Persist current state incrementally
-    updateUser({
+  const goToNextStep = async () => {
+    // Persist current state incrementally; do not advance on a failed transaction.
+    const result = await updateUser({
       favoriteSports: selectedSports,
       favoriteTeams: selectedTeams,
       preferredExperience: selectedExperiences.length > 0 ? selectedExperiences : ['HIGH_ENERGY'],
@@ -117,6 +125,7 @@ export const OnboardingFlow: React.FC = () => {
       profilePhotoUrl: photoUrl,
       avatar: photoUrl || currentUser.avatar
     });
+    if (!result.success) return;
 
     setCurrentStepIndex((prev) => Math.min(prev + 1, 8));
   };
@@ -125,18 +134,19 @@ export const OnboardingFlow: React.FC = () => {
     setCurrentStepIndex((prev) => Math.max(prev - 1, 1));
   };
 
-  const handleSkipToCompletion = () => {
-    // Quick bypass: complete onboarding right away
-    updateUser({
+  const handleSkipToCompletion = async () => {
+    // Quick bypass: complete onboarding only after the transaction commits.
+    await updateUser({
       favoriteSports: selectedSports,
       favoriteTeams: selectedTeams,
-      preferredExperience: selectedExperiences
+      preferredExperience: selectedExperiences,
+      onboardingCompleted: true,
+      onboardingStep: 'complete'
     });
-    completeOnboarding();
   };
 
-  const handleFinalCompletion = () => {
-    updateUser({
+  const handleFinalCompletion = async () => {
+    await updateUser({
       favoriteSports: selectedSports,
       favoriteTeams: selectedTeams,
       preferredExperience: selectedExperiences,
@@ -148,9 +158,10 @@ export const OnboardingFlow: React.FC = () => {
       notificationPreferences,
       firstName,
       username,
-      profilePhotoUrl: photoUrl
+      profilePhotoUrl: photoUrl,
+      onboardingCompleted: true,
+      onboardingStep: 'complete'
     });
-    completeOnboarding();
   };
 
   return (
