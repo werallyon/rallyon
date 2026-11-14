@@ -138,10 +138,16 @@ begin
   end if;
 
   foreach v_table in array array['sport_provider_ids','league_provider_ids','team_provider_ids'] loop
+    -- Provider mappings are server-only. Assert every table privilege for
+    -- both API roles so UPDATE/DELETE grants cannot slip through unnoticed.
     if has_table_privilege('anon', 'public.' || v_table, 'SELECT')
-       or has_table_privilege('authenticated', 'public.' || v_table, 'SELECT')
        or has_table_privilege('anon', 'public.' || v_table, 'INSERT')
-       or has_table_privilege('authenticated', 'public.' || v_table, 'INSERT') then
+       or has_table_privilege('anon', 'public.' || v_table, 'UPDATE')
+       or has_table_privilege('anon', 'public.' || v_table, 'DELETE')
+       or has_table_privilege('authenticated', 'public.' || v_table, 'SELECT')
+       or has_table_privilege('authenticated', 'public.' || v_table, 'INSERT')
+       or has_table_privilege('authenticated', 'public.' || v_table, 'UPDATE')
+       or has_table_privilege('authenticated', 'public.' || v_table, 'DELETE') then
       raise exception 'Client roles unexpectedly have privileges on public.%', v_table;
     end if;
     if not has_table_privilege('service_role', 'public.' || v_table, 'SELECT')
