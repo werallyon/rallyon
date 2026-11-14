@@ -6,12 +6,14 @@ This note records the production-specific compatibility work added to the P0-A/P
 
 Project `nqdrfwvxomecduxmmzrc` was inspected without executing DDL or modifying data.
 
-- Migration versions `20261114150000` and `20261114151000` are absent from `supabase_migrations.schema_migrations`.
+- The hosted migration ledger has 10 rows and ends at `20261112152519`; forward-only versions `20261114150000` and `20261114151000` are absent. Both proposed versions sort after the current hosted maximum.
 - The existing `public.profiles` table has the expected UUID primary key and Auth foreign key, JSONB `favorite_teams` with a NOT NULL/default contract, and owner-scoped SELECT/INSERT/UPDATE policies.
 - `public.user_favorite_teams` and the transactional RPC are absent.
 - `auth.on_auth_user_created` invokes `public.handle_new_user()`.
 - The current bootstrap function is owned by `postgres`, inserts only into `public.profiles` using the new Auth user's metadata, but is SECURITY INVOKER and has `search_path=public`.
-- `anon` has explicit table privileges on `public.profiles`; no column-level profile grants were found.
+- `supabase_auth_admin` is neither superuser nor BYPASSRLS and has neither INSERT nor SELECT privilege on `public.profiles`; with the current invoker-rights trigger, successful signup profile bootstrap is not established.
+- The production `auth.users` and `public.profiles` tables each had zero rows at inspection time. This is point-in-time evidence, not a guarantee about future data.
+- `anon` has all four table privileges on `public.profiles`; no anon/PUBLIC column-level profile grants or PUBLIC table grants were found.
 - The production profile table had zero rows at inspection time. This is a point-in-time observation, not a guarantee about future data.
 
 ## Migration behavior added
