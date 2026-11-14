@@ -72,8 +72,8 @@ jobs:
       - name: Stage exact root migration files
         run: |
           mkdir -p validation/supabase/migrations
-          cp supabase/migrations/20261112120000_p0c_relational_favorite_teams.sql validation/supabase/migrations/20261112000300_p0c_relational_favorite_teams.sql
-          cp supabase/migrations/20261112140000_p0_auth_rls_review_remediation.sql validation/supabase/migrations/20261112000400_p0_transactional_profile_favorites.sql
+          cp supabase/migrations/20261114150000_p0c_relational_favorite_teams.sql validation/supabase/migrations/20261112000300_p0c_relational_favorite_teams.sql
+          cp supabase/migrations/20261114151000_p0_auth_rls_review_remediation.sql validation/supabase/migrations/20261112000400_p0_transactional_profile_favorites.sql
 
       - name: Start isolated local Supabase stack
         run: supabase --workdir validation start
