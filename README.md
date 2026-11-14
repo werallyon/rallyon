@@ -34,12 +34,12 @@ GitHub Actions is not a production scheduler. The Supabase Edge Function is the 
 
 ### Schedules
 
-Both jobs are managed by the migrations in `supabase/migrations/` and run in UTC:
+The current production jobs are:
 
-- `rallyon-sync-games-hourly`: `0 * * * *` — refreshes the current calendar day.
-- `rallyon-sync-games-upcoming-daily`: `15 0 * * *` — refreshes the next seven calendar days.
+- `rallyon-sync-games-hourly`: `0 * * * *` — refreshes the current Chicago calendar day.
+- `rallyon-sync-games-upcoming-daily`: a `15 * * * *` cron guard that sends the upcoming request only when `now() AT TIME ZONE 'America/Chicago'` is in hour `00`. The request therefore runs at 00:15 Chicago time; the lightweight guard is evaluated hourly.
 
-The function requests each ESPN league/date separately using `site.web.api.espn.com`. Calendar dates use `America/Chicago`, RallyOn's default market timezone, rather than UTC midnight.
+Do not replace the conditional daily guard with a fixed `15 0 * * *` UTC schedule: that shifts the request to early evening in Chicago during standard time. The function requests each ESPN league/date separately using `site.web.api.espn.com` and uses `America/Chicago` calendar dates.
 
 ### Authentication and secrets
 
@@ -61,19 +61,21 @@ The browser app reads stored games from Supabase. It does not trigger the produc
 - No demo or seeded game fixtures are imported or used by the Edge Function.
 - Upserts use `on_conflict=league,external_game_id`; the core migration defines the matching unique constraint `(league, external_game_id)`. Replays update the existing record rather than inserting a duplicate.
 
-**Scope note:** Edge Function fixture isolation does not by itself guarantee that every UI fallback is production-safe. The separate application demo-isolation work in [PR #4](https://github.com/werallyon/rallyon/pull/4) remains a prerequisite for eliminating seeded fallback behavior outside the ingestion function.
+The production demo-data isolation safeguards from [PR #4](https://github.com/werallyon/rallyon/pull/4) and [PR #5](https://github.com/werallyon/rallyon/pull/5) are integrated. Keep demo mode disabled in production and retain the regression suite for UI fallback paths.
 
 ### Migrations and deployment
 
-The scheduling migrations are intentionally ordered:
+The live production migration ledger was inspected read-only on 2026-11-14. Migration provenance is not yet fully reconciled:
 
-1. `20261111043646_rallyon_sync_games_schedule_v2.sql` creates/rotates the Vault-backed token and the hourly job.
-2. `20261111043830_rallyon_sync_games_schedule_v3.sql` replaces the hourly definition and adds the daily upcoming job.
-3. `20261111050000_rallyon_sync_games_schedule_timeout_v4.sql` re-creates those same two jobs with a 120-second pg_net request timeout; it reuses the existing Vault token and does not add duplicate jobs or rotate credentials. Supabase documents a 2-second default for pg_net requests, so the longer timeout accommodates the multi-league Edge Function ([pg_net docs](https://supabase.com/docs/guides/database/extensions/pg_net)).
+1. Hosted history records `20261111043646 / rallyon_sync_games_schedule_v2`, matching the checked-in v2 filename.
+2. Hosted history records `20261111043827 / rallyon_sync_games_schedule_v3`, while the checked-in file is named `20261111043830_rallyon_sync_games_schedule_v3.sql`. Do not assume these SQL files are identical without an authoritative comparison.
+3. The checked-in v4 timeout migration was **not** present in the hosted migration ledger. A recent production `net._http_response` row timed out at the 5-second pg_net default. The proposed forward-only fix is `20261114170000_rallyon_sync_games_schedule_timeout_v4.sql`; it preserves the Chicago-local daily guard and sets both HTTP requests to 120 seconds.
 
-These migrations have already been applied to the production project `nqdrfwvxomecduxmmzrc`. Do not manually re-run them in production: v2 generates a new token and updates the stored hash. On a fresh environment, apply them once in timestamp order after the core data-model and production-hardening migrations.
+The hosted ledger also contains historical migrations whose SQL files are missing from the current repository, plus other version/name mismatches. **Do not run `supabase db push`, reset production, rename applied migration history, or replay the current root directory until the complete hosted/repository migration parity audit is resolved.** The proposed v4 migration is not applied to production and must remain subject to independent review. The PR #28 CI also starts a separate disposable Supabase stack and executes the actual v4 SQL inside an uncommitted transaction, inspects the two resulting Cron definitions and timeout/Chicago guard, then rolls back and verifies no jobs remain. The scheduled command strings are never committed or executed, so the rehearsal cannot call the production Edge Function.
 
-Deploy the function from the repository with:
+The v2 migration manages the Vault-backed sync token. Never re-run or reconstruct it casually: it can rotate the token/hash relationship. The v4 migration reuses the existing Vault token and does not expose or rotate it.
+
+Deploy the function from the repository only through the separately approved release process:
 
 ```bash
 supabase functions deploy sync-games --project-ref nqdrfwvxomecduxmmzrc
