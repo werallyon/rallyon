@@ -90,20 +90,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally { if (requestRevision === authRequestRevision.current) setIsLoading(false); }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = async (): Promise<AuthResponse> => {
     const requestRevision = ++authRequestRevision.current;
     setIsLoading(true); setAuthError(null);
-    try { return await authService.signInWithGoogle(); }
-    catch (e: any) { const msg = e?.message || 'Failed to authenticate with Google.'; if (requestRevision === authRequestRevision.current) setAuthError(msg); return { success: false, error: msg }; }
-    finally { if (requestRevision === authRequestRevision.current) setIsLoading(false); }
+    try {
+      const result = await authService.signInWithGoogle();
+      if (requestRevision === authRequestRevision.current && !result.success && result.error) setAuthError(result.error);
+      return result;
+    } catch (e: any) {
+      const msg = e?.message || 'Failed to authenticate with Google.';
+      if (requestRevision === authRequestRevision.current) setAuthError(msg);
+      return { success: false, error: msg };
+    } finally {
+      if (requestRevision === authRequestRevision.current) setIsLoading(false);
+    }
   };
 
-  const handleAppleSignIn = async () => {
+  const handleAppleSignIn = async (): Promise<AuthResponse> => {
     const requestRevision = ++authRequestRevision.current;
     setIsLoading(true); setAuthError(null);
-    try { return await authService.signInWithApple(); }
-    catch (e: any) { const msg = e?.message || 'Failed to authenticate with Apple.'; if (requestRevision === authRequestRevision.current) setAuthError(msg); return { success: false, error: msg }; }
-    finally { if (requestRevision === authRequestRevision.current) setIsLoading(false); }
+    try {
+      const result = await authService.signInWithApple();
+      if (requestRevision === authRequestRevision.current && !result.success && result.error) setAuthError(result.error);
+      return result;
+    } catch (e: any) {
+      const msg = e?.message || 'Failed to authenticate with Apple.';
+      if (requestRevision === authRequestRevision.current) setAuthError(msg);
+      return { success: false, error: msg };
+    } finally {
+      if (requestRevision === authRequestRevision.current) setIsLoading(false);
+    }
   };
 
   const handleDemoSignIn = async () => { const requestRevision = ++authRequestRevision.current; setIsLoading(true); setAuthError(null); try { return await authService.signInDemoUser(); } finally { if (requestRevision === authRequestRevision.current) setIsLoading(false); } };
