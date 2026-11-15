@@ -30,7 +30,7 @@ Production currently reports these 10 entries:
 
 The current root migration directory also contained an unrecorded `20261111050000_rallyon_sync_games_schedule_timeout_v4.sql`. PR #28 replaces that pending out-of-order filename with `20261114170000_rallyon_sync_games_schedule_timeout_v4.sql`, which sorts after the hosted maximum. This is not yet applied to production.
 
-The five missing SQL files were not found in the current main tree, merged PR #6 tree, backup PR #6 branch, or the other inspected development branches. The Supabase migration ledger stores version/name metadata, not the original SQL body. Exact checksums and source cannot be recovered from the ledger alone. Obtain those SQL files from an authoritative backup, deployment artifact, or operator-controlled source; do not invent replacements or mark history applied.
+The five missing SQL files were not found in the `supabase/migrations` directory on any of the repository's 25 enumerated branches, including `main`, the PR #6 backup/rebuild branches, and the active P0/security/sports-sync branches. GitHub's path-specific commit history also returned no commits for any of the five exact expected paths, indicating they were never committed at those paths in this repository's retained history. The Supabase migration ledger stores version/name metadata, not the original SQL body. Exact checksums and source cannot be recovered from the ledger alone. Obtain those SQL files from an authoritative backup, deployment artifact, or operator-controlled source; do not invent replacements or mark history applied.
 
 ## Proposed forward-only migration order
 
@@ -43,7 +43,7 @@ After the historical source gap is resolved and all reviewers approve, the curre
 
 P0-C must precede its transactional RPC migration. P0-B is independent of those profile migrations. The schedule migration is independent but must preserve the current Chicago-local daily guard.
 
-This proposed sequence fixes the out-of-order timestamps for these new changes only. It does **not** solve the four missing historical SQL sources or other hosted/root version mismatches.
+This proposed sequence fixes the out-of-order timestamps for these new changes only. It does **not** solve the five missing historical SQL sources or other hosted/root version mismatches.
 
 ## Production P0-A / P0-C facts
 
@@ -98,7 +98,7 @@ CI proves the tested local fixture contract. It does not establish missing migra
 
 ## Required next steps
 
-1. Recover the four missing historical SQL files from an authoritative source and compare all hosted candidate migrations to repository SQL.
+1. Recover the five missing historical SQL files from an authoritative source and compare all hosted candidate migrations to repository SQL.
 2. Inspect production schema, functions, policies, grants, cron jobs, and data against the full historical source set; preserve the current migration ledger.
 3. Rehearse the complete forward-only plan against a schema-faithful disposable clone with synthetic data.
 4. Obtain fresh independent reviews against the current heads of PRs #17, #19, #20, #22, and #28.
