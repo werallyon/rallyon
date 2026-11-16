@@ -164,6 +164,30 @@ Following explicit owner approval in the project conversation, the following cha
 
 **Remaining production readiness caveat:** This work closes the sync-token security items only. It does not resolve the separate RallyOn production NO-GO items concerning Auth profile bootstrap, profile ACLs/triggers, venue policy overlap, or full migration parity. Do not describe the whole product as production-ready until those independent gates and independent review are closed.
 
+## Follow-up production readiness audit — Auth bootstrap and venue RLS (2026-11-16)
+
+Read-only catalog inspection after sync-token remediation found the following remaining items:
+
+### P0 — Profile bootstrap needs a repair and a real signup test
+
+- `public.profiles` has RLS enabled and the three expected owner-scoped policies (SELECT, INSERT, UPDATE).
+- The live table ACL grants all seven table privileges to both `anon` and `authenticated`. RLS currently limits rows, but these grants are broader than required. There is no DELETE policy.
+- `supabase_auth_admin` has neither effective INSERT nor SELECT privilege on `public.profiles`, and does not BYPASSRLS.
+- The live `public.handle_new_user()` trigger function is SECURITY INVOKER, has `search_path=public`, and inserts into `public.profiles`. The `on_auth_user_created` trigger invokes it after inserts to `auth.users`.
+- The function casts the user-editable `raw_user_meta_data.onboardingCompleted` text directly to boolean; malformed metadata can throw and fail signup.
+- Two BEFORE UPDATE triggers (`profiles_set_updated_at` and `profiles_updated_at`) invoke the same timestamp function; one is redundant.
+- The production Auth user count and profile row count were both zero at inspection. Therefore there is no existing user data to validate against and no successful signup has been demonstrated.
+
+**Assessment:** Profile creation on signup is not proven and is likely to fail under the observed invoker role/privilege/RLS combination. Before production readiness, implement a narrowly scoped internal Auth-trigger insert path (prefer an explicit RLS policy and INSERT grant for `supabase_auth_admin` over broadly granting client roles), narrow client ACLs to the operations the app needs, make metadata parsing tolerant of malformed values, remove the duplicate timestamp trigger, and run a disposable Auth signup/rollback test.
+
+### Venue programming RLS
+
+- The live `venue_game_programming` table has one public SELECT policy and one claimed-owner policy each for INSERT, UPDATE and DELETE.
+- Only the `venue_programming_*_claimed` policy family is currently present. The second owner-supplied `*_claimed_owner` family is not present in the live catalog, so the suspected permissive-policy OR overlap is not currently active.
+- Table-level grants to anon/authenticated remain broad; RLS is the effective write boundary. Review and narrow ACLs in a separate migration after confirming all intended client operations.
+
+**Production gate:** The sync-token work is complete, but production readiness remains blocked on Auth profile bootstrap and a real signup test, plus independent review of the remaining application/security PRs and migration parity. No profile, Auth, or venue production changes were made during this read-only follow-up audit.
+
 ## Next verification work
 
 1. Search owner-controlled local backups, CI artifacts, release bundles and other repositories for the original five files; preserve any exact originals unchanged with provenance.
