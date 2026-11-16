@@ -126,21 +126,43 @@ Inspected `supabase/functions/sync-games/index.ts`, `supabase/functions/_shared/
 
 ## Production remediation executed and verified (2026-11-16)
 
-Following explicit owner approval in the project conversation, the following changes were made to the RallyOn production Supabase project. No raw token or verifier value is recorded here.
+Following explicit owner approval in the project conversation, the following changes and tests were completed against RallyOn production Supabase project `nqdrfwvxomecduxmmzrc`. No raw token or verifier value is recorded here.
 
-1. **Client grants revoked.** Applied migration `20261116225246_harden_system_sync_tokens_client_grants`:
-   `REVOKE ALL PRIVILEGES ON TABLE public.system_sync_tokens FROM anon, authenticated;`
-2. **Effective privilege verification passed.** `anon` SELECT/INSERT and `authenticated` SELECT/UPDATE now return false from `has_table_privilege`; `service_role` SELECT remains true.
-3. **Sync token rotated.** Generated a new 256-bit random token inside the database session, updated the existing Vault secret `rallyon_sync_games_token`, and updated the `sync-games` SHA-256 verifier in the same SQL transaction. The token was never returned to the chat or committed to Git.
-4. **Cron continuity verified.** Both `rallyon-sync-games-hourly` and `rallyon-sync-games-upcoming-daily` still read `rallyon_sync_games_token` from `vault.decrypted_secrets` and send it through `x-rallyon-sync-token`; no cron command change was needed.
-5. **Deployed function confirmed.** Production `sync-games` is ACTIVE, version 8, with `verify_jwt=false`; its deployed source includes the custom SHA-256 token lookup and constant-time comparison.
-6. **Negative authentication test passed.** A POST without the custom token returned HTTP 401 `Unauthorized`.
-7. **Positive authentication + sync test passed.** A POST using the rotated Vault token and `today` window returned HTTP 200, `complete=true`, `failed=false`, and synced 17 events with no diagnostics.
-8. **Security advisor check passed.** Supabase security advisors returned zero lints after the grant change.
+### 1. Client table grants
 
-The migration is present in the hosted migration ledger as version `20261116225246`. The token rotation itself was an operational Vault/database transaction, not a replayable migration, and no secret material was committed.
+- Applied the grant-hardening migration `20261116225246_harden_system_sync_tokens_client_grants`.
+- Re-applied the idempotent `REVOKE ALL PRIVILEGES ON TABLE public.system_sync_tokens FROM anon, authenticated` as part of the follow-up token-rotation migration `20261116225811_sync_games_token_acl_and_rotation_20261116`.
+- Verified live ACL: only `postgres` and `service_role` retain table privileges. `has_table_privilege` returns false for anon/authenticated SELECT and INSERT; service_role SELECT remains true.
+- RLS remains enabled and the four explicit deny policies for anon/authenticated remain present.
 
-**Scope:** These actions addressed the sync-token table exposure and rotated the sync credential. They do not close the separate RallyOn production NO-GO items concerning Auth profile bootstrap, profile ACLs/triggers, venue policy overlap, or full migration parity. No Edge Function redeployment or cron schedule change was performed.
+### 2. Token rotation
+
+- Generated a new 256-bit random token inside the database session.
+- Updated the existing Vault secret `rallyon_sync_games_token` and the `sync-games` SHA-256 verifier within the same database transaction.
+- The token was never returned to chat or committed to Git.
+- Both cron jobs continue to read the Vault secret by its unchanged name, so no cron command or schedule change was required.
+- The rotation transaction is recorded in the hosted migration ledger as `20261116225811_sync_games_token_acl_and_rotation_20261116`. It is an environment-specific secret rotation and must not be replayed into local/test environments or used as a generic reset migration.
+
+### 3. Deployed Edge Function and authentication tests
+
+- Production `sync-games` is ACTIVE, version 8, with `verify_jwt=false`.
+- Inspected the deployed source: it requires POST plus `x-rallyon-sync-token`, computes SHA-256, retrieves the stored verifier using the server-side service-role credential, and compares using the constant-time helper. This matches the authentication design in the reviewed repository source and the `supabase/config.toml` setting.
+- Negative test: a deliberately invalid token returned HTTP 401 `Unauthorized`.
+- Valid-token gate test: the rotated Vault token with an intentionally invalid sync-window returned HTTP 400 `Invalid sync window`, proving authentication succeeded before request validation.
+- Positive end-to-end sync test: the rotated Vault token with the `today` window returned HTTP 200, `complete=true`, `failed=false`, synced 17 events, and returned no diagnostics. This test performed the intended idempotent game upsert.
+- No Edge Function redeployment was necessary because the active deployed version already contained the expected guard.
+
+### 4. Cron continuity and platform checks
+
+- Both active cron jobs still reference `rallyon_sync_games_token` from `vault.decrypted_secrets`:
+  - `rallyon-sync-games-hourly` — `0 * * * *`, `today` window.
+  - `rallyon-sync-games-upcoming-daily` — `15 * * * *`, gated to midnight America/Chicago, `upcoming` window.
+- Recent runs for both jobs reported `succeeded`.
+- Supabase security advisors returned zero lints after remediation.
+
+**Result:** All four requested sync-token hardening tasks are complete and verified: client grants, coordinated secret rotation, valid/invalid authentication tests, and deployed function/config verification.
+
+**Remaining production readiness caveat:** This work closes the sync-token security items only. It does not resolve the separate RallyOn production NO-GO items concerning Auth profile bootstrap, profile ACLs/triggers, venue policy overlap, or full migration parity. Do not describe the whole product as production-ready until those independent gates and independent review are closed.
 
 ## Next verification work
 
