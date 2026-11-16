@@ -105,3 +105,36 @@ test('AuthContext only clears loading/errors for the latest auth request', () =>
   assert.match(context, /requestRevision === authRequestRevision\.current/);
   assert.match(context, /if \(user\) setAuthError\(null\)/);
 });
+
+
+test('ProfileScreen routes every persisted mutation through the shared save-result helper', () => {
+  const screen = read('src/components/ProfileScreen.tsx');
+  assert.equal(/updateUser\\(\\s*\\{/.test(screen), false);
+  assert.match(screen, /saveProfileUpdate\\(updateUser, updates, setSaveErrorMsg, onSuccess\\)/);
+  assert.match(screen, /profileSaveError/);
+  assert.match(screen, /await saveProfile\\(\\{ favoriteTeams: \\[\\.\\.\\.current, team \\] \\}, \\(\\) => \\{/);
+});
+
+test('onboarding only advances or completes after the shared profile save helper succeeds', () => {
+  const onboarding = read('src/components/onboarding/OnboardingFlow.tsx');
+  assert.equal(/updateUser\\(\\s*\\{/.test(onboarding), false);
+  assert.match(onboarding, /saveProfileUpdate\\(updateUser, updates, setSaveErrorMsg\\)/);
+  assert.match(onboarding, /profileSaveError/);
+
+  const transition = onboarding.slice(
+    onboarding.indexOf('const goToNextStep'),
+    onboarding.indexOf('const goToPrevStep')
+  );
+  assert.match(transition, /if \\(!saved\\) return;[\\s\\S]*setCurrentStepIndex/);
+
+  const skip = onboarding.slice(
+    onboarding.indexOf('const handleSkipToCompletion'),
+    onboarding.indexOf('const handleFinalCompletion')
+  );
+  const completion = onboarding.slice(
+    onboarding.indexOf('const handleFinalCompletion'),
+    onboarding.indexOf('return (', onboarding.indexOf('const handleFinalCompletion'))
+  );
+  assert.match(skip, /await saveOnboardingProgress\\(/);
+  assert.match(completion, /await saveOnboardingProgress\\(/);
+});
