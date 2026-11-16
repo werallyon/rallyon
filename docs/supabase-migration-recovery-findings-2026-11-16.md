@@ -29,7 +29,7 @@ Direct live list_migrations result:
 | 20261111043827 | rallyon_sync_games_schedule_v3 | Candidate file uses version 20261111043830 |
 | 20261112152519 | expand_sports_event_model | Candidate file exists under a different version prefix |
 
-The repository also contains 20261111050000_rallyon_sync_games_schedule_timeout_v4.sql, but the production ledger has no matching v4 entry. A README/PR description claiming that v4 was applied is not proof of a recorded production migration. Current live cron definitions do not establish whether the v4 timeout configuration was applied; verify separately before asserting v4 was applied.
+The repository also contains 20261111050000_rallyon_sync_games_schedule_timeout_v4.sql, but the production ledger has no matching v4 entry. More importantly, the live cron command text does not include the v4 migration's timeout_milliseconds := 120000 argument. The v4 timeout migration is therefore not reflected in the currently installed job definitions, regardless of any README/PR claim. The database-level statement_timeout setting is separate and is not a substitute for pg_net's per-request timeout.
 
 ## 2. Recovery search performed
 
