@@ -211,6 +211,30 @@ Following explicit owner approval, production migrations were applied:
 - A real GoTrue signup request made after the first migration failed with SQLSTATE 42501 (permission denied on profiles). The logs identified the Auth DB role as `supabase_auth_admin`. This exposed the need for the column-level conflict-key SELECT grant added in the second migration.
 - A successful GoTrue signup has **not yet been confirmed after the second migration**. Do not mark the Auth signup gate fully passed until one succeeds and its profile row is verified. No test account was left behind.
 
+## Final Auth profile bootstrap adjustment — 2026-11-16
+
+A real GoTrue signup attempt after migration `20261116230420` returned HTTP 500. Auth logs confirmed the database session role was `supabase_auth_admin` and the trigger failed with `permission denied for table profiles`. The next migration temporarily granted SELECT on the conflict key, but the PostgreSQL RLS rules for `INSERT ... ON CONFLICT (id) DO NOTHING` also introduce SELECT-policy requirements.
+
+To keep Auth least-privileged, the final migration is:
+
+- `20261116230833_remove_auth_profile_conflict_select_dependency`
+- Removes the unnecessary `ON CONFLICT (id) DO NOTHING` from `handle_new_user()`. A new `auth.users` row has a unique id and the profile FK prevents a profile for a non-existent user, so this conflict fallback is not needed for signup.
+- Revokes the temporary column-level SELECT grant on `profiles.id`.
+- Retains only INSERT privilege and the Auth-admin-only INSERT policy for the Auth trigger role.
+
+Final live checks:
+
+- `supabase_auth_admin`: INSERT true; table SELECT false; column SELECT on `id` false.
+- `anon`: no SELECT.
+- `authenticated`: SELECT/INSERT/UPDATE true; DELETE false.
+- RLS policies remain owner-scoped for authenticated users plus the narrowly scoped Auth-admin INSERT policy.
+- The trigger remains SECURITY INVOKER with fixed `search_path=public`.
+- One profile timestamp trigger remains.
+- The synthetic transaction-scoped trigger smoke test passed with malformed onboarding metadata and was rolled back.
+- Supabase security advisors returned zero lints.
+
+**Important:** A successful GoTrue signup has not yet been confirmed after the final no-conflict adjustment. The only real Auth signup attempt was before that final adjustment and failed. The synthetic SQL smoke test ran as the migration connection and is not a substitute for the Auth service-role test. Keep the Auth signup gate open until a successful real signup creates exactly one profile and the disposable test user is cleaned up.
+
 ## Next verification work
 
 1. Search owner-controlled local backups, CI artifacts, release bundles and other repositories for the original five files; preserve any exact originals unchanged with provenance.
