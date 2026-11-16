@@ -25,7 +25,8 @@ import {
   X,
   Star
 } from 'lucide-react';
-import { Venue, Presence, UserIntent, TeamReference } from '../types';
+import { Venue, Presence, UserIntent, TeamReference, User } from '../types';
+import { saveProfileUpdate } from '../services/profileSave';
 import { signalEngine } from '../services/signalEngine';
 import { sportsProvider } from '../services/sportsProvider';
 import { useAuth } from '../context/AuthContext';
@@ -63,7 +64,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onOpenVenueDashboard,
   onOpenAdminModeration
 }) => {
-  const { currentUser, updateUser, logout, deleteAccount, sendPasswordReset } = useAuth();
+  const { currentUser, updateUser, logout, deleteAccount, sendPasswordReset, profileSaveError, clearProfileSaveError } = useAuth();
 
   // Local state for tabs or sections
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'PREFERENCES' | 'BUSINESS' | 'SETTINGS'>('OVERVIEW');
@@ -81,6 +82,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   // Feedback states
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+  const [saveErrorMsg, setSaveErrorMsg] = useState<string | null>(null);
   const [resetSentMsg, setResetSentMsg] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -97,69 +99,78 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setTimeout(() => setSaveSuccessMsg(null), 3500);
   };
 
+  const saveProfile = async (updates: Partial<User>, onSuccess?: () => void) => {
+    setSaveErrorMsg(null);
+    clearProfileSaveError();
+    return saveProfileUpdate(updateUser, updates, setSaveErrorMsg, onSuccess);
+  };
+
   const handleSaveProfile = async () => {
-    const result = await updateUser({
+    await saveProfile({
       firstName: editFirstName.trim(),
       lastName: editLastName.trim(),
       name: `${editFirstName.trim()} ${editLastName.trim()}`,
       username: editUsername.trim(),
       profilePhotoUrl: selectedAvatar,
       avatar: selectedAvatar
+    }, () => {
+      setIsEditingProfile(false);
+      showFeedback('Profile updated successfully.');
     });
-    if (!result.success) return;
-    setIsEditingProfile(false);
-    showFeedback('Profile updated successfully.');
   };
 
-  const handleToggleSport = (sportId: string) => {
+  const handleToggleSport = async (sportId: string) => {
     const current = currentUser.favoriteSports || [];
     const updated = current.includes(sportId)
       ? current.filter((s) => s !== sportId)
       : [...current, sportId];
-    updateUser({ favoriteSports: updated });
+    await saveProfile({ favoriteSports: updated });
   };
 
-  const handleRemoveTeam = (teamId: string) => {
+  const handleRemoveTeam = async (teamId: string) => {
     const updated = (currentUser.favoriteTeams || []).filter((t) => t.id !== teamId);
-    updateUser({ favoriteTeams: updated });
-    showFeedback('Team preferences updated.');
+    await saveProfile({ favoriteTeams: updated }, () => showFeedback('Team preferences updated.'));
   };
 
-  const handleAddTeam = (team: TeamReference) => {
+  const handleAddTeam = async (team: TeamReference) => {
     const current = currentUser.favoriteTeams || [];
-    if (!current.some((t) => t.id === team.id)) {
-      updateUser({ favoriteTeams: [...current, team] });
-      showFeedback(`Added ${team.name} to your teams.`);
+    if (current.some((t) => t.id === team.id)) {
+      setTeamSearchQuery('');
+      setShowAddTeamModal(false);
+      return;
     }
-    setTeamSearchQuery('');
-    setShowAddTeamModal(false);
+
+    await saveProfile({ favoriteTeams: [...current, team] }, () => {
+      showFeedback(`Added ${team.name} to your teams.`);
+      setTeamSearchQuery('');
+      setShowAddTeamModal(false);
+    });
   };
 
-  const handleToggleExperience = (exp: UserIntent) => {
+  const handleToggleExperience = async (exp: UserIntent) => {
     const current = currentUser.preferredExperience || [];
     const updated = current.includes(exp)
       ? current.filter((e) => e !== exp)
       : [...current, exp];
-    updateUser({
+    await saveProfile({
       preferredExperience: updated.length > 0 ? updated : ['HIGH_ENERGY']
     });
   };
 
-  const handleToggleNotification = (key: keyof typeof currentUser.notificationPreferences) => {
+  const handleToggleNotification = async (key: keyof typeof currentUser.notificationPreferences) => {
     const updated = {
       ...currentUser.notificationPreferences,
       [key]: !currentUser.notificationPreferences[key]
     };
-    updateUser({ notificationPreferences: updated });
+    await saveProfile({ notificationPreferences: updated });
   };
 
-  const handleUpdatePrivacy = (updates: Partial<typeof currentUser.privacySettings>) => {
+  const handleUpdatePrivacy = async (updates: Partial<typeof currentUser.privacySettings>) => {
     const updated = {
       ...currentUser.privacySettings,
       ...updates
     };
-    updateUser({ privacySettings: updated });
-    showFeedback('Privacy settings updated.');
+    await saveProfile({ privacySettings: updated }, () => showFeedback('Privacy settings updated.'));
   };
 
   const handlePasswordReset = async () => {
@@ -177,7 +188,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   return (
     <div className="space-y-4 pb-12 animate-fadeIn max-w-md mx-auto">
-      {/* Toast Feedback */}
+      {/* Persistence errors and success feedback */}
+      {(saveErrorMsg || profileSaveError) && (
+        <div role="alert" className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <span>{saveErrorMsg || profileSaveError}</span>
+        </div>
+      )}
       {saveSuccessMsg && (
         <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
