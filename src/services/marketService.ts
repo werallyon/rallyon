@@ -144,6 +144,33 @@ export class MarketService {
    * If within the market's defined radius, returns that market.
    * If outside all market boundaries, returns the closest market.
    */
+  /**
+   * Resolves a GPS coordinate to the nearest market and nearest city
+   * within that market. Market boundary resolution remains authoritative.
+   */
+  public detectLocationFromCoordinates(
+    latitude: number,
+    longitude: number
+  ): { market: Market; city?: City; distanceMiles: number; isWithinBoundary: boolean } {
+    const marketResolution = this.detectMarketFromCoordinates(latitude, longitude);
+    const city = this.getCitiesForMarket(marketResolution.market.id)
+      .map((candidate) => ({
+        candidate,
+        distanceMiles: calculateDistanceMiles(
+          latitude,
+          longitude,
+          candidate.latitude,
+          candidate.longitude
+        )
+      }))
+      .sort((a, b) => a.distanceMiles - b.distanceMiles)[0]?.candidate;
+
+    return {
+      ...marketResolution,
+      city
+    };
+  }
+
   public detectMarketFromCoordinates(
     latitude: number,
     longitude: number

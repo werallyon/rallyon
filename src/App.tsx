@@ -39,6 +39,7 @@ import { marketService } from './services/marketService';
 import { getVenues, getVenueGameProgramming, getFavoriteVenueIds, toggleVenueFavorite } from './services/venueService';
 import { getStoredGames } from './services/gameService';
 import { sortGamesByFavorites, isFavoriteTeamGame } from './services/teamPreferenceService';
+import { requestUserLocation } from './services/locationService';
 
 type AuthView = 'WELCOME' | 'SIGN_IN' | 'SIGN_UP' | 'FORGOT_PASSWORD';
 
@@ -82,6 +83,33 @@ function RallyOnMain() {
   const [games, setGames] = useState<SportsGame[]>([]);
   const [dbVenues, setDbVenues] = useState<Venue[] | null>(() => isDemoMode ? null : []);
   const [dbVenueGames, setDbVenueGames] = useState<VenueGame[]>([]);
+  const [detectedLocation, setDetectedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  // Automatically request location once the authenticated app is ready. This is
+  // browser permission based; RallyOn does not continuously track the user.
+  useEffect(() => {
+    if (isDemoMode || authState !== 'AUTHENTICATED_ONBOARDING_COMPLETE') return;
+
+    let mounted = true;
+    requestUserLocation()
+      .then(({ location }) => {
+        if (!mounted) return;
+        setDetectedLocation({ latitude: location.latitude, longitude: location.longitude });
+        const resolvedLocation = marketService.detectLocationFromCoordinates(
+          location.latitude,
+          location.longitude
+        );
+        marketService.setActiveMarket(resolvedLocation.market.id);
+        if (resolvedLocation.city) {
+          setCurrentCity(resolvedLocation.city.name);
+        }
+      })
+      .catch(() => {
+        // Location is optional. Manual market/city selection remains available.
+      });
+
+    return () => { mounted = false; };
+  }, [authState]);
 
   // Load authoritative Supabase venue data. Empty/error states stay empty in production.
   useEffect(() => {
@@ -132,13 +160,17 @@ function RallyOnMain() {
     return filtered;
   }, [activeMarket.id, dbVenues]);
 
-  // User coordinate (from user model or default to active market center)
+  // Prefer the freshly detected browser location, then the user's stored
+  // coordinates, and finally the active market center as a non-personal fallback.
   const userLocation = useMemo(() => {
-    if (currentUser?.latitude && currentUser?.longitude) {
+    if (detectedLocation) {
+      return { lat: detectedLocation.latitude, lon: detectedLocation.longitude };
+    }
+    if (currentUser?.latitude != null && currentUser?.longitude != null) {
       return { lat: currentUser.latitude, lon: currentUser.longitude };
     }
     return { lat: activeMarket.latitude, lon: activeMarket.longitude };
-  }, [currentUser?.latitude, currentUser?.longitude, activeMarket]);
+  }, [detectedLocation, currentUser?.latitude, currentUser?.longitude, activeMarket]);
 
   // Supabase Cron owns production ingestion; the browser only reads stored games.
   useEffect(() => {
