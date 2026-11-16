@@ -42,8 +42,8 @@ const LEAGUES = [
   ["racing", "irl", "INDYCAR", "RACING", "RACE"],
 ];
 
-function statusOf(event: any) {
-  const status = String(event?.status?.type?.name ?? "").toUpperCase();
+function statusOf(source: any) {
+  const status = String(source?.type?.name ?? source?.type?.description ?? "").toUpperCase();
   if (status.includes("FINAL")) return "FINAL";
   if (status.includes("POSTPONED")) return "POSTPONED";
   if (status.includes("CANCEL")) return "CANCELLED";
@@ -82,6 +82,23 @@ function participantAsTeam(item: any) {
     logo: item?.logo ?? "",
     record: undefined,
   };
+}
+
+function competitionEntries(event: any, sport: string) {
+  if (sport === "tennis") {
+    const grouped = (event?.groupings ?? []).flatMap((group: any) => group?.competitions ?? []);
+    if (grouped.length > 0) return grouped;
+  }
+
+  if (Array.isArray(event?.competitions) && event.competitions.length > 0) {
+    return event.competitions;
+  }
+
+  if (Array.isArray(event?.competitors) && event.competitors.length > 0) {
+    return [{ ...event, competitors: event.competitors }];
+  }
+
+  return [];
 }
 
 function jsonResponse(body: unknown, status = 200) {
@@ -177,44 +194,56 @@ Deno.serve(async (req: Request) => {
 
         let invalidEvents = 0;
         for (const event of payload.events) {
-          const competition = event.competitions?.[0];
-          const competitors = competition?.competitors ?? [];
-          const home = competitors.find((item: any) => item.homeAway === "home");
-          const away = competitors.find((item: any) => item.homeAway === "away");
-          if (!event.id || !event.date) {
+          const entries = competitionEntries(event, sport);
+
+          if (!event.id || !event.date || entries.length === 0) {
             invalidEvents += 1;
             continue;
           }
 
-          const participants = competitors.map(participant).filter((item: any) => item.name);
-          const isTeamGame = Boolean(home && away);
+          for (const competition of entries) {
+            const competitors = Array.isArray(competition?.competitors)
+              ? competition.competitors
+              : Array.isArray(event?.competitors)
+                ? event.competitors
+                : [];
+            const home = competitors.find((item: any) => item.homeAway === "home");
+            const away = competitors.find((item: any) => item.homeAway === "away");
+            const participants = competitors.map(participant).filter((item: any) => item.name);
+            const isTeamGame = Boolean(home && away);
+            const eventId = competition?.id
+              ? `${event.id}:${competition.id}`
+              : String(event.id);
+            const eventStatus = competition?.status ?? event.status;
+            const eventDate = competition?.date ?? event.date;
 
-          games.push({
-            league: leagueCode,
-            sport: sportCode,
-            event_type: eventType,
-            participants,
-            home_team: isTeamGame
-              ? team(home)
-              : participantAsTeam(participants[0] ?? { name: event.name ?? leagueCode }),
-            away_team: isTeamGame
-              ? team(away)
-              : participantAsTeam(participants[1] ?? { name: event.name ?? eventType }),
-            start_time: event.date,
-            status: statusOf(event),
-            live_details: event.status?.type?.state === "in" ? {
-              currentScore: { home: Number(home?.score ?? 0), away: Number(away?.score ?? 0) },
-              period: event.status?.period ? String(event.status.period) : "",
-              clock: event.status?.displayClock ?? "",
-              headline: event.status?.type?.detail ?? "",
-            } : null,
-            broadcast_network: competition?.broadcasts?.[0]?.names?.[0] ?? null,
-            broadcast: competition?.broadcasts?.[0] ?? null,
-            venue_name: competition?.venue?.fullName ?? null,
-            season: event.season?.year ? String(event.season.year) : null,
-            external_game_id: String(event.id),
-            last_updated: new Date().toISOString(),
-          });
+            games.push({
+              league: leagueCode,
+              sport: sportCode,
+              event_type: eventType,
+              participants,
+              home_team: isTeamGame
+                ? team(home)
+                : participantAsTeam(participants[0] ?? { name: event.name ?? leagueCode }),
+              away_team: isTeamGame
+                ? team(away)
+                : participantAsTeam(participants[1] ?? { name: event.name ?? eventType }),
+              start_time: eventDate,
+              status: statusOf(eventStatus),
+              live_details: eventStatus?.type?.state === "in" ? {
+                currentScore: { home: Number(home?.score ?? 0), away: Number(away?.score ?? 0) },
+                period: eventStatus?.period ? String(eventStatus.period) : "",
+                clock: eventStatus?.displayClock ?? "",
+                headline: eventStatus?.type?.detail ?? "",
+              } : null,
+              broadcast_network: competition?.broadcasts?.[0]?.names?.[0] ?? null,
+              broadcast: competition?.broadcasts?.[0] ?? null,
+              venue_name: competition?.venue?.fullName ?? null,
+              season: event.season?.year ? String(event.season.year) : null,
+              external_game_id: eventId,
+              last_updated: new Date().toISOString(),
+            });
+          }
         }
 
         if (invalidEvents > 0) {
