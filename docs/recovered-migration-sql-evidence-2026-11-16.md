@@ -124,6 +124,24 @@ Inspected `supabase/functions/sync-games/index.ts`, `supabase/functions/_shared/
 - A read-only source/catalog review does not establish that production's deployed function/config/cron are aligned. Verify deployed function version and perform an authenticated positive/negative request test in a controlled window.
 - No production database changes, token rotations, cron changes, secret changes or Edge Function deployments were performed during this audit.
 
+## Production remediation executed and verified (2026-11-16)
+
+Following explicit owner approval in the project conversation, the following changes were made to the RallyOn production Supabase project. No raw token or verifier value is recorded here.
+
+1. **Client grants revoked.** Applied migration `20261116225246_harden_system_sync_tokens_client_grants`:
+   `REVOKE ALL PRIVILEGES ON TABLE public.system_sync_tokens FROM anon, authenticated;`
+2. **Effective privilege verification passed.** `anon` SELECT/INSERT and `authenticated` SELECT/UPDATE now return false from `has_table_privilege`; `service_role` SELECT remains true.
+3. **Sync token rotated.** Generated a new 256-bit random token inside the database session, updated the existing Vault secret `rallyon_sync_games_token`, and updated the `sync-games` SHA-256 verifier in the same SQL transaction. The token was never returned to the chat or committed to Git.
+4. **Cron continuity verified.** Both `rallyon-sync-games-hourly` and `rallyon-sync-games-upcoming-daily` still read `rallyon_sync_games_token` from `vault.decrypted_secrets` and send it through `x-rallyon-sync-token`; no cron command change was needed.
+5. **Deployed function confirmed.** Production `sync-games` is ACTIVE, version 8, with `verify_jwt=false`; its deployed source includes the custom SHA-256 token lookup and constant-time comparison.
+6. **Negative authentication test passed.** A POST without the custom token returned HTTP 401 `Unauthorized`.
+7. **Positive authentication + sync test passed.** A POST using the rotated Vault token and `today` window returned HTTP 200, `complete=true`, `failed=false`, and synced 17 events with no diagnostics.
+8. **Security advisor check passed.** Supabase security advisors returned zero lints after the grant change.
+
+The migration is present in the hosted migration ledger as version `20261116225246`. The token rotation itself was an operational Vault/database transaction, not a replayable migration, and no secret material was committed.
+
+**Scope:** These actions addressed the sync-token table exposure and rotated the sync credential. They do not close the separate RallyOn production NO-GO items concerning Auth profile bootstrap, profile ACLs/triggers, venue policy overlap, or full migration parity. No Edge Function redeployment or cron schedule change was performed.
+
 ## Next verification work
 
 1. Search owner-controlled local backups, CI artifacts, release bundles and other repositories for the original five files; preserve any exact originals unchanged with provenance.
