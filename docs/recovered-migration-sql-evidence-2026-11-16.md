@@ -188,6 +188,29 @@ Read-only catalog inspection after sync-token remediation found the following re
 
 **Production gate:** The sync-token work is complete, but production readiness remains blocked on Auth profile bootstrap and a real signup test, plus independent review of the remaining application/security PRs and migration parity. No profile, Auth, or venue production changes were made during this read-only follow-up audit.
 
+## Production Auth/profile remediation — 2026-11-16
+
+Following explicit owner approval, production migrations were applied:
+
+- `20261116230420_fix_profiles_auth_bootstrap_and_acl`
+  - Grants `supabase_auth_admin` schema usage and INSERT on `public.profiles`.
+  - Adds an INSERT-only RLS policy for `supabase_auth_admin`; the trigger remains SECURITY INVOKER (no RLS bypass).
+  - Revokes all profile table privileges from PUBLIC and anon; narrows authenticated to SELECT/INSERT/UPDATE.
+  - Removes duplicate `profiles_updated_at`, retaining `profiles_set_updated_at`.
+  - Makes `onboardingCompleted` parsing tolerant of malformed user-editable metadata.
+- `20261116230732_grant_profiles_auth_admin_conflict_key_select`
+  - Grants only column-level SELECT on `profiles.id` to `supabase_auth_admin` for the INSERT conflict key; it does not grant profile-row content access.
+
+### Verification and remaining signup check
+
+- Live ACL verification: Auth admin has INSERT and SELECT(id), but not table-level SELECT. anon has no profile SELECT. authenticated retains SELECT/INSERT/UPDATE. 
+- Live RLS catalog verification: `profiles_insert_auth_admin` is scoped only to `supabase_auth_admin`; authenticated owner-scoped SELECT/INSERT/UPDATE policies remain.
+- Only one profile timestamp trigger remains.
+- Security advisors return zero lints.
+- A transaction-scoped database trigger smoke test inserted a synthetic auth.users row with malformed onboarding metadata, verified the resulting profile defaults (`onboarding_completed=false`, `onboarding_step='welcome'`), and rolled the transaction back. This verified trigger SQL behavior but ran as the SQL migration connection, not as the Auth service role.
+- A real GoTrue signup request made after the first migration failed with SQLSTATE 42501 (permission denied on profiles). The logs identified the Auth DB role as `supabase_auth_admin`. This exposed the need for the column-level conflict-key SELECT grant added in the second migration.
+- A successful GoTrue signup has **not yet been confirmed after the second migration**. Do not mark the Auth signup gate fully passed until one succeeds and its profile row is verified. No test account was left behind.
+
 ## Next verification work
 
 1. Search owner-controlled local backups, CI artifacts, release bundles and other repositories for the original five files; preserve any exact originals unchanged with provenance.
