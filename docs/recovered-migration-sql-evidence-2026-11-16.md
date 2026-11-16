@@ -76,6 +76,54 @@ Owner-supplied partial SQL:
 
 **Status: PARTIAL.** This fragment does not include any function, Edge Function validation, trigger, grants, policies, or other guard logic that may have been part of the original migration. The live catalog previously showed explicit deny policies for anon/authenticated SELECT/INSERT/UPDATE/DELETE, but that does not establish the original migration's complete contents. Search for the Edge Function implementation and any remaining SQL before reconstructing.
 
+## Follow-up: token guard source and live security verification (2026-11-16)
+
+The owner subsequently supplied the full SQL fragment for `20261111024425`. The verifier literal remains intentionally redacted in repository evidence. The recovered fragment is:
+
+```sql
+create table if not exists public.system_sync_tokens (
+  name text primary key,
+  token_sha256 text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.system_sync_tokens enable row level security;
+
+insert into public.system_sync_tokens(name, token_sha256)
+values ('sync-games', '[REDACTED SHA-256 VERIFIER]')
+on conflict (name) do update set token_sha256 = excluded.token_sha256;
+```
+
+This resolves the previously missing SQL *fragment*; it does not prove that this was the complete original migration file. No additional policy/grant SQL was included in the owner-supplied fragment.
+
+### Edge Function validation found
+
+Inspected `supabase/functions/sync-games/index.ts`, `supabase/functions/_shared/sync-utils.js` and `supabase/config.toml` on this branch:
+
+- `sync-games` requires POST and a non-empty `x-rallyon-sync-token` header.
+- It hashes the supplied token with Web Crypto SHA-256.
+- It queries `system_sync_tokens` for the `sync-games` verifier using the service-role key held server-side.
+- It compares the stored and computed hashes with the shared `constantTimeEqual` helper.
+- Missing/invalid tokens return 401; lookup/network failures return 503.
+- `verify_jwt = false` is configured for this function because the cron caller uses the custom token instead of a user JWT. The custom token check is therefore the effective application-level gate and must remain mandatory.
+- The service-role key is only read from Edge Function environment variables in the inspected code; it is not returned to the caller.
+
+**Assessment:** The repository contains an actual token-validation path consuming this table. Therefore the earlier uncertainty about whether the verifier is used is resolved for the inspected branch. This is a source review, not a live end-to-end request test and not proof that the deployed Edge Function matches this commit.
+
+### Live production catalog check (read-only)
+
+- RLS is enabled on `public.system_sync_tokens`.
+- Four explicit RLS policies deny anon/authenticated SELECT, INSERT, UPDATE and DELETE.
+- However, the live table ACL also grants all seven table privileges (SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER) to both `anon` and `authenticated`. The deny policies currently prevent row access through ordinary RLS-governed operations, but broad table grants are unnecessary exposure and make the security posture more fragile if a policy is changed or bypassed.
+- Recommended hardening: revoke all table privileges from `anon` and `authenticated`, retain required server-side access for the Edge Function's service-role credential, then verify effective privileges and that the Edge Function can still read the verifier. This has **not** been applied to production.
+
+### Operational/security caveats
+
+- The SQL's upsert overwrites the existing verifier on every replay. Do not replay it casually.
+- Because the verifier was pasted into chat, rotate the underlying sync token and update the stored hash plus every cron/secret caller in a coordinated change if the token is still active. Do not paste the raw token into GitHub or chat.
+- A read-only source/catalog review does not establish that production's deployed function/config/cron are aligned. Verify deployed function version and perform an authenticated positive/negative request test in a controlled window.
+- No production database changes, token rotations, cron changes, secret changes or Edge Function deployments were performed during this audit.
+
 ## Next verification work
 
 1. Search owner-controlled local backups, CI artifacts, release bundles and other repositories for the original five files; preserve any exact originals unchanged with provenance.
