@@ -121,8 +121,8 @@ Inspected `supabase/functions/sync-games/index.ts`, `supabase/functions/_shared/
 
 - The SQL's upsert overwrites the existing verifier on every replay. Do not replay it casually.
 - Because the verifier was pasted into chat, rotate the underlying sync token and update the stored hash plus every cron/secret caller in a coordinated change if the token is still active. Do not paste the raw token into GitHub or chat.
-- A read-only source/catalog review does not establish that production's deployed function/config/cron are aligned. Verify deployed function version and perform an authenticated positive/negative request test in a controlled window.
-- No production database changes, token rotations, cron changes, secret changes or Edge Function deployments were performed during this audit.
+- At the time of the initial source/catalog review, deployment alignment and live request behavior were not yet established. The later production verification and remediation are recorded in the following section.
+- The initial recovery investigation made no production writes; subsequent owner-approved production actions are documented separately below.
 
 ## Production remediation executed and verified (2026-11-16)
 
