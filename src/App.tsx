@@ -395,8 +395,7 @@ function RallyOnMain() {
       <Navigation
         currentTab={currentTab}
         onTabSelect={setCurrentTab}
-        liveBadgeCount={games.filter((g) => g.status === 'LIVE').length}
-        friendActivityCount={presences.length}
+        liveBadgeCount={games.filter((g) => g.status === 'LIVE' || g.status === 'HALFTIME').length}
       />
 
       {selectedVenue && selectedVenueMatch && (
