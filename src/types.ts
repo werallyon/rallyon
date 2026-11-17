@@ -521,6 +521,8 @@ export interface VenueGameProgramming {
 export type PromotionType =
   | 'CHECK_IN_DISCOUNT'
   | 'GAME_SPECIAL'
+  | 'FOOD_SPECIAL'
+  | 'DRINK_SPECIAL'
   | 'TIME_LIMITED'
   | 'FREE_ITEM'
   | 'GROUP_OFFER'
