@@ -137,6 +137,10 @@ end;$production$), '[[:space:]]+', ' ', 'g')) then
   -- by a dedicated policy.
   grant usage on schema public to supabase_auth_admin;
 
+  if not has_schema_privilege('supabase_auth_admin', 'public', 'USAGE') then
+    raise exception 'P0-C preflight: supabase_auth_admin must retain public schema USAGE for the invoker-rights Auth bootstrap';
+  end if;
+
   if not has_table_privilege('supabase_auth_admin', 'public.profiles', 'INSERT') then
     grant insert on table public.profiles to supabase_auth_admin;
   end if;
