@@ -275,18 +275,27 @@ export class MarketService {
     const targetId = marketId || this.activeMarketId;
     const targetMarket = this.getMarketById(targetId) || this.getActiveMarket();
 
-    return venues.filter((v) => {
-      if (v.market_id) {
-        return v.market_id === targetId;
+    // Static market IDs are used by the client while production rows use UUIDs.
+    // Keep the mapping explicit so a UUID-backed venue is never assigned to a
+    // different market merely because it happens to fall inside another radius.
+    const databaseMarketIds: Record<string, string> = {
+      market_texarkana: '108e0e1e-23bd-4f7a-a792-a79429720ea9',
+      market_dfw: 'b2c1d8e4-7a6f-4d31-9c52-8f0a1e6b4d20'
+    };
+    const databaseMarketId = databaseMarketIds[targetId];
+
+    return venues.filter((venue) => {
+      if (venue.market_id) {
+        return venue.market_id === targetId || venue.market_id === databaseMarketId;
       }
-      // Geographic radius fallback
-      const dist = calculateDistanceMiles(
-        v.latitude,
-        v.longitude,
+      // Geographic radius fallback is only for legacy rows without a market assignment.
+      const distance = calculateDistanceMiles(
+        venue.latitude,
+        venue.longitude,
         targetMarket.latitude,
         targetMarket.longitude
       );
-      return dist <= targetMarket.radius;
+      return distance <= targetMarket.radius;
     });
   }
 }
