@@ -74,9 +74,16 @@ export const MapScreen: React.FC<MapScreenProps> = ({
     });
   }, [venues]);
 
-  // Only venues with usable coordinates can be positioned on this canvas.
+  // Only geographically valid WGS84 coordinates can be positioned on this canvas.
+  // Finite but out-of-range values (for example, swapped or corrupted lat/lon)
+  // must not distort market bounds or be rendered as real venue locations.
   const locatedVenues = useMemo(() => venues.filter((venue) =>
-    Number.isFinite(venue.latitude) && Number.isFinite(venue.longitude)
+    Number.isFinite(venue.latitude) &&
+    Number.isFinite(venue.longitude) &&
+    venue.latitude >= -90 &&
+    venue.latitude <= 90 &&
+    venue.longitude >= -180 &&
+    venue.longitude <= 180
   ), [venues]);
 
   // Project the venues actually supplied by the active market, regardless of city.
