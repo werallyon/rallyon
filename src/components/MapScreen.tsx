@@ -71,8 +71,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({
     });
   }, [venues]);
 
-  // Project the venues actually supplied by the active market. The previous
-  // fixed Austin bounds pushed Dallas/Texarkana venues to the map edges.
+  // Project the venues actually supplied by the active market, regardless of city.
   const bounds = useMemo(() => {
     const located = venues.filter((venue) =>
       Number.isFinite(venue.latitude) && Number.isFinite(venue.longitude)
