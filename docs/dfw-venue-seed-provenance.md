@@ -2,7 +2,7 @@
 
 Updated: 2026-11-17
 
-This first-pass production directory contains 14 real DFW businesses/venues with a published street address and a geospatial point. The records are **unclaimed directory listings**, not venue-verified RallyOn partners. No screen counts, sound-on promises, sports packages, live programming, or team-specific watch commitments are written into `venue_truth` or `venue_game_programming`.
+The DFW market catalog includes 26 cities. This first-pass production directory contains 14 real DFW businesses/venues with a published street address and a geospatial point. The records are **unclaimed directory listings**, not venue-verified RallyOn partners. No screen counts, sound-on promises, sports packages, live programming, or team-specific watch commitments are written into `venue_truth` or `venue_game_programming`.
 
 ## Seeded venues
 
