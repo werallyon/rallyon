@@ -99,3 +99,49 @@ The separate hosted RallyOn-Validation project currently has only two recorded m
 ## 6. Deployment gate
 
 **Production remains NO-GO.** No production migration, schema repair, cron adjustment, Vault change, Auth bootstrap change, or PR merge is authorized by this recovery report. Passing CI is not a substitute for independent review or explicit deployment approval.
+
+
+## Addendum — live production ledger re-read (2026-11-17)
+
+A fresh read-only query of `supabase_migrations.schema_migrations` confirms **15 hosted entries**, still ending at `20261116230833`. The complete live ledger is:
+
+| Version | Name |
+|---|---|
+| 20261110231015 | create_profiles_and_auth_triggers |
+| 20261110232218 | create_rallyon_core_data_model |
+| 20261111022535 | venue_game_programming_claimed_owner_rls |
+| 20261111022546 | 20261110_venue_programming_claimed_operator_policies |
+| 20261111024400 | schedule_sync_games_daily |
+| 20261111024425 | add_sync_token_guard |
+| 20261111040641 | rallyon_production_hardening_v1 |
+| 20261111043646 | rallyon_sync_games_schedule_v2 |
+| 20261111043827 | rallyon_sync_games_schedule_v3 |
+| 20261112152519 | expand_sports_event_model |
+| 20261116225246 | harden_system_sync_tokens_client_grants |
+| 20261116225811 | sync_games_token_acl_and_rotation_20261116 |
+| 20261116230420 | fix_profiles_auth_bootstrap_and_acl |
+| 20261116230732 | grant_profiles_auth_admin_conflict_key_select |
+| 20261116230833 | remove_auth_profile_conflict_select_dependency |
+
+The three 2026-11-16 Auth/profile migrations are therefore recorded in hosted history. The PR #17 canonical sports migration and PR #22 relational-favorites/RPC migrations are **not** in the hosted ledger; they remain unmerged review candidates. PR #30 is front-end only. No production migration, DDL, cron, Vault or Edge Function action was performed during this follow-up.
+
+### Current row counts (read-only)
+
+- `auth.users`: 0
+- `public.profiles`: 0
+- `public.games`: 495
+
+The real GoTrue signup gate remains open. A successful signup after the final no-conflict Auth bootstrap adjustment has not been demonstrated; the counts above confirm there is still no production account/profile row to verify.
+
+### Current Auth bootstrap posture
+
+The live `public.handle_new_user()` remains SECURITY INVOKER, owned by postgres, with `search_path=public`. It uses tolerant CASE parsing for the user-editable onboarding flag and does not use `ON CONFLICT`. The enabled Auth trigger is still attached to `auth.users`. The Auth-admin role has the narrowly scoped INSERT grant and INSERT policy; it does not have table-level SELECT or column-level SELECT on `profiles.id`. Anon has no profile table access; authenticated retains SELECT/INSERT/UPDATE and no DELETE. These are catalog observations only and do not prove a real GoTrue signup succeeds.
+
+### PR validation work kept separate from production
+
+- PR #17's latest P0-B head passed its own isolated Supabase positive/negative migration checks and application build/type checks.
+- PR #22 now preserves the production INVOKER Auth bootstrap, pins its search path, grants Auth-admin schema USAGE plus profile INSERT only, and has a combined P0-B/P0-C/RPC isolated replay workflow. Its latest full run is still pending.
+- PR #30's market-aware map and coordinate validation passed front-end CI.
+- None of those PR changes have been deployed or merged into production.
+
+The five missing historical migration source files remain a provenance gap. The owner-supplied recovered SQL evidence remains partial/non-original-source evidence as documented above. Do not recreate those files as if their original bytes or complete side effects were recovered. Production rollout remains **NO-GO** until the historical migration strategy, combined PR reviews, and real signup gate are closed.
