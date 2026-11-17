@@ -44,6 +44,14 @@ interface MapScreenProps {
 
 type MarkerCategory = 'ALL' | 'ACTIVE' | 'FRIENDS' | 'TRENDING' | 'GAME_ON';
 
+const hasValidMapCoordinates = (venue: Venue): boolean =>
+  Number.isFinite(venue.latitude) &&
+  Number.isFinite(venue.longitude) &&
+  venue.latitude >= -90 &&
+  venue.latitude <= 90 &&
+  venue.longitude >= -180 &&
+  venue.longitude <= 180;
+
 export const MapScreen: React.FC<MapScreenProps> = ({
   venues,
   liveStates,
@@ -59,7 +67,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({
   onToggleSave,
   onSelectVenue
 }) => {
-  const [selectedMarkerVenue, setSelectedMarkerVenue] = useState<Venue | null>(venues[0] || null);
+  const [selectedMarkerVenue, setSelectedMarkerVenue] = useState<Venue | null>(() => venues.find(hasValidMapCoordinates) || null);
   const [markerCategory, setMarkerCategory] = useState<MarkerCategory>('ALL');
   const [zoomLevel, setZoomLevel] = useState(1);
 
@@ -67,24 +75,17 @@ export const MapScreen: React.FC<MapScreenProps> = ({
   useEffect(() => {
     setSelectedMarkerVenue((current) => {
       if (current) {
-        const refreshed = venues.find((venue) => venue.id === current.id);
+        const refreshed = venues.find((venue) => venue.id === current.id && hasValidMapCoordinates(venue));
         if (refreshed) return refreshed;
       }
-      return venues[0] || null;
+      return venues.find(hasValidMapCoordinates) || null;
     });
   }, [venues]);
 
   // Only geographically valid WGS84 coordinates can be positioned on this canvas.
   // Finite but out-of-range values (for example, swapped or corrupted lat/lon)
   // must not distort market bounds or be rendered as real venue locations.
-  const locatedVenues = useMemo(() => venues.filter((venue) =>
-    Number.isFinite(venue.latitude) &&
-    Number.isFinite(venue.longitude) &&
-    venue.latitude >= -90 &&
-    venue.latitude <= 90 &&
-    venue.longitude >= -180 &&
-    venue.longitude <= 180
-  ), [venues]);
+  const locatedVenues = useMemo(() => venues.filter(hasValidMapCoordinates), [venues]);
 
   // Project the venues actually supplied by the active market, regardless of city.
   const bounds = useMemo(() => {
