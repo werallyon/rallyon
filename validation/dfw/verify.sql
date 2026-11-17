@@ -115,5 +115,43 @@ begin
     raise exception 'DFW programming rows must retain their source URLs';
   end if;
 
-  raise notice 'PASS: DFW market, 27 cities, 18 real unclaimed venues, 3 source-backed game-to-venue rows and trust boundaries';
+
+  if not exists (
+    select 1 from pg_class
+    where oid = 'public.venue_promotions'::regclass
+      and relrowsecurity
+  ) then
+    raise exception 'venue_promotions must have row-level security enabled';
+  end if;
+
+  if (
+    select count(*) from pg_policies
+    where schemaname = 'public'
+      and tablename = 'venue_promotions'
+  ) <> 5 then
+    raise exception 'venue_promotions must have the five public-read/owner-only policies';
+  end if;
+
+  if not has_table_privilege('anon', 'public.venue_promotions', 'SELECT')
+     or has_table_privilege('anon', 'public.venue_promotions', 'INSERT')
+     or has_table_privilege('anon', 'public.venue_promotions', 'UPDATE')
+     or has_table_privilege('anon', 'public.venue_promotions', 'DELETE') then
+    raise exception 'Anonymous promotion privileges are not read-only';
+  end if;
+
+  if not has_table_privilege('authenticated', 'public.venue_promotions', 'SELECT')
+     or not has_table_privilege('authenticated', 'public.venue_promotions', 'DELETE')
+     or has_column_privilege('authenticated', 'public.venue_promotions', 'claims_count', 'UPDATE') then
+    raise exception 'Authenticated promotion privileges are missing or allow claims_count tampering';
+  end if;
+
+  if exists (
+    select 1 from public.venue_promotions p
+    join public.venues v on v.id = p.venue_id
+    where v.market_id = v_market_id
+  ) then
+    raise exception 'DFW promotions must not be seeded as if a venue operator confirmed them';
+  end if;
+
+  raise notice 'PASS: DFW market, 27 cities, 18 real unclaimed venues, 3 source-backed game-to-venue rows, RLS-protected venue promotions and trust boundaries';
 end $$;
