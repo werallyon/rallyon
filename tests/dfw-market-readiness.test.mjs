@@ -76,3 +76,15 @@ test('fan-facing Home, Search and Live screens are market-neutral rather than Au
   assert.doesNotMatch(live, /Austin/);
   assert.match(live, /GAME ON at \{confirmedVenues\.length\} venues/);
 });
+
+test('database venue mapping preserves market/city IDs and safely defaults empty JSON truth objects', () => {
+  const venueService = readFileSync(new URL('../src/services/venueService.ts', import.meta.url), 'utf8');
+  assert.ok(venueService.includes('market_id: row.market_id'));
+  assert.ok(venueService.includes('city_id: row.city_id'));
+  assert.ok(venueService.includes('rawTruth.sports?.teamAffiliations ?? []'));
+  assert.ok(venueService.includes('rawTruth.environment?.seatingRatio ?? {}'));
+  assert.ok(venueService.includes('rawTruth.experience?.foodSpecials ?? []'));
+  assert.ok(venueService.includes('rawTruth.experience?.drinkSpecials ?? []'));
+  assert.ok(venueService.includes("rawBaseline.priceLevel : '$$'"));
+  assert.ok(venueService.includes('rawBaseline.capacity) ? Number(rawBaseline.capacity) : 0'));
+});
