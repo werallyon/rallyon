@@ -96,7 +96,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
   // New Promotion form states
   const [newPromoTitle, setNewPromoTitle] = useState('');
   const [newPromoDiscount, setNewPromoDiscount] = useState('15% OFF');
-  const [newPromoType, setNewPromoType] = useState<Promotion['promotion_type']>('CHECK_IN_DISCOUNT');
+  const [newPromoType, setNewPromoType] = useState<Promotion['promotion_type']>('GAME_SPECIAL');
   const [newPromoDesc, setNewPromoDesc] = useState('');
   const [newPromoTerms, setNewPromoTerms] = useState('Valid during the listed time window. Ask staff before ordering.');
   const [newPromoGameId, setNewPromoGameId] = useState('');
