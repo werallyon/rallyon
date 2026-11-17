@@ -90,7 +90,7 @@ export async function getVenuePromotions(venueId: string, includeInactive = fals
   let query = supabase.from('venue_promotions').select('*').eq('venue_id', venueId).order('start_at', { ascending: true });
   if (!includeInactive) {
     const now = new Date().toISOString();
-    query = query.eq('status', 'ACTIVE').lte('start_at', now).gt('end_at', now);
+    query = query.in('status', ['ACTIVE', 'SCHEDULED']).lte('start_at', now).gt('end_at', now);
   }
   const { data, error } = await query;
   if (error) throw error;
