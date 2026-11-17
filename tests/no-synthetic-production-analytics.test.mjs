@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const dashboard = readFileSync(new URL('../src/components/business/VenueDashboard.tsx', import.meta.url), 'utf8');
+const venueService = readFileSync(new URL('../src/services/venueService.ts', import.meta.url), 'utf8');
 
 test('database-backed venues do not show synthetic ROI figures as production analytics', () => {
   assert.match(dashboard, /\{isDatabaseVenue \? \(/);
@@ -45,6 +46,11 @@ test('database-backed venues do not receive demo QR tokens, demo plan claims, or
   assert.match(dashboard, /isDatabaseVenue \? 'Subscription details unavailable' : 'PRO VENUE TIER'/);
   assert.match(dashboard, /isDatabaseVenue \? 'Production venue workspace' : 'Connected to Demo Matrix'/);
   assert.doesNotMatch(dashboard, /Connected to Austin Matrix/);
+});
+
+test('manual venue confirmations do not claim a fabricated confidence score', () => {
+  assert.doesNotMatch(dashboard, /confidence:\s*100/);
+  assert.match(venueService, /confidence: params\.confidence \?\? 0/);
 });
 
 test('operator broadcast and team records do not invent ESPN or placeholder records', () => {
