@@ -97,11 +97,34 @@ begin
     -- preserving its specific diagnostic. If a trigger exists, its function
     -- must match the known-safe implementation before we change its rights.
     if v_bootstrap_oid is not null then
-      -- Match the complete production-observed function body, not merely
-      -- a few substrings. This prevents hardening an altered function that
-      -- also performs unreviewed writes or side effects.
+      -- Accept only the two reviewed, side-effect-free profile bootstrap
+      -- bodies observed in production history. Preserve INVOKER rights: the
+      -- Auth admin role receives only INSERT and a dedicated INSERT policy.
       if btrim(regexp_replace(lower(v_bootstrap_source), '[[:space:]]+', ' ', 'g'))
-         <> btrim(regexp_replace(lower($expected$begin
+         not in (
+           btrim(regexp_replace(lower($production$begin
+  insert into public.profiles (
+    id, username, first_name, last_name, display_name, avatar_url,
+    onboarding_completed, onboarding_step
+  )
+  values (
+    new.id,
+    new.raw_user_meta_data->>'username',
+    new.raw_user_meta_data->>'firstName',
+    new.raw_user_meta_data->>'lastName',
+    coalesce(new.raw_user_meta_data->>'name', new.raw_user_meta_data->>'displayName'),
+    coalesce(new.raw_user_meta_data->>'avatar', new.raw_user_meta_data->>'profilePhotoUrl'),
+    case lower(coalesce(new.raw_user_meta_data->>'onboardingCompleted', ''))
+      when 'true' then true
+      when 'false' then false
+      else false
+    end,
+    coalesce(new.raw_user_meta_data->>'onboardingStep', 'welcome')
+  );
+
+  return new;
+end;$production$), '[[:space:]]+', ' ', 'g')),
+           btrim(regexp_replace(lower($legacy$begin
   insert into public.profiles (
     id, username, first_name, last_name, display_name, avatar_url,
     onboarding_completed, onboarding_step
@@ -118,15 +141,41 @@ begin
   )
   on conflict (id) do nothing;
   return new;
-end;$expected$), '[[:space:]]+', ' ', 'g')) then
-        raise exception 'P0-C preflight: legacy Auth bootstrap function differs from the exact reviewed profile-insert implementation; inspect it manually';
+end;$legacy$), '[[:space:]]+', ' ', 'g'))
+         ) then
+        raise exception 'P0-C preflight: Auth bootstrap function differs from both exact reviewed invoker-rights implementations; inspect it manually';
       end if;
 
-      execute 'alter function public.handle_new_user() security definer';
-      execute 'alter function public.handle_new_user() set search_path = pg_catalog, public, pg_temp';
+      execute 'alter function public.handle_new_user() security invoker';
+      execute 'alter function public.handle_new_user() set search_path = pg_catalog, public';
       execute 'revoke all privileges on function public.handle_new_user() from public, anon, authenticated, service_role';
     end if;
   end;
+
+  -- Auth GoTrue inserts the profile as supabase_auth_admin. Keep the trigger
+  -- INVOKER and grant that role only INSERT, constrained by a dedicated policy.
+  if not has_table_privilege('supabase_auth_admin', 'public.profiles', 'INSERT') then
+    grant insert on table public.profiles to supabase_auth_admin;
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'profiles'
+      and policyname = 'profiles_insert_auth_admin'
+      and cmd = 'INSERT' and permissive = 'PERMISSIVE'
+      and roles @> array['supabase_auth_admin']::name[]
+      and coalesce(with_check, '') = 'true'
+  ) then
+    if exists (
+      select 1 from pg_policies
+      where schemaname = 'public' and tablename = 'profiles'
+        and policyname = 'profiles_insert_auth_admin'
+    ) then
+      raise exception 'P0-C preflight: profiles_insert_auth_admin exists with an unexpected definition';
+    end if;
+    create policy profiles_insert_auth_admin on public.profiles
+      for insert to supabase_auth_admin with check (true);
+  end if;
 
   -- Inspect column ACLs before revoking known table-level anon/PUBLIC drift.
   -- PostgreSQL's table-level REVOKE can otherwise make a separate column ACL
@@ -170,17 +219,17 @@ end;$expected$), '[[:space:]]+', ' ', 'g')) then
       and t.tgtype = 5 -- AFTER INSERT FOR EACH ROW
       and pn.nspname = 'public'
       and p.proname = 'handle_new_user'
-      and p.prosecdef
+      and not p.prosecdef
       and pg_get_userbyid(p.proowner) in ('postgres', 'supabase_admin')
       and exists (
         select 1 from unnest(coalesce(p.proconfig, array[]::text[])) cfg
-        where regexp_replace(cfg, '[[:space:]]', '', 'g') = 'search_path=pg_catalog,public,pg_temp'
+        where regexp_replace(cfg, '[[:space:]]', '', 'g') = 'search_path=pg_catalog,public'
       )
       and pg_get_functiondef(p.oid) ilike '%insert into public.profiles%'
       and pg_get_functiondef(p.oid) ilike '%new.id%'
   ) into v_bootstrap_trigger;
   if not v_bootstrap_trigger then
-    raise exception 'P0-C preflight: expected enabled AFTER INSERT row trigger auth.on_auth_user_created -> public.handle_new_user SECURITY DEFINER with pinned safe search_path and profile insert was not verified';
+    raise exception 'P0-C preflight: expected enabled AFTER INSERT row trigger auth.on_auth_user_created -> public.handle_new_user INVOKER with pinned safe search_path and profile insert was not verified';
   end if;
 
   if has_function_privilege('anon', 'public.handle_new_user()', 'EXECUTE')
