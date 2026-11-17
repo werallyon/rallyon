@@ -110,4 +110,5 @@ jobs:
 
       - name: Stop isolated local Supabase stack
         if: always() && steps.setup-supabase-cli.outcome == 'success'
+        timeout-minutes: 3
         run: supabase --workdir validation stop
