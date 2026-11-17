@@ -209,7 +209,7 @@ export interface Venue {
   features?: string[];
   baseline: VenueBaselineCharacteristics;
   venueTruth: VenueTruth;
-  venueTruthVerified?: boolean;
+  venueTruthComplete?: boolean;
   claimed: boolean;
   googlePlaceId?: string;
   googlePlaceData?: GooglePlaceData;
