@@ -70,8 +70,7 @@ begin
     from public.venue_game_programming p
     where p.game_id = 'f0000000-0000-4000-8000-000000000001'::uuid
       and (
-        p.status <> 'CONFIRMED'
-        or not p.is_confirmed
+        p.status not in ('CONFIRMED', 'PLANNED')
         or p.source_type <> 'OFFICIAL'
         or p.network is not null
         or p.screen is not null
@@ -79,6 +78,25 @@ begin
       )
   ) then
     raise exception 'FC Dallas programming contains unsupported broadcast, screen, or audio claims';
+  end if;
+
+  if (
+    select count(*) from public.venue_game_programming p
+    where p.game_id = 'f0000000-0000-4000-8000-000000000001'::uuid
+      and p.status = 'CONFIRMED'
+      and p.is_confirmed
+  ) <> 2 then
+    raise exception 'Expected two official FC Dallas partner venues with confirmed match listings';
+  end if;
+
+  if not exists (
+    select 1 from public.venue_game_programming p
+    where p.game_id = 'f0000000-0000-4000-8000-000000000001'::uuid
+      and p.venue_id = 'a1000000-0000-4000-8000-000000000017'::uuid
+      and p.status = 'PLANNED'
+      and not p.is_confirmed
+  ) then
+    raise exception 'TOCA Social conditional match listing must remain planned, not confirmed';
   end if;
 
   if not exists (
