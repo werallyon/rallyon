@@ -2,7 +2,7 @@
 set -euo pipefail
 
 WORKDIR="validation"
-INJECTION="$WORKDIR/supabase/migrations/20261112000250_validation_preflight_negative_case.sql"
+INJECTION="$WORKDIR/supabase/migrations/20261112000500_validation_preflight_negative_case.sql"
 BASE="$WORKDIR/supabase/migrations/20261112000100_validation_profiles_base.sql"
 BASE_BACKUP="/tmp/rallyon-validation-profiles-base.sql"
 OUTPUT="/tmp/rallyon-p0-migration-preflight.log"
