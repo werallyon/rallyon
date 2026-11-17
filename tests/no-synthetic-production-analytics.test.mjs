@@ -9,7 +9,7 @@ test('database-backed venues do not show synthetic ROI figures as production ana
   assert.match(dashboard, /Production analytics are not connected yet/);
   assert.match(dashboard, /We will not display estimated views, visits, check-ins, or ROI as real results/);
   assert.match(dashboard, /activeTab === 'ANALYTICS' && isDatabaseVenue/);
-  assert.match(dashboard, /reliabilityScore = isDatabaseVenue \? venue\.reliabilityScore/);
+  assert.match(dashboard, /reliabilityScore = isDatabaseVenue\s*\?\s*venue\.reliabilityScore/);
   assert.match(dashboard, /reliabilityScore == null \? 'Not calculated'/);
   assert.match(dashboard, /placeMatch = isDatabaseVenue \? null/);
   assert.match(dashboard, /Match Confidence: \{isDatabaseVenue \? 'Not available from production data'/);
