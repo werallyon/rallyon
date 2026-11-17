@@ -785,6 +785,19 @@ export const SEEDED_CITIES: City[] = [
     status: 'ACTIVE'
   },
 
+  {
+    id: 'city_aubrey',
+    market_id: 'market_dfw',
+    name: 'Aubrey, TX',
+    state: 'Texas',
+    state_code: 'TX',
+    country: 'USA',
+    latitude: 33.3043,
+    longitude: -96.9860,
+    population: 18000,
+    status: 'ACTIVE'
+  },
+
   // Houston Cities
   {
     id: 'city_houston',
