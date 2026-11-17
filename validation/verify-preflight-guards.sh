@@ -116,8 +116,16 @@ bash validation/run-local-sql.sh validation/supabase/verify.sql
 db_container="$(docker ps --filter "label=com.supabase.cli.project=rallyon-pr22-migration-validation" --format '{{.Names}}' | grep -E '(^|_)db_' | head -n 1)"
 hardened="$(docker exec "$db_container" psql -U postgres -d postgres -Atqc "
 select (
-  p.prosecdef
-  and p.proconfig @> array['search_path=pg_catalog, public, pg_temp']::text[]
+  not p.prosecdef
+  and p.proconfig @> array['search_path=pg_catalog, public']::text[]
+  and has_table_privilege('supabase_auth_admin', 'public.profiles', 'INSERT')
+  and exists (
+    select 1 from pg_policies pol
+    where pol.schemaname = 'public' and pol.tablename = 'profiles'
+      and pol.policyname = 'profiles_insert_auth_admin'
+      and pol.cmd = 'INSERT' and pol.roles @> array['supabase_auth_admin']::name[]
+      and coalesce(pol.with_check, '') = 'true'
+  )
   and not has_table_privilege('anon', 'public.profiles', 'SELECT')
   and not has_table_privilege('anon', 'public.profiles', 'INSERT')
   and not has_table_privilege('anon', 'public.profiles', 'UPDATE')
@@ -138,7 +146,7 @@ join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public' and p.proname = 'handle_new_user';
 ")"
 if [[ "$hardened" != "true" ]]; then
-  echo "FAIL: migration did not harden the legacy Auth bootstrap and anon profile grants"
+  echo "FAIL: migration did not preserve the invoker-rights Auth bootstrap and harden anon profile grants"
   exit 1
 fi
-echo "PASS: migration hardened legacy production Auth bootstrap and anon grants"
+echo "PASS: migration preserved invoker-rights Auth bootstrap and hardened anon grants"
