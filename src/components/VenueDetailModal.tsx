@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   Zap,
@@ -32,13 +32,15 @@ import {
   RallyMatchResult,
   SportsGame,
   VenueGame,
-  Presence
+  Presence,
+  Promotion
 } from '../types';
 import { INTENT_CONFIGS } from '../data/seedData';
 import { QRCheckInModal } from './business/QRCheckInModal';
 import { VenueClaimModal } from './business/VenueClaimModal';
 import { businessVenueService } from '../services/businessVenueService';
 import { googlePlacesService } from '../services/googlePlacesService';
+import { getVenuePromotions } from '../services/venueService';
 
 interface VenueDetailModalProps {
   venue: Venue;
@@ -72,13 +74,24 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
 
   const intentConfig = INTENT_CONFIGS[currentIntent];
 
   const claim = businessVenueService.getClaimForVenue(venue.id);
   const isClaimed = venue.claimed || claim?.verification_status === 'APPROVED';
-  const promotions = businessVenueService.getPromotionsForVenue(venue.id);
-  const activePromo = promotions[0];
+  useEffect(() => {
+    let mounted = true;
+    if (venue.isDemoData || venue.id.startsWith('venue_')) {
+      setPromotions(businessVenueService.getPromotionsForVenue(venue.id));
+    } else {
+      getVenuePromotions(venue.id).then((items) => { if (mounted) setPromotions(items); })
+        .catch((error) => { console.warn('Venue specials are unavailable.', error); if (mounted) setPromotions([]); });
+    }
+    return () => { mounted = false; };
+  }, [venue.id, venue.isDemoData]);
+  const now = Date.now();
+  const activePromo = promotions.find((promo) => (promo.status === 'ACTIVE' || promo.status === 'SCHEDULED') && new Date(promo.start_at).getTime() <= now && new Date(promo.end_at).getTime() > now);
   const programming = businessVenueService.getProgrammingForVenue(venue.id);
   const googlePlace = googlePlacesService.getPlaceForVenue(venue.id);
   const reliability = businessVenueService.calculateVenueReliability(venue.id);
@@ -256,7 +269,7 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
                   <Ticket className="w-3.5 h-3.5" />
-                  Special: With RallyOn Check-In
+                  {activePromo.promotion_type === 'FOOD_SPECIAL' ? 'Food special' : activePromo.promotion_type === 'DRINK_SPECIAL' ? 'Drink special' : activePromo.promotion_type === 'GAME_SPECIAL' ? 'Game-time special' : activePromo.promotion_type === 'WATCH_PARTY' ? 'Watch party offer' : 'Venue special'}
                 </span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500 text-black">
                   {activePromo.discount_value}
@@ -264,15 +277,20 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
               </div>
               <h3 className="text-sm font-black text-white">{activePromo.title}</h3>
               <p className="text-xs text-neutral-300 mt-1">{activePromo.description}</p>
+              <p className="mt-2 text-[10px] text-neutral-400">Valid {new Date(activePromo.start_at).toLocaleString()} – {new Date(activePromo.end_at).toLocaleString()}{activePromo.game_id ? ' · Game-specific offer' : ' · Applies to all games'}</p>
               <div className="mt-3 flex items-center justify-between pt-2 border-t border-neutral-800">
-                <span className="text-[10px] text-neutral-400">{activePromo.terms}</span>
-                <button
-                  onClick={() => setShowCheckInModal(true)}
-                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs flex items-center gap-1 shadow-md transition-transform active:scale-95"
-                >
-                  <QrCode className="w-3.5 h-3.5" />
-                  <span>Rally & Redeem</span>
-                </button>
+                <span className="text-[10px] text-neutral-400">{activePromo.terms || 'Ask staff to confirm availability.'}</span>
+                {venue.isDemoData || venue.id.startsWith('venue_') ? (
+                  <button
+                    onClick={() => setShowCheckInModal(true)}
+                    className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs flex items-center gap-1 shadow-md transition-transform active:scale-95"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>Rally & Redeem</span>
+                  </button>
+                ) : (
+                  <span className="text-[10px] font-semibold text-amber-300">Show this offer to staff</span>
+                )}
               </div>
             </div>
           )}
