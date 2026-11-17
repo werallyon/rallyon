@@ -9,7 +9,7 @@ test('Google Maps replaces the schematic canvas and follows the selected market'
   assert.match(source, /VITE_GOOGLE_MAPS_API_KEY/);
   assert.match(source, /new maps\.Map\(/);
   assert.match(source, /center: \{ lat: activeMarket\.latitude, lng: activeMarket\.longitude \}/);
-  assert.match(source, /\\{activeMarket\\.name\\} venue preview/);
+  assert.match(source, /\{activeMarket\.name\} venue preview/);
   const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
   assert.ok(app.includes('activeMarket={activeMarket}'));
   assert.doesNotMatch(source, /<svg|projectCoords|relative positions/i);
