@@ -739,6 +739,11 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
                       </div>
                       <h4 className="text-sm font-black text-white">{p.title}</h4>
                       <p className="text-xs text-neutral-400">{p.description}</p>
+                      <p className="text-[10px] text-neutral-500 mt-1">
+                        {p.game_id ? (upcomingGames.find((game) => game.id === p.game_id) ? `${upcomingGames.find((game) => game.id === p.game_id)?.awayTeam.name} at ${upcomingGames.find((game) => game.id === p.game_id)?.homeTeam.name}` : 'Game-specific offer') : 'All games'}
+                        {' · '}{new Date(p.start_at).toLocaleString()} – {new Date(p.end_at).toLocaleString()}
+                        {' · '}{Date.now() < new Date(p.start_at).getTime() ? 'SCHEDULED' : Date.now() >= new Date(p.end_at).getTime() ? 'EXPIRED' : p.status}
+                      </p>
                       <p className="text-[11px] text-emerald-400 mt-1 font-bold">
                         {p.claims_count} fans redeemed this month
                       </p>
