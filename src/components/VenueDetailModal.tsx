@@ -91,7 +91,7 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
     return () => { mounted = false; };
   }, [venue.id, venue.isDemoData]);
   const now = Date.now();
-  const activePromo = promotions.find((promo) => (promo.status === 'ACTIVE' || promo.status === 'SCHEDULED') && new Date(promo.start_at).getTime() <= now && new Date(promo.end_at).getTime() > now);
+  const activePromotions = promotions.filter((promo) => (promo.status === 'ACTIVE' || promo.status === 'SCHEDULED') && new Date(promo.start_at).getTime() <= now && new Date(promo.end_at).getTime() > now);
   const programming = businessVenueService.getProgrammingForVenue(venue.id);
   const googlePlace = googlePlacesService.getPlaceForVenue(venue.id);
   const reliability = businessVenueService.calculateVenueReliability(venue.id);
@@ -263,35 +263,41 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
             </div>
           </div>
 
-          {/* ACTIVE PROMOTION / SPECIAL OFFER (Section 13 & 26) */}
-          {activePromo && (
-            <div className="rounded-2xl bg-gradient-to-r from-amber-500/20 via-neutral-900 to-orange-500/15 border border-amber-500/40 p-4 shadow-xl">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                  <Ticket className="w-3.5 h-3.5" />
-                  {activePromo.promotion_type === 'FOOD_SPECIAL' ? 'Food special' : activePromo.promotion_type === 'DRINK_SPECIAL' ? 'Drink special' : activePromo.promotion_type === 'GAME_SPECIAL' ? 'Game-time special' : activePromo.promotion_type === 'WATCH_PARTY' ? 'Watch party offer' : 'Venue special'}
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500 text-black">
-                  {activePromo.discount_value}
-                </span>
-              </div>
-              <h3 className="text-sm font-black text-white">{activePromo.title}</h3>
-              <p className="text-xs text-neutral-300 mt-1">{activePromo.description}</p>
-              <p className="mt-2 text-[10px] text-neutral-400">Valid {new Date(activePromo.start_at).toLocaleString()} – {new Date(activePromo.end_at).toLocaleString()}{activePromo.game_id ? (activeGame?.id === activePromo.game_id ? ` · ${activeGame.awayTeam.name} at ${activeGame.homeTeam.name}` : ' · Game-specific offer') : ' · Applies to all games'}</p>
-              <div className="mt-3 flex items-center justify-between pt-2 border-t border-neutral-800">
-                <span className="text-[10px] text-neutral-400">{activePromo.terms || 'Ask staff to confirm availability.'}</span>
-                {venue.isDemoData || venue.id.startsWith('venue_') ? (
-                  <button
-                    onClick={() => setShowCheckInModal(true)}
-                    className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs flex items-center gap-1 shadow-md transition-transform active:scale-95"
-                  >
-                    <QrCode className="w-3.5 h-3.5" />
-                    <span>Rally & Redeem</span>
-                  </button>
-                ) : (
-                  <span className="text-[10px] font-semibold text-amber-300">Show this offer to staff</span>
-                )}
-              </div>
+          {/* CURRENT VENUE SPECIALS */}
+          {activePromotions.length > 0 && (
+            <div className="space-y-3">
+              {activePromotions.map((activePromo) => (
+                <div key={activePromo.id} className="rounded-2xl bg-gradient-to-r from-amber-500/20 via-neutral-900 to-orange-500/15 border border-amber-500/40 p-4 shadow-xl">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                      <Ticket className="w-3.5 h-3.5" />
+                      {activePromo.promotion_type === 'FOOD_SPECIAL' ? 'Food special' : activePromo.promotion_type === 'DRINK_SPECIAL' ? 'Drink special' : activePromo.promotion_type === 'GAME_SPECIAL' ? 'Game-time special' : activePromo.promotion_type === 'WATCH_PARTY' ? 'Watch party offer' : 'Venue special'}
+                    </span>
+                    {activePromo.discount_value && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500 text-black">
+                        {activePromo.discount_value}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-sm font-black text-white">{activePromo.title}</h3>
+                  <p className="text-xs text-neutral-300 mt-1">{activePromo.description}</p>
+                  <p className="mt-2 text-[10px] text-neutral-400">Valid {new Date(activePromo.start_at).toLocaleString()} – {new Date(activePromo.end_at).toLocaleString()}{activePromo.game_id ? (activeGame?.id === activePromo.game_id ? ` · ${activeGame.awayTeam.name} at ${activeGame.homeTeam.name}` : ' · Game-specific offer') : ' · Applies to all games'}</p>
+                  <div className="mt-3 flex items-center justify-between gap-2 pt-2 border-t border-neutral-800">
+                    <span className="text-[10px] text-neutral-400">{activePromo.terms || 'Ask staff to confirm availability.'}</span>
+                    {venue.isDemoData || venue.id.startsWith('venue_') ? (
+                      <button
+                        onClick={() => setShowCheckInModal(true)}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs flex items-center gap-1 shadow-md transition-transform active:scale-95"
+                      >
+                        <QrCode className="w-3.5 h-3.5" />
+                        <span>Rally & Redeem</span>
+                      </button>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-amber-300">Show this offer to staff</span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
