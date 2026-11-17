@@ -41,6 +41,7 @@ test('fans only receive current active offers and database venues do not use bro
   assert.ok(fanDetail.includes('new Date(promo.end_at).getTime() > now'));
   assert.ok(fanDetail.includes('Show this offer to staff'));
   assert.ok(dashboard.includes('createVenuePromotion'));
+  assert.ok(dashboard.includes("useState<Promotion['promotion_type']>('GAME_SPECIAL')"));
   assert.ok(dashboard.includes('venue.claimedByUserId !== currentUser.id'));
   assert.ok(dashboard.includes('newPromoGameId'));
   assert.ok(dashboard.includes('newPromoStartAt'));
