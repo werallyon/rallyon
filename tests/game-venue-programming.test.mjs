@@ -28,6 +28,12 @@ test('missing broadcast metadata does not get mislabeled as cable', () => {
   assert.match(intelligence, /game\.broadcast\.broadcastType === 'REGIONAL'[\s\S]*?Regional sports network/);
 });
 
+test('unknown broadcast types and unverified screen/audio details are not presented as confirmed', () => {
+  assert.match(intelligence, /game\.broadcast\.broadcastType === 'CABLE'[\s\S]*?Cable network[\s\S]*?Broadcast type unavailable/);
+  assert.match(intelligence, /Programming details/);
+  assert.doesNotMatch(intelligence, /Sound & Screens/);
+});
+
 test('venue cards distinguish scheduled programming from a live game confirmation', () => {
   assert.match(intelligence, /venueGame\.verificationStatus === 'GAME_ON'/);
   assert.match(intelligence, /'GAME ON'/);
