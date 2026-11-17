@@ -69,3 +69,66 @@ create table public.venues (
 alter table public.markets enable row level security;
 alter table public.cities enable row level security;
 alter table public.venues enable row level security;
+
+create table public.games (
+  id uuid primary key default gen_random_uuid(),
+  league text not null,
+  home_team jsonb,
+  away_team jsonb,
+  start_time timestamptz not null,
+  status text not null default 'UPCOMING',
+  broadcast_network text,
+  broadcast jsonb
+);
+
+insert into public.games (id, league, home_team, away_team, start_time, status)
+values
+  (
+    'f0000000-0000-4000-8000-000000000001'::uuid,
+    'MLS',
+    '{"name":"FC Dallas"}'::jsonb,
+    '{"name":"Portland Timbers"}'::jsonb,
+    now() + interval '4 days',
+    'UPCOMING'
+  ),
+  (
+    'f0000000-0000-4000-8000-000000000002'::uuid,
+    'NFL',
+    '{"name":"Dallas Cowboys"}'::jsonb,
+    '{"name":"Tennessee Titans"}'::jsonb,
+    (
+      date_trunc('week', now() at time zone 'America/Chicago')
+      + case
+          when extract(isodow from now() at time zone 'America/Chicago') = 7
+            then interval '13 days 12 hours'
+          else interval '6 days 12 hours'
+        end
+    ) at time zone 'America/Chicago',
+    'UPCOMING'
+  );
+
+create table public.venue_game_programming (
+  id uuid primary key default gen_random_uuid(),
+  venue_id uuid not null references public.venues(id) on delete cascade,
+  game_id uuid not null references public.games(id) on delete cascade,
+  network text,
+  status text not null default 'PLANNED' check (status in ('PLANNED','CONFIRMED','GAME_ON','CANCELLED','NOT_SHOWING')),
+  is_confirmed boolean not null default false,
+  audio_on boolean not null default false,
+  screen text,
+  featured boolean not null default false,
+  notes text,
+  confidence numeric not null default 0 check (confidence >= 0 and confidence <= 100),
+  verified_at timestamptz,
+  created_by uuid references auth.users(id) on delete set null,
+  start_time timestamptz,
+  end_time timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  source_type text not null default 'MANUAL' check (source_type in ('MANUAL','VENUE','OFFICIAL','USER_REPORT','SYSTEM')),
+  source_url text,
+  verification_notes text,
+  unique (venue_id, game_id)
+);
+
+alter table public.venue_game_programming enable row level security;
