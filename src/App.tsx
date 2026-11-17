@@ -162,7 +162,7 @@ function RallyOnMain() {
             );
             if (favAny) return favAny;
           }
-          return data.find((g) => g.status === 'LIVE') || data[0] || null;
+          return data.find((g) => g.status === 'LIVE' || g.status === 'HALFTIME') || data[0] || null;
         }
         return data.find((g) => g.id === currentSelected.id) || currentSelected;
       });
