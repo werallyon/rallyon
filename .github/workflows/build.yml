@@ -38,3 +38,26 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+  sports-sync-cron-migration:
+    name: Isolated sports-sync Cron migration rehearsal
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: ^3
+
+      - name: Start isolated local Supabase stack
+        run: supabase --workdir validation/cron start
+
+      - name: Execute actual Cron migration in rollback-only transaction
+        run: bash scripts/validate-sports-sync-cron-migration.sh validation/cron
+
+      - name: Stop isolated local Supabase stack
+        if: always()
+        run: supabase --workdir validation/cron stop
