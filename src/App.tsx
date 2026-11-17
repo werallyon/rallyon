@@ -319,6 +319,7 @@ function RallyOnMain() {
             currentIntent={currentIntent}
             onSelectIntent={setCurrentIntent}
             rankedVenues={rankedVenues}
+            venueGames={venueGames}
             savedVenueIds={savedVenueIds}
             onToggleSave={handleToggleSave}
             onSelectVenue={handleSelectVenue}

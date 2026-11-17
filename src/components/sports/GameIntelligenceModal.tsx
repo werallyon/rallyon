@@ -13,7 +13,7 @@ import {
   ExternalLink,
   Layers
 } from 'lucide-react';
-import { SportsGame, Venue } from '../../types';
+import { SportsGame, Venue, VenueGame } from '../../types';
 import {
   sportsService,
   GameSummaryData
@@ -23,6 +23,7 @@ import { TeamLogo } from '../common/TeamLogo';
 interface GameIntelligenceModalProps {
   game: SportsGame;
   venues: Venue[];
+  venueGames: VenueGame[];
   onClose: () => void;
   onSelectVenue: (venue: Venue) => void;
 }
@@ -30,6 +31,7 @@ interface GameIntelligenceModalProps {
 export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
   game,
   venues,
+  venueGames,
   onClose,
   onSelectVenue
 }) => {
@@ -56,12 +58,23 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
     };
   }, [game.id, game.league]);
 
-  // Find venues in Austin confirmed or likely showing this game
-  const matchingVenues = venues.filter((v) =>
-    v.currentGames.some((cg) => cg.gameId === game.id)
-  );
-
   const isLive = game.status === 'LIVE' || game.status === 'HALFTIME';
+
+  // Only show upcoming listings for future/delayed games and GAME_ON reports
+  // while the event is actually live. A stale GAME_ON row must not survive a final.
+  const matchingVenues = venueGames
+    .filter((venueGame) =>
+      venueGame.gameId === game.id &&
+      (isLive
+        ? venueGame.verificationStatus === 'GAME_ON'
+        : (game.status === 'UPCOMING' || game.status === 'DELAYED') &&
+          venueGame.verificationStatus === 'LIKELY')
+    )
+    .map((venueGame) => ({
+      venue: venues.find((venue) => venue.id === venueGame.venueId),
+      venueGame
+    }))
+    .filter((match): match is { venue: Venue; venueGame: VenueGame } => Boolean(match.venue));
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -177,14 +190,20 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
                 Broadcast Network
               </span>
               <span className="font-bold text-white text-xs block">
-                {game.broadcastNetwork || 'ESPN Broadcast'}
+                {game.broadcast?.network || game.broadcastNetwork || 'Not confirmed'}
               </span>
               <span className="text-[10px] text-emerald-400 block">
-                {game.broadcast?.broadcastType === 'NATIONAL_OTA'
+                {!game.broadcast
+                  ? 'Broadcast type unavailable'
+                  : game.broadcast.broadcastType === 'NATIONAL_OTA'
                   ? 'Over-the-Air (Free)'
-                  : game.broadcast?.broadcastType === 'STREAMING_EXCLUSIVE'
+                  : game.broadcast.broadcastType === 'STREAMING_EXCLUSIVE'
                   ? 'Streaming Only'
-                  : 'Cable & Sports Bars'}
+                  : game.broadcast.broadcastType === 'REGIONAL'
+                  ? 'Regional sports network'
+                  : game.broadcast.broadcastType === 'CABLE'
+                    ? 'Cable network'
+                    : 'Broadcast type unavailable'}
               </span>
             </div>
 
@@ -252,49 +271,54 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
             )}
           </div>
 
-          {/* Confirmed Austin Watch Venues */}
+          {/* Venue Programming */}
           <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-white flex items-center gap-1.5">
                 <Tv className="w-3.5 h-3.5 text-amber-400" />
-                Confirmed Austin Venues Showing Game ({matchingVenues.length})
+                Venues listing this game ({matchingVenues.length})
               </span>
-              <span className="text-[10px] text-emerald-400 font-bold">Sound & Screens</span>
+              <span className="text-[10px] text-neutral-400 font-bold">Programming details</span>
             </div>
 
             {matchingVenues.length === 0 ? (
               <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 text-center text-neutral-400">
-                <p>No venues currently have sound confirmed for this specific fixture.</p>
+                <p>No venues currently have this game listed in their programming.</p>
                 <p className="text-[11px] text-amber-400 mt-1">
                   Check back closer to kick-off or browse popular sports bars nearby!
                 </p>
               </div>
             ) : (
               <div className="space-y-2">
-                {matchingVenues.map((v) => {
-                  const venueGame = v.currentGames.find((cg) => cg.gameId === game.id);
+                {matchingVenues.map(({ venue, venueGame }) => {
+                  const programmingLabel = venueGame.verificationStatus === 'GAME_ON'
+                    ? 'GAME ON'
+                    : 'SCHEDULED';
                   return (
                     <div
-                      key={v.id}
+                      key={venue.id}
                       onClick={() => {
                         onClose();
-                        onSelectVenue(v);
+                        onSelectVenue(venue);
                       }}
                       className="p-3 rounded-2xl bg-neutral-950 border border-neutral-800 hover:border-amber-500/60 cursor-pointer flex items-center justify-between group transition-all"
                     >
                       <div>
                         <div className="flex items-center gap-2">
                           <h4 className="font-black text-white text-xs group-hover:text-amber-400 transition-colors">
-                            {v.name}
+                            {venue.name}
                           </h4>
-                          {venueGame?.audioConfirmed && (
+                          <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                            {programmingLabel}
+                          </span>
+                          {venueGame.audioConfirmed && (
                             <span className="inline-flex items-center gap-1 text-[9px] font-bold text-blue-400 bg-blue-500/20 px-1.5 py-0.5 rounded">
                               <Volume2 className="w-2.5 h-2.5" /> Sound ON
                             </span>
                           )}
                         </div>
                         <p className="text-[11px] text-neutral-400 mt-0.5">
-                          {v.neighborhood} • {venueGame?.screenAllocations || 'Main Wall TVs'}
+                          {venue.neighborhood} • {venueGame.screenAllocations || 'Screen details not provided'}
                         </p>
                       </div>
 

@@ -49,6 +49,7 @@ interface HomeScreenProps {
   currentIntent: UserIntent;
   onSelectIntent: (intent: UserIntent) => void;
   rankedVenues: RallyMatchResult[];
+  venueGames: VenueGame[];
   savedVenueIds: string[];
   onToggleSave: (venueId: string) => void;
   onSelectVenue: (venue: Venue) => void;
@@ -65,6 +66,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   currentIntent,
   onSelectIntent,
   rankedVenues,
+  venueGames,
   savedVenueIds,
   onToggleSave,
   onSelectVenue,
@@ -295,7 +297,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   className="mt-2 pt-1.5 border-t border-neutral-800/80 flex items-center justify-between text-[10px] text-neutral-400 cursor-pointer"
                 >
                   <span className="truncate max-w-[140px]">
-                    {game.liveDetails?.situation || game.broadcastNetwork || 'Live Broadcast'}
+                    {game.liveDetails?.situation || game.broadcast?.network || game.broadcastNetwork || 'Broadcast details unavailable'}
                   </span>
                   <span className={`font-semibold ${isSelected ? 'text-amber-400' : 'text-neutral-500'}`}>
                     {isSelected ? 'Filtering ✓' : 'Tap to match'}
@@ -590,7 +592,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
                       <a
                         href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-                          `${venue.name} ${venue.address} Austin TX`
+                          `${venue.name} ${venue.address} ${venue.city} ${venue.state}`
                         )}`}
                         target="_blank"
                         rel="noreferrer"
@@ -624,6 +626,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <GameIntelligenceModal
           game={inspectGame}
           venues={rankedVenues.map((r) => r.venue)}
+          venueGames={venueGames}
           onClose={() => setInspectGame(null)}
           onSelectVenue={onSelectVenue}
         />
