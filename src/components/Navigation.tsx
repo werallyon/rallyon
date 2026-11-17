@@ -7,14 +7,12 @@ interface NavigationProps {
   currentTab: NavTab;
   onTabSelect: (tab: NavTab) => void;
   liveBadgeCount?: number;
-  friendActivityCount?: number;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
   currentTab,
   onTabSelect,
-  liveBadgeCount = 3,
-  friendActivityCount = 4
+  liveBadgeCount = 0
 }) => {
   const navItems: Array<{
     id: NavTab;
@@ -27,11 +25,11 @@ export const Navigation: React.FC<NavigationProps> = ({
     { id: 'LIVE', label: 'Live', icon: Radio, badge: liveBadgeCount, badgeColor: 'bg-red-500' },
     { id: 'MAP', label: 'Map', icon: Map },
     { id: 'SEARCH', label: 'Search', icon: Search },
-    { id: 'PROFILE', label: 'Profile', icon: User, badge: friendActivityCount, badgeColor: 'bg-blue-500' }
+    { id: 'PROFILE', label: 'Profile', icon: User }
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-neutral-950/95 backdrop-blur-lg border-t border-neutral-800/80 pb-safe">
+    <nav aria-label="Primary navigation" className="fixed bottom-0 left-0 right-0 z-40 bg-neutral-950/95 backdrop-blur-lg border-t border-neutral-800/80 pb-safe">
       <div className="max-w-md mx-auto flex items-center justify-around px-2 py-1.5">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -40,7 +38,9 @@ export const Navigation: React.FC<NavigationProps> = ({
             <button
               key={item.id}
               onClick={() => onTabSelect(item.id)}
-              className={`relative flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all duration-150 ${
+              aria-current={isActive ? 'page' : undefined}
+              aria-label={item.badge && item.badge > 0 ? `${item.label}, ${item.badge} active` : item.label}
+              className={`relative flex flex-1 min-w-0 min-h-[56px] flex-col items-center justify-center py-2 px-1 sm:px-3 rounded-xl transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset ${
                 isActive
                   ? 'text-amber-400 font-bold'
                   : 'text-neutral-400 hover:text-neutral-200 font-medium'
