@@ -7,14 +7,12 @@ interface NavigationProps {
   currentTab: NavTab;
   onTabSelect: (tab: NavTab) => void;
   liveBadgeCount?: number;
-  friendActivityCount?: number;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
   currentTab,
   onTabSelect,
-  liveBadgeCount = 3,
-  friendActivityCount = 4
+  liveBadgeCount = 0
 }) => {
   const navItems: Array<{
     id: NavTab;
@@ -27,7 +25,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     { id: 'LIVE', label: 'Live', icon: Radio, badge: liveBadgeCount, badgeColor: 'bg-red-500' },
     { id: 'MAP', label: 'Map', icon: Map },
     { id: 'SEARCH', label: 'Search', icon: Search },
-    { id: 'PROFILE', label: 'Profile', icon: User, badge: friendActivityCount, badgeColor: 'bg-blue-500' }
+    { id: 'PROFILE', label: 'Profile', icon: User }
   ];
 
   return (
