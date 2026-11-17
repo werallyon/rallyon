@@ -772,6 +772,19 @@ export const SEEDED_CITIES: City[] = [
     status: 'ACTIVE'
   },
 
+  {
+    id: 'city_the_colony',
+    market_id: 'market_dfw',
+    name: 'The Colony, TX',
+    state: 'Texas',
+    state_code: 'TX',
+    country: 'USA',
+    latitude: 33.0890,
+    longitude: -96.8860,
+    population: 48000,
+    status: 'ACTIVE'
+  },
+
   // Houston Cities
   {
     id: 'city_houston',
