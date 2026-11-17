@@ -396,7 +396,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({
 
             <a
               href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-                `${selectedMarkerVenue.name} ${selectedMarkerVenue.address} ${selectedMarkerVenue.city} ${selectedMarkerVenue.state}`
+                `${[selectedMarkerVenue.name, selectedMarkerVenue.address, selectedMarkerVenue.city, selectedMarkerVenue.state].filter(Boolean).join(' ')}`
               )}`}
               target="_blank"
               rel="noreferrer"
