@@ -141,7 +141,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
     const payload = {
       venue_id: venue.id,
       game_id: game.id,
-      network: game.broadcastNetwork || 'ESPN',
+      network: game.broadcast?.network || game.broadcastNetwork || undefined,
       status: isShowing ? 'GAME_ON' : 'NOT_SHOWING' as VenueGameProgramming['status'],
       audio_on: true,
       screen: 'Main Video Wall',
@@ -395,7 +395,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
                               {prog.status}
                             </span>
                             <span className="text-xs font-bold text-neutral-300">
-                              {prog.network || 'ESPN'} • {prog.screen}
+                              {prog.network || 'Network not confirmed'} • {prog.screen || 'Screen details not provided'}
                             </span>
                           </div>
                           <h4 className="text-sm font-black text-white">
