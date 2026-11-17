@@ -26,3 +26,10 @@ test('stored games are filtered and sorted for the fan-facing slate', () => {
 test('default selected event can be a live or halftime game', () => {
   assert.match(app, /data\.find\(\(g\) => g\.status === 'LIVE' \|\| g\.status === 'HALFTIME'\)/);
 });
+
+test('stored games do not invent home or away team names when provider data is incomplete', () => {
+  assert.match(gameService, /name: team\?\.name \?\? team\?\.displayName \?\? participant\?\.name \?\? participant\?\.displayName \?\? 'Team not confirmed'/);
+  assert.match(gameService, /homeTeam: mapTeam\(row\.home_team, participants\[0\]\)/);
+  assert.match(gameService, /awayTeam: mapTeam\(row\.away_team, participants\[1\]\)/);
+  assert.doesNotMatch(gameService, /'Event'|'Participants'/);
+});
