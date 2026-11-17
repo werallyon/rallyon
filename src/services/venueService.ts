@@ -11,7 +11,7 @@ function mapVenue(row: any): Venue {
     ? rawBaseline.category
     : (row.categories ?? []).find((category: string) => validCategories.includes(category)) || 'Sports Bar') as Venue['baseline']['category'];
   const priceLevel: Venue['baseline']['priceLevel'] = validPriceLevels.includes(rawBaseline.priceLevel) ? rawBaseline.priceLevel : undefined;
-  const venueTruthVerified = ['sports', 'environment', 'audience', 'experience'].every((section) => rawTruth[section] && Object.keys(rawTruth[section]).length > 0);
+  const venueTruthComplete = ['sports', 'environment', 'audience', 'experience'].every((section) => rawTruth[section] && Object.keys(rawTruth[section]).length > 0);
   const rawSeatingRatio = rawTruth.environment?.seatingRatio ?? {};
 
   return {
@@ -39,7 +39,7 @@ function mapVenue(row: any): Venue {
       ...(priceLevel ? { priceLevel } : {}),
       capacity: Number.isFinite(Number(rawBaseline.capacity)) ? Number(rawBaseline.capacity) : 0
     },
-    venueTruthVerified,
+    venueTruthComplete,
     venueTruth: {
       sports: {
         numTvs: Number(rawTruth.sports?.numTvs ?? 0),
