@@ -140,8 +140,9 @@ The live `public.handle_new_user()` remains SECURITY INVOKER, owned by postgres,
 ### PR validation work kept separate from production
 
 - PR #17's latest P0-B head passed its own isolated Supabase positive/negative migration checks and application build/type checks.
-- PR #22 now preserves the production INVOKER Auth bootstrap, pins its search path, grants Auth-admin schema USAGE plus profile INSERT only, and has a combined P0-B/P0-C/RPC isolated replay workflow. Its latest full run is still pending.
-- PR #30's market-aware map and coordinate validation passed front-end CI.
+- PR #22 preserves the production INVOKER Auth bootstrap, pins its search path, grants Auth-admin schema USAGE plus profile INSERT only, and passed Build Check #426: combined P0-B/P0-C/RPC isolated replay, real Auth/PostgREST/RLS tests, malformed onboarding metadata, negative preflight cases, type checks and production build.
+- PR #17 passed current-head Build Check #410 after changing canonical table/index creation to fail closed on pre-existing names.
+- PR #30's market-aware map and WGS84 coordinate validation passed current-head Build Check #413.
 - None of those PR changes have been deployed or merged into production.
 
 The five missing historical migration source files remain a provenance gap. The owner-supplied recovered SQL evidence remains partial/non-original-source evidence as documented above. Do not recreate those files as if their original bytes or complete side effects were recovered. Production rollout remains **NO-GO** until the historical migration strategy, combined PR reviews, and real signup gate are closed.
