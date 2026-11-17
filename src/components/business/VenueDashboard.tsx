@@ -38,7 +38,10 @@ import { supabase } from '../../lib/supabaseClient';
 import {
   getVenueGameProgramming,
   upsertVenueGameProgramming,
-  deleteVenueGameProgramming
+  deleteVenueGameProgramming,
+  createVenuePromotion,
+  getVenuePromotions,
+  deleteVenuePromotion
 } from '../../services/venueService';
 import { getStoredGames as getDatabaseGames } from '../../services/gameService';
 import { sportsService } from '../../services/sportsProvider';
@@ -73,7 +76,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [sponsorships, setSponsorships] = useState<Sponsorship[]>([]);
   const [analytics, setAnalytics] = useState<VenueAnalyticsSummary | null>(null);
-  const isDatabaseVenue = Boolean(supabase && !venue.id.startsWith('venue_'));
+  const isDatabaseVenue = Boolean(supabase && !venue.isDemoData && !venue.id.startsWith('venue_'));
 
   // Profile builder form states
   const [editName, setEditName] = useState(venue.name);
@@ -95,6 +98,10 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
   const [newPromoDiscount, setNewPromoDiscount] = useState('15% OFF');
   const [newPromoType, setNewPromoType] = useState<Promotion['promotion_type']>('CHECK_IN_DISCOUNT');
   const [newPromoDesc, setNewPromoDesc] = useState('');
+  const [newPromoTerms, setNewPromoTerms] = useState('Valid during the listed time window. Ask staff before ordering.');
+  const [newPromoGameId, setNewPromoGameId] = useState('');
+  const [newPromoStartAt, setNewPromoStartAt] = useState(() => { const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000); return d.toISOString().slice(0, 16); });
+  const [newPromoEndAt, setNewPromoEndAt] = useState(() => { const d = new Date(Date.now() + 4 * 60 * 60 * 1000 - new Date().getTimezoneOffset() * 60000); return d.toISOString().slice(0, 16); });
   const [showNewPromoModal, setShowNewPromoModal] = useState(false);
 
   // Load sports games and venue business data
@@ -117,7 +124,8 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
 
     const refreshData = () => {
       if (!isDatabaseVenue) setProgramming(businessVenueService.getProgrammingForVenue(venue.id));
-      setPromotions(businessVenueService.getPromotionsForVenue(venue.id));
+      if (!isDatabaseVenue) setPromotions(businessVenueService.getPromotionsForVenue(venue.id));
+      else getVenuePromotions(venue.id, true).then((items) => { if (mounted) setPromotions(items); }).catch((error) => { console.warn('Unable to load venue promotions.', error); if (mounted) setPromotions([]); });
       setSponsorships(businessVenueService.getSponsorships().filter((s) => s.venue_id === venue.id));
       setAnalytics(businessVenueService.getVenueAnalytics(venue.id));
     };
@@ -224,26 +232,51 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
     showToast('Venue Truth & Profile saved successfully.');
   };
 
-  const handleCreatePromo = (e: React.FormEvent) => {
+  const handleCreatePromo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPromoTitle) return;
+    if (!newPromoTitle.trim() || !newPromoStartAt || !newPromoEndAt) return;
+    const startAt = new Date(newPromoStartAt);
+    const endAt = new Date(newPromoEndAt);
+    if (!Number.isFinite(startAt.getTime()) || !Number.isFinite(endAt.getTime()) || endAt <= startAt) {
+      showToast('Choose a valid promotion end time after its start time.');
+      return;
+    }
 
-    businessVenueService.createPromotion({
+    const status: Promotion['status'] = startAt.getTime() > Date.now() ? 'SCHEDULED' : 'ACTIVE';
+    const payload = {
       venue_id: venue.id,
+      game_id: newPromoGameId || undefined,
       title: newPromoTitle.trim(),
-      description: newPromoDesc.trim() || 'Show verified RallyOn check-in to server.',
+      description: newPromoDesc.trim(),
       promotion_type: newPromoType,
-      discount_value: newPromoDiscount,
-      terms: 'Valid during verified game hours with RallyOn app check-in.',
-      start_at: new Date().toISOString(),
-      end_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      status: 'ACTIVE'
-    });
+      discount_value: newPromoDiscount.trim() || undefined,
+      terms: newPromoTerms.trim(),
+      start_at: startAt.toISOString(),
+      end_at: endAt.toISOString(),
+      status
+    };
 
-    setNewPromoTitle('');
-    setNewPromoDesc('');
-    setShowNewPromoModal(false);
-    showToast('Promotion created & published to fans.');
+    try {
+      if (isDatabaseVenue) {
+        if (!venue.claimed || !currentUser || venue.claimedByUserId !== currentUser.id) {
+          showToast('Only the verified owner of this claimed venue can publish specials.');
+          return;
+        }
+        const saved = await createVenuePromotion({ ...payload, created_by: currentUser.id });
+        setPromotions((prev) => [saved, ...prev]);
+      } else {
+        const saved = businessVenueService.createPromotion(payload);
+        setPromotions((prev) => [saved, ...prev]);
+      }
+      setNewPromoTitle('');
+      setNewPromoDesc('');
+      setNewPromoGameId('');
+      setShowNewPromoModal(false);
+      showToast(status === 'SCHEDULED' ? 'Game-time special scheduled.' : 'Venue special published.');
+    } catch (error) {
+      console.warn('Unable to save venue promotion.', error);
+      showToast('Could not save special. Verify the venue is claimed by your account and try again.');
+    }
   };
 
   const venueQR = businessVenueService.getOrCreateVenueQRCode(venue.id);
@@ -279,7 +312,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
         <div className="flex items-center gap-2 text-xs">
           <div className="hidden sm:flex items-center gap-1 text-neutral-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Connected to Austin Matrix</span>
+            <span>Connected to RallyOn Venue Network</span>
           </div>
         </div>
       </header>
@@ -682,7 +715,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-base font-black text-white">Active Promotions</h3>
-                <p className="text-xs text-neutral-400">Incentivize fans to check in with RallyOn</p>
+                <p className="text-xs text-neutral-400">Publish food, drink and game-time offers fans can actually plan around.</p>
               </div>
               <button
                 onClick={() => setShowNewPromoModal(true)}
@@ -712,7 +745,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
                     </div>
 
                     <button
-                      onClick={() => businessVenueService.deletePromotion(p.id)}
+                      onClick={async () => { if (isDatabaseVenue) { try { await deleteVenuePromotion(p.id); setPromotions((prev) => prev.filter((item) => item.id !== p.id)); } catch (error) { console.warn('Unable to remove venue promotion.', error); showToast('Could not remove special. Verify venue ownership.'); } } else { businessVenueService.deletePromotion(p.id); setPromotions(businessVenueService.getPromotionsForVenue(venue.id)); } }}
                       className="p-2 text-neutral-500 hover:text-red-400"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -735,26 +768,57 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
             {/* Create Promo Modal */}
             {showNewPromoModal && (
               <div className="p-5 bg-neutral-950 border border-neutral-800 rounded-2xl space-y-3">
-                <h4 className="text-xs font-bold text-white">Create New Promotion</h4>
+                <h4 className="text-xs font-bold text-white">Create Game-Time Special</h4>
                 <input
                   type="text"
-                  placeholder="Offer Title (e.g. 15% Off Total Food Tab)"
+                  placeholder="Offer title (e.g. $10 wings during Cowboys games)"
                   value={newPromoTitle}
                   onChange={(e) => setNewPromoTitle(e.target.value)}
                   className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-white"
                 />
                 <input
                   type="text"
-                  placeholder="Discount Badge (e.g. 15% OFF, $5 PINTS)"
+                  placeholder="Offer badge (e.g. $10 WINGS, 2-FOR-1)"
                   value={newPromoDiscount}
                   onChange={(e) => setNewPromoDiscount(e.target.value)}
                   className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-white"
                 />
                 <textarea
                   rows={2}
-                  placeholder="Redemption details for server..."
+                  placeholder="Describe the special and how fans redeem it..."
                   value={newPromoDesc}
                   onChange={(e) => setNewPromoDesc(e.target.value)}
+                  className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-white resize-none"
+                />
+                <select
+                  value={newPromoType}
+                  onChange={(e) => setNewPromoType(e.target.value as Promotion['promotion_type'])}
+                  className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-white"
+                >
+                  <option value="GAME_SPECIAL">Game-time special</option>
+                  <option value="FOOD_SPECIAL">Food special</option>
+                  <option value="DRINK_SPECIAL">Drink special</option>
+                  <option value="WATCH_PARTY">Watch party offer</option>
+                  <option value="GROUP_OFFER">Group offer</option>
+                  <option value="CHECK_IN_DISCOUNT">Check-in discount</option>
+                </select>
+                <select
+                  value={newPromoGameId}
+                  onChange={(e) => setNewPromoGameId(e.target.value)}
+                  className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-white"
+                >
+                  <option value="">Applies to all games</option>
+                  {upcomingGames.map((game) => <option key={game.id} value={game.id}>{game.awayTeam.name} at {game.homeTeam.name}</option>)}
+                </select>
+                <label className="block text-[10px] font-bold text-neutral-400">Offer starts</label>
+                <input type="datetime-local" value={newPromoStartAt} onChange={(e) => setNewPromoStartAt(e.target.value)} className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-white" />
+                <label className="block text-[10px] font-bold text-neutral-400">Offer ends</label>
+                <input type="datetime-local" value={newPromoEndAt} onChange={(e) => setNewPromoEndAt(e.target.value)} className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-white" />
+                <textarea
+                  rows={2}
+                  value={newPromoTerms}
+                  onChange={(e) => setNewPromoTerms(e.target.value)}
+                  placeholder="Terms and exclusions"
                   className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-white resize-none"
                 />
                 <div className="flex gap-2">
