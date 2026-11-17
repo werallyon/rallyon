@@ -35,9 +35,10 @@ function mapVenue(row: any): Venue {
     baseline: {
       category: baselineCategory,
       neighborhood: rawBaseline.neighborhood ?? row.neighborhood ?? '',
-      priceLevel,
+      ...(priceLevel ? { priceLevel } : {}),
       capacity: Number.isFinite(Number(rawBaseline.capacity)) ? Number(rawBaseline.capacity) : 0
     },
+    venueTruthVerified,
     venueTruth: {
       sports: {
         numTvs: Number(rawTruth.sports?.numTvs ?? 0),
