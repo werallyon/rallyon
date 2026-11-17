@@ -64,6 +64,10 @@ begin
 end;
 $$;
 
+create policy profiles_insert_auth_admin on public.profiles
+  for insert to supabase_auth_admin with check (true);
+grant insert on public.profiles to supabase_auth_admin;
+
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
