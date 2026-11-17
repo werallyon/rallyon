@@ -1,48 +1,58 @@
 # P0-A / P0-C security-review remediation
 
-This branch addresses the independent review findings without changing PR #16, PR #18, or the local validation harness in PR #19.
+This document describes the current PR #22 integration candidate. PR #22 is open and unmerged; production rollout remains blocked.
 
 ## Application behavior
 
-- Profile edits and complete favorite-team replacement are submitted through `public.save_profile_and_favorite_teams`, a single invoker-rights Postgres function. The function derives ownership from `auth.uid()`, applies the profile update and favorite replacement in one transaction, and relies on the existing owner-scoped RLS policies.
-- A malformed favorite-team payload raises an exception. Because the RPC is one transaction, the accompanying profile update is rolled back as well.
-- An empty favorite-team array is an intentional clear operation.
-- Favorite-team inputs are normalized before submission; blank IDs/names and malformed required fields are rejected, and the first occurrence wins for duplicate IDs.
-- Relational favorites are authoritative. A failed relational read is surfaced as a hydration failure; it is never converted into stale legacy JSON.
-- Sign-in and sign-up completions use an action revision and re-check the current Auth session after asynchronous hydration. A superseded request cannot publish a previous identity. The pure revision/session guards are shared with auth-state hydration and covered by `tests/auth-action-race.test.mjs`.
-- The profile mapper requires a non-null canonical row whose ID matches the Auth user.
+- Profile edits and complete favorite-team replacement use `public.save_profile_and_favorite_teams`, a single SECURITY INVOKER Postgres function. It derives ownership from `auth.uid()`, checks the caller-supplied expected user ID against that identity, and performs the profile update and favorite replacement in one transaction.
+- The RPC pins `search_path` to `pg_catalog, public, pg_temp`; EXECUTE is granted to authenticated and revoked from PUBLIC/anon.
+- Malformed favorite payloads fail the transaction. An empty array is an intentional clear operation.
+- Favorite inputs are normalized; malformed required fields are rejected, duplicate team IDs deterministically retain the first entry, and relational favorites are authoritative.
+- A failed relational favorite read is surfaced as a hydration failure, never converted into stale legacy JSON.
+- Persisted profile writes are serialized and do not publish optimistic persisted state. Callers await the persistence result; failures are surfaced rather than silently treated as success.
+- Auth sign-in/sign-out/initialization/account-switch completions are guarded against stale asynchronous results. The profile mapper requires a canonical profile row whose ID matches the Auth user.
 
-## Migration preflight
+## Auth bootstrap security contract
 
-The replacement P0-C migration is intentionally conservative and transactional:
+The production-compatible `public.handle_new_user()` function remains **SECURITY INVOKER**. Its `search_path` is pinned to `pg_catalog, public`. The enabled `auth.on_auth_user_created` trigger is an AFTER INSERT row trigger.
 
-1. Requires `public.profiles`, enabled RLS, authenticated owner-scoped SELECT, INSERT, and UPDATE policies (including UPDATE USING and WITH CHECK), a `SECURITY DEFINER` `auth.users` profile-bootstrap trigger, and no potentially broad permissive SELECT/INSERT/UPDATE policy.
-2. Rejects effective anon grants on `public.profiles`.
-3. Accepts only `json` or `jsonb` for `favorite_teams`; it will not cast arbitrary text.
-4. Refuses to adopt a pre-existing `user_favorite_teams` table. An operator must audit its columns, keys, grants, and every policy before writing a separate adoption migration.
-5. Rejects NULL/non-array legacy roots and malformed entries without silently dropping user selections.
-6. Deduplicates repeated team IDs deterministically: the first occurrence wins, and source order is retained in `sort_order`.
+The migration accepts only the exact reviewed metadata-tolerant function body observed in production. It does not silently adopt unknown or older bodies. The function's direct EXECUTE privilege is revoked from PUBLIC, anon, authenticated, and service_role.
 
-No production database was inspected or changed as part of this branch. Before any rollout, run the preflight against a disposable copy of the exact target schema and data. Any raised preflight exception is a stop condition requiring explicit repair/review, not a reason to bypass the check.
+GoTrue's `supabase_auth_admin` role receives only:
+- USAGE on schema `public`;
+- INSERT on `public.profiles`;
+- a dedicated `profiles_insert_auth_admin` RLS policy scoped to that role.
 
-**Migration ordering is mandatory:** this branch replaces the still-unmerged PR #18 migration at version `20261112120000` so preflight runs before table creation/backfill. Do not merge or apply PR #18's original migration independently before this replacement is integrated. If the original migration has already been applied in any environment, stop: the replacement file will not rerun there. Do not apply the new RPC migration by itself as a workaround; first create and review a forward migration that audits the existing relation and establishes what legacy data was preserved before proceeding.
+It receives no profile SELECT, UPDATE, or DELETE privilege. This intentionally avoids an ON CONFLICT/SELECT dependency. Do not convert the trigger to SECURITY DEFINER or grant broader profile access as a workaround.
 
-## Local validation
+The bootstrap parses `onboardingCompleted` defensively: only literal true becomes true; false, missing, or malformed values become false. Missing onboarding step defaults to `welcome`.
 
-PR #20's local harness now installs the transactional RPC and tests it through two independent Auth sessions and PostgREST:
+## Migration preflight and ordering
 
-- successful atomic profile + favorites save;
-- malformed favorites rejection;
-- rollback of the profile update when favorite validation fails;
-- preservation of the existing favorite selection after rollback;
-- intentional clearing with an empty array;
-- existing two-user and anonymous RLS isolation checks.
+The forward-only PR #22 migrations are:
+1. `20261114150000_p0c_relational_favorite_teams.sql`
+2. `20261114151000_p0_auth_rls_review_remediation.sql`
 
-The GitHub Actions validation job must pass before this branch is considered verified. The hosted editing environment does not run Docker-backed Supabase itself. Never use production or hosted validation credentials for this suite.
+The first migration validates the existing profile schema, RLS policies, trigger/function contract, effective table/column grants, and legacy favorite JSON before creating/backfilling the relational table. It fails closed on unknown pre-existing favorite relations or malformed legacy data. The second installs the transactional RPC.
 
-## Remaining deployment checks
+The PR #22 workflow checks unique versions in the actual root migration list, checks PR #17's migration version against that list, and byte-compares the combined replay SQL with PR #17's exact migration. The isolated Supabase job applies the combined P0-B/P0-C/RPC sequence and tests Auth/PostgREST/RLS behavior.
 
-- Verify the exact deployed `profiles.favorite_teams` type and all effective grants/policies in a disposable clone before rollout.
-- Confirm profile SELECT/UPDATE policy predicates and absence of permissive policy OR-bypasses.
-- Run local Supabase reset, SQL verifier, Auth/PostgREST integration suite, regression tests, type check, and production build.
-- Keep PR #16, PR #18, PR #19, and PR #20 draft/unmerged until the results and migration assumptions are reviewed.
+## Validation evidence and limits
+
+Current-head Build Check #426 passed on PR #22 head `aee16e6d104c0950fb45e70ffc28e48d86f1da35`, including:
+- actual root migration-version uniqueness and cross-PR uniqueness checks;
+- byte-identical P0-B combined replay check;
+- isolated local Supabase reset applying P0-B, P0-C, and the RPC in sequence;
+- canonical sports constraints/ACLs, profile contract, favorite backfill, RLS/RPC;
+- local Auth, PostgREST, RLS, and lifecycle integration;
+- negative preflight cases;
+- regression tests, Edge Function types, TypeScript, and production build.
+
+This is isolated synthetic validation, not a production signup test or a substitute for migration provenance review. The hosted production migration ledger was most recently observed with 15 entries ending at `20261116230833`; the two PR #22 versions above were absent in that inspection. Re-check each target environment and its actual schema before any rollout.
+
+## Remaining gates
+
+- Recover authoritative source/provenance for the five missing historical migration files; do not fabricate their original SQL.
+- Independently review the combined migration history and security posture against the actual current branch heads.
+- Obtain one successful real GoTrue signup through the RallyOn app after the final production Auth adjustment; verify exactly one matching profile is created.
+- Keep production deployment NO-GO until the above gates are satisfied and the owner explicitly authorizes a rollout.
