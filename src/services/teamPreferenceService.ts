@@ -1,4 +1,5 @@
 import { SportsGame, TeamReference, Venue, VenueGame } from '../types';
+import { supabase } from '../lib/supabaseClient';
 
 export interface FavoriteGameMatch {
   isFavorite: boolean;
@@ -233,4 +234,115 @@ export function checkVenueFavoriteTeamAffiliation(
   }
 
   return { isAffiliated: false };
+}
+
+
+/** Database representation of a user's selected team. */
+export interface FavoriteTeamRow {
+  user_id: string;
+  team_id: string;
+  team_name: string;
+  sport_id: string;
+  league: string;
+  abbrev: string;
+  logo: string;
+  color: string | null;
+  sort_order: number;
+}
+
+/** Convert the normalized row into the existing app-facing team model. */
+export function mapFavoriteTeamRow(row: FavoriteTeamRow): TeamReference {
+  return {
+    id: row.team_id,
+    name: row.team_name,
+    sportId: row.sport_id,
+    league: row.league,
+    abbrev: row.abbrev,
+    logo: row.logo,
+    ...(row.color ? { color: row.color } : {})
+  };
+}
+
+/** Convert the existing app-facing model into a relational row. */
+export function toFavoriteTeamRow(userId: string, team: TeamReference, sortOrder: number): FavoriteTeamRow {
+  return {
+    user_id: userId,
+    team_id: team.id,
+    team_name: team.name,
+    sport_id: team.sportId,
+    league: team.league,
+    abbrev: team.abbrev,
+    logo: team.logo,
+    color: team.color ?? null,
+    sort_order: sortOrder
+  };
+}
+
+/** Read the user's relational favorites in the order selected. */
+export async function getFavoriteTeams(userId: string, client: typeof supabase = supabase): Promise<TeamReference[]> {
+  if (!client) return [];
+  const { data, error } = await client
+    .from('user_favorite_teams')
+    .select('user_id, team_id, team_name, sport_id, league, abbrev, logo, color, sort_order')
+    .eq('user_id', userId)
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((row) => mapFavoriteTeamRow(row as FavoriteTeamRow));
+}
+
+/**
+ * Validate and normalize a complete favorite selection before sending it to
+ * the transactional RPC. First occurrence wins for duplicate team IDs.
+ */
+export function normalizeFavoriteTeams(teams: TeamReference[]): TeamReference[] {
+  if (!Array.isArray(teams)) throw new TypeError('Favorite teams must be an array.');
+  const seen = new Set<string>();
+  const normalized: TeamReference[] = [];
+  for (const team of teams) {
+    if (!team || typeof team !== 'object') throw new TypeError('Every favorite team must be an object.');
+    const id = typeof team.id === 'string' ? team.id.trim() : '';
+    const name = typeof team.name === 'string' ? team.name.trim() : '';
+    if (!id || !name) throw new TypeError('Favorite teams require non-empty IDs and names.');
+    for (const field of ['sportId', 'league', 'abbrev', 'logo'] as const) {
+      if (typeof team[field] !== 'string') throw new TypeError(`Favorite team ${field} must be a string.`);
+    }
+    if (team.color !== undefined && typeof team.color !== 'string') throw new TypeError('Favorite team color must be a string when provided.');
+    if (seen.has(id)) continue;
+    seen.add(id);
+    normalized.push({
+      ...team,
+      id,
+      name,
+      sportId: team.sportId.trim() || 'OTHER',
+      league: team.league.trim() || 'OTHER',
+      abbrev: team.abbrev.trim(),
+      logo: team.logo.trim(),
+      ...(team.color ? { color: team.color.trim() } : {})
+    });
+  }
+  return normalized;
+}
+
+/**
+ * Replace the entire favorite selection in one Postgres transaction.
+ * The RPC derives ownership from auth.uid() and compares it with the identity
+ * that initiated this request, preventing queued writes crossing an account
+ * switch. An empty array intentionally clears the selection.
+ */
+export async function replaceFavoriteTeams(userId: string, teams: TeamReference[]): Promise<TeamReference[]> {
+  if (!supabase) return normalizeFavoriteTeams(teams);
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!authData.user || authData.user.id !== userId) {
+    throw new Error('Favorite-team replacement requires the matching authenticated user.');
+  }
+  const normalized = normalizeFavoriteTeams(teams);
+  const { error } = await supabase.rpc('save_profile_and_favorite_teams', {
+    p_expected_user_id: userId,
+    p_profile_updates: {},
+    p_favorite_teams: normalized,
+    p_replace_favorite_teams: true
+  });
+  if (error) throw error;
+  return normalized;
 }

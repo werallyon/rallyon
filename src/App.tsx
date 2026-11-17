@@ -430,10 +430,27 @@ function RallyOnMain() {
   );
 }
 
+function RallyOnShell() {
+  const { profileSaveError, clearProfileSaveError } = useAuth();
+  return (
+    <>
+      <RallyOnMain />
+      {profileSaveError && (
+        <div role="alert" className="fixed bottom-20 left-4 right-4 z-[100] mx-auto max-w-md rounded-xl border border-red-500/40 bg-red-950/95 p-4 text-sm text-red-100 shadow-xl">
+          <div className="flex items-start justify-between gap-3">
+            <p>{profileSaveError} Your changes were not saved; please retry the action.</p>
+            <button type="button" onClick={clearProfileSaveError} className="shrink-0 rounded px-2 py-1 font-semibold hover:bg-red-900">Dismiss</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
-      <RallyOnMain />
+      <RallyOnShell />
     </AuthProvider>
   );
 }
