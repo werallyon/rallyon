@@ -117,6 +117,7 @@ db_container="$(docker ps --filter "label=com.supabase.cli.project=rallyon-pr22-
 hardened="$(docker exec "$db_container" psql -U postgres -d postgres -Atqc "
 select (
   not p.prosecdef
+  and has_schema_privilege('supabase_auth_admin', 'public', 'USAGE')
   and p.proconfig @> array['search_path=pg_catalog, public']::text[]
   and has_table_privilege('supabase_auth_admin', 'public.profiles', 'INSERT')
   and exists (
