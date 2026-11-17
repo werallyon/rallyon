@@ -45,7 +45,9 @@ test('migration refuses unsafe legacy data and unknown pre-existing relations', 
   assert.ok(migration.includes("security invoker"));
   assert.ok(migration.includes("search_path = pg_catalog, public"));
   assert.ok(migration.includes("profiles_insert_auth_admin"));
+  assert.ok(migration.includes("grant usage on schema public to supabase_auth_admin"));
   assert.ok(migration.includes("grant insert on table public.profiles to supabase_auth_admin"));
+  assert.ok(migration.includes("has_schema_privilege('supabase_auth_admin', 'public', 'USAGE')"));
   assert.ok(migration.includes("not p.prosecdef"));
   assert.equal(/security definer/i.test(migration), false);
   assert.ok(migration.includes("profile schema is incompatible"));
