@@ -2,7 +2,7 @@
 
 Updated: 2026-11-17
 
-The DFW market catalog includes 26 cities. This first-pass production directory contains 16 real DFW businesses/venues with a published street address and a geospatial point. The records are **unclaimed directory listings**, not venue-verified RallyOn partners. No screen counts, sound-on promises, sports packages, live programming, or team-specific watch commitments are written into `venue_truth` or `venue_game_programming`.
+The DFW market catalog includes 27 cities. This first-pass production directory contains 18 real DFW businesses/venues with a published street address and a geospatial point. The records are **unclaimed directory listings**, not venue-verified RallyOn partners. No screen counts, sound-on promises, sports packages, live programming, or team-specific watch commitments are written into `venue_truth` or `venue_game_programming`.
 
 ## Seeded venues
 
@@ -24,6 +24,8 @@ The DFW market catalog includes 26 cities. This first-pass production directory 
 | Walk-On's Sports Bistreaux The Colony | The Colony | [Official location page](https://locate.walk-ons.com/tx/thecolony/restaurants-406.html) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/walk-ons-sports-bistreaux-mb200185850) |
 | BoomerJack's Bedford | Bedford | [Official location page](https://boomerjacks.com/location/bedford/) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/boomerjacks-grill-bar-mb705268) |
 | BoomerJack's Grapevine | Grapevine | [Official location page](https://boomerjacks.com/location/grapevine/) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/boomerjacks-grill-bar-19-mb105755997) |
+| TOCA Social | The Colony | [Official Grandscape directory](https://www.grandscape.com/directory/toca-social/) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/toca-social-grandscape-mb200158435) |
+| G.O.A.T's Arena Aubrey | Aubrey | [Official Aubrey venue page](https://goatsarena.us/locations/aubrey) | [Official contact/location page](https://goatsarena.us/contact) |
 
 ## Data rules
 
@@ -31,7 +33,7 @@ The DFW market catalog includes 26 cities. This first-pass production directory 
 - `claimed = false`; no operator has authenticated ownership or control through RallyOn.
 - `google_place_id`, Google Place payload, reliability score, and claimed owner are left null until matched/verified.
 - `venue_truth = {}`; venue-specific equipment and operational facts are not inferred from a generic category or directory description.
-- No rows are added to `venue_game_programming`. A place being a sports bar does not prove that it will show a particular event, network, or audio feed.
+- A separate forward-only migration seeds game-specific programming only where an official club or venue source explicitly supports the relationship. FC Dallas listings are sourced from the club's official Where To Watch directory; G.O.A.T's Arena Aubrey is seeded only for upcoming Sunday Cowboys games, which its official venue page advertises with NFL Sunday Ticket and multiple audio zones. Network is left null where the venue source does not identify it, and audio is left unconfirmed for the FC Dallas listings.
 - DFW remains `PREPARING`. The directory is a starting inventory, not proof of complete metro coverage or a market launch threshold.
 
 Before marking DFW LIVE, reconcile these entries against a current Google Places/business identity record, confirm business operating status and exact pin placement, then collect operator or trusted-source confirmation of actual game programming. Any venue can be corrected or removed through the normal venue-data maintenance path.
