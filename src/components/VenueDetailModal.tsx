@@ -780,7 +780,7 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
 
           <a
             href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-              `${venue.name} ${venue.address} Austin TX`
+              [venue.name, venue.address, venue.city, venue.state].filter(Boolean).join(' ')
             )}`}
             target="_blank"
             rel="noreferrer"
@@ -795,7 +795,7 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
         {showCheckInModal && (
           <QRCheckInModal
             venue={venue}
-            activePromotion={activePromo}
+            activePromotion={activePromotions[0]}
             onClose={() => setShowCheckInModal(false)}
             onCheckInSuccess={() => {
               setShowCheckInModal(false);
