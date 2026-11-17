@@ -35,7 +35,7 @@ test('DFW city seeds are merged into existing local storage rather than hidden b
 test('DFW directory seed contains real unclaimed venues without fabricated game programming or venue truth', () => {
   const venueMigration = readFileSync(new URL('../supabase/migrations/20261117103000_seed_dfw_venue_directory.sql', import.meta.url), 'utf8');
   const provenance = readFileSync(new URL('../docs/dfw-venue-seed-provenance.md', import.meta.url), 'utf8');
-  for (const venue of ["Frankie's Downtown", 'Press Box Grill', 'Happiest Hour', 'Christies Sports Bar', 'Harwood Arms', 'Texas Live!', 'Sidecar Social Frisco', 'The Green Gator', "Fat Daddy's Sports & Spirits Cafe", "Morton's Tavern", 'Texas Republic Fort Worth']) {
+  for (const venue of ["Frankie''s Downtown", 'Press Box Grill', 'Happiest Hour', 'Christies Sports Bar', 'Harwood Arms', 'Texas Live!', 'Sidecar Social Frisco', 'The Green Gator', "Fat Daddy''s Sports & Spirits Cafe", "Morton''s Tavern", 'Texas Republic Fort Worth']) {
     assert.ok(venueMigration.includes(venue), `missing DFW venue: ${venue}`);
   }
   assert.equal((venueMigration.match(/'a1000000-0000-4000-8000-0000000000/g) ?? []).length, 11);
