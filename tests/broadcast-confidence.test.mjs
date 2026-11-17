@@ -13,6 +13,14 @@ test('missing ESPN broadcast metadata remains unknown instead of defaulting to E
   assert.match(provider, /broadcast = \{/);
 });
 
+test('incomplete ESPN events are rejected instead of receiving fabricated identity, time, or venue values', () => {
+  assert.match(provider, /!event\?\.id \|\| !eventDate \|\| !Number\.isFinite\(Date\.parse\(eventDate\)\)/);
+  assert.match(provider, /typeof homeNameRaw !== 'string'[\s\S]*?typeof awayNameRaw !== 'string'/);
+  assert.match(provider, /: undefined;/);
+  assert.doesNotMatch(provider, /'Home Team'|'Away Team'|'Stadium Arena'|'HOM'|'AWY'/);
+  assert.doesNotMatch(provider, /startTime: event\.date \|\| new Date\(\)\.toISOString\(\)/);
+});
+
 test('provider does not infer streaming subscriptions from network names', () => {
   assert.doesNotMatch(provider, /streamingAvailability:\s*netUpper/);
   assert.doesNotMatch(provider, /\['ESPN\+'\]|\['Peacock'\]|\['Paramount\+'\]/);
