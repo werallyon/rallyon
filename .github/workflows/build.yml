@@ -70,6 +70,7 @@ jobs:
           cp supabase/migrations/20261117100000_seed_dfw_market_and_cities.sql validation/dfw/supabase/migrations/
           cp supabase/migrations/20261117103000_seed_dfw_venue_directory.sql validation/dfw/supabase/migrations/
           cp supabase/migrations/20261117104500_seed_dfw_official_game_programming.sql validation/dfw/supabase/migrations/
+          cp supabase/migrations/20261117110000_create_venue_promotions.sql validation/dfw/supabase/migrations/
 
       - name: Start isolated local Supabase stack
         run: supabase --workdir validation/dfw start
