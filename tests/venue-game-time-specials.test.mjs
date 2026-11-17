@@ -12,32 +12,33 @@ const validation = read('../validation/dfw/verify.sql');
 test('venue specials are stored centrally with a strict time window and optional game link', () => {
   assert.match(migration, /create table public\.venue_promotions/);
   assert.match(migration, /game_id uuid references public\.games\(id\)/);
-  assert.match(migration, /end_at > start_at/);\n  assert.match(migration, /status in \\('ACTIVE','SCHEDULED'\\)[\\s\\S]*start_at <= now\\(\\)/);
+  assert.match(migration, /end_at > start_at/);
+  assert.match(migration, /status in \\('ACTIVE','SCHEDULED'\\)[\\s\\S]*start_at <= now\\(\\)/);
   assert.match(migration, /FOOD_SPECIAL/);
   assert.match(migration, /DRINK_SPECIAL/);
-  assert.match(service, /from\('venue_promotions'\)/);
+  assert.match(service, /from\\('venue_promotions'\\)/);
   assert.match(service, /createVenuePromotion/);
   assert.match(service, /deleteVenuePromotion/);
 });
 
 test('only a claimed venue owner can create, edit or remove promotions', () => {
   assert.match(migration, /venue_promotions_owner_insert/);
-  assert.match(migration, /created_by = \(select auth\.uid\(\)\)/);
+  assert.match(migration, /created_by = \\(select auth\.uid\\(\\)\\)/);
   assert.match(migration, /v\.claimed = true/);
-  assert.match(migration, /v\.claimed_by_user_id = \(select auth\.uid\(\)\)/);
+  assert.match(migration, /v\.claimed_by_user_id = \\(select auth\.uid\\(\\)\\)/);
   assert.match(migration, /venue_promotions_owner_update/);
   assert.match(migration, /venue_promotions_owner_delete/);
-  assert.match(migration, /grant insert \([\s\S]*created_by\) on public\.venue_promotions to authenticated/);
-  assert.match(migration, /grant update \([\s\S]*status\) on public\.venue_promotions to authenticated/);
+  assert.match(migration, /grant insert \\([\\s\\S]*created_by\\) on public\.venue_promotions to authenticated/);
+  assert.match(migration, /grant update \\([\\s\\S]*status\\) on public\.venue_promotions to authenticated/);
   assert.match(migration, /revoke all on public\.venue_promotions from public, anon, authenticated/);
-  assert.doesNotMatch(migration, /grant update \([\s\S]*claims_count/);
+  assert.doesNotMatch(migration, /grant update \\([\\s\\S]*claims_count/);
 });
 
 test('fans only receive current active offers and database venues do not use browser-local promotion storage', () => {
-  assert.match(service, /query = query\.eq\('status', 'ACTIVE'\)\.lte\('start_at', now\)\.gt\('end_at', now\)/);
-  assert.match(fanDetail, /getVenuePromotions\(venue\.id\)/);
-  assert.match(fanDetail, /promo\.start_at\).*<= now/);
-  assert.match(fanDetail, /promo\.end_at\).* > now/);
+  assert.match(service, /query = query\.in\\('status', \\[\\'ACTIVE\\', \\'SCHEDULED\\'\\]\\)\.lte\\('start_at', now\\)\.gt\\('end_at', now\\)/);
+  assert.match(fanDetail, /getVenuePromotions\\(venue\.id\\)/);
+  assert.match(fanDetail, /new Date\\(promo\.start_at\\)\.getTime\\(\\) <= now/);
+  assert.match(fanDetail, /new Date\\(promo\.end_at\\)\.getTime\\(\\) > now/);
   assert.match(fanDetail, /Show this offer to staff/);
   assert.match(dashboard, /createVenuePromotion/);
   assert.match(dashboard, /venue\.claimedByUserId !== currentUser\.id/);
