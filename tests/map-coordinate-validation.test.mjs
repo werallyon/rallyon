@@ -14,4 +14,5 @@ test('map bounds, pins and selected venue use only finite WGS84 coordinates', ()
   assert.match(source, /venue\.longitude <= 180/);
   assert.match(source, /venues\.find\(hasValidMapCoordinates\)/);
   assert.match(source, /venues\.filter\(hasValidMapCoordinates\)/);
+  assert.match(source, /\[selectedMarkerVenue\.name, selectedMarkerVenue\.address, selectedMarkerVenue\.city, selectedMarkerVenue\.state\]\.filter\(Boolean\)\.join\(' '\)/);
 });
