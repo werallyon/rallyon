@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const provider = readFileSync(new URL('../src/services/sports/espnProvider.ts', import.meta.url), 'utf8');
 const intelligence = readFileSync(new URL('../src/components/sports/GameIntelligenceModal.tsx', import.meta.url), 'utf8');
+const home = readFileSync(new URL('../src/components/HomeScreen.tsx', import.meta.url), 'utf8');
 
 test('missing ESPN broadcast metadata remains unknown instead of defaulting to ESPN', () => {
   assert.match(provider, /const rawBroadcast = competition\.broadcasts\?\.\[0\]\?\.names\?\.\[0\];/);
@@ -25,4 +26,9 @@ test('game intelligence does not claim an unverified ESPN broadcast or confirmed
   assert.match(intelligence, /game\.broadcast\?\.network \|\| game\.broadcastNetwork \|\| 'Not confirmed'/);
   assert.match(intelligence, /Venues listing this game/);
   assert.doesNotMatch(intelligence, /ESPN Broadcast|Confirmed Austin Venues/);
+});
+
+test('home game cards do not label missing network data as a live broadcast', () => {
+  assert.match(home, /game\.broadcast\?\.network \|\| game\.broadcastNetwork \|\| 'Broadcast details unavailable'/);
+  assert.doesNotMatch(home, /game\.broadcastNetwork \|\| 'Live Broadcast'/);
 });
