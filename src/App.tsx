@@ -344,6 +344,7 @@ function RallyOnMain() {
 
         {currentTab === 'MAP' && (
           <MapScreen
+            activeMarket={activeMarket}
             venues={marketVenues}
             liveStates={liveStates}
             matchResults={rankedVenues}
