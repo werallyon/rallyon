@@ -194,10 +194,10 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
                 Odds & Spread
               </span>
               <span className="font-bold text-white text-xs block truncate">
-                {summary?.odds?.details || game.liveDetails?.headline || 'Even Line'}
+                {summary?.odds?.details || game.liveDetails?.headline || 'Odds unavailable'}
               </span>
               <span className="text-[10px] text-neutral-400 block">
-                {summary?.odds?.overUnder ? `O/U ${summary.odds.overUnder}` : 'Live ESPN Feed'}
+                {summary?.odds?.overUnder ? `O/U ${summary.odds.overUnder}` : 'No verified total available'}
               </span>
             </div>
           </div>
@@ -236,7 +236,7 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
               <MapPin className="w-4 h-4 text-amber-400" />
               <div>
                 <span className="font-bold text-white block">
-                  {summary?.venue?.name || game.venueName || 'Host Stadium'}
+                  {summary?.venue?.name || game.venueName || 'Venue details unavailable'}
                 </span>
                 {summary?.venue?.city && (
                   <span className="text-[10px] text-neutral-400">
@@ -314,7 +314,7 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
         <div className="p-4 border-t border-neutral-800 bg-neutral-950 flex items-center justify-between">
           <div className="flex items-center gap-2 text-[10px] text-neutral-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span>ESPN Sports Feed Grounded</span>
+            <span>Sports data source</span>
           </div>
           <button
             onClick={onClose}
