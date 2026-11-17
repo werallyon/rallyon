@@ -49,6 +49,7 @@ interface HomeScreenProps {
   currentIntent: UserIntent;
   onSelectIntent: (intent: UserIntent) => void;
   rankedVenues: RallyMatchResult[];
+  venueGames: VenueGame[];
   savedVenueIds: string[];
   onToggleSave: (venueId: string) => void;
   onSelectVenue: (venue: Venue) => void;
@@ -65,6 +66,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   currentIntent,
   onSelectIntent,
   rankedVenues,
+  venueGames,
   savedVenueIds,
   onToggleSave,
   onSelectVenue,
@@ -624,6 +626,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <GameIntelligenceModal
           game={inspectGame}
           venues={rankedVenues.map((r) => r.venue)}
+          venueGames={venueGames}
           onClose={() => setInspectGame(null)}
           onSelectVenue={onSelectVenue}
         />
