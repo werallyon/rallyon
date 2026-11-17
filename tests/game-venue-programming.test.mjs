@@ -22,6 +22,11 @@ test('game-to-venue matching joins programming rows to real venue IDs', () => {
   assert.doesNotMatch(intelligence, /currentGames/);
 });
 
+test('missing broadcast metadata does not get mislabeled as cable', () => {
+  assert.match(intelligence, /!game\.broadcast[\s\S]*?Broadcast type unavailable/);
+  assert.match(intelligence, /game\.broadcast\.broadcastType === 'REGIONAL'[\s\S]*?Regional sports network/);
+});
+
 test('venue cards distinguish scheduled programming from a live game confirmation', () => {
   assert.match(intelligence, /venueGame\.verificationStatus === 'GAME_ON'/);
   assert.match(intelligence, /'GAME ON'/);
