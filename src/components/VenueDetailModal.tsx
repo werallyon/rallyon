@@ -277,7 +277,7 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
               </div>
               <h3 className="text-sm font-black text-white">{activePromo.title}</h3>
               <p className="text-xs text-neutral-300 mt-1">{activePromo.description}</p>
-              <p className="mt-2 text-[10px] text-neutral-400">Valid {new Date(activePromo.start_at).toLocaleString()} – {new Date(activePromo.end_at).toLocaleString()}{activePromo.game_id ? ' · Game-specific offer' : ' · Applies to all games'}</p>
+              <p className="mt-2 text-[10px] text-neutral-400">Valid {new Date(activePromo.start_at).toLocaleString()} – {new Date(activePromo.end_at).toLocaleString()}{activePromo.game_id ? (activeGame?.id === activePromo.game_id ? ` · ${activeGame.awayTeam.name} at ${activeGame.homeTeam.name}` : ' · Game-specific offer') : ' · Applies to all games'}</p>
               <div className="mt-3 flex items-center justify-between pt-2 border-t border-neutral-800">
                 <span className="text-[10px] text-neutral-400">{activePromo.terms || 'Ask staff to confirm availability.'}</span>
                 {venue.isDemoData || venue.id.startsWith('venue_') ? (
