@@ -27,7 +27,7 @@ fc_dallas_venues as (
       90::numeric,
       'https://www.fcdallas.com/watchparty'::text,
       'FC Dallas official Where To Watch directory lists The Derbyshire as a location to watch every FC Dallas match. Network, screen allocation, and audio are not specified.'
-
+    )
   ) as venues(venue_id, confidence, source_url, verification_notes)
 )
 insert into public.venue_game_programming (
