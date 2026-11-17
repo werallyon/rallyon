@@ -45,12 +45,19 @@ select
   venue.venue_id,
   game.id,
   null,
-  'CONFIRMED',
-  true,
+  case
+    when venue.venue_id = 'a1000000-0000-4000-8000-000000000017'::uuid then 'PLANNED'
+    else 'CONFIRMED'
+  end,
+  venue.venue_id <> 'a1000000-0000-4000-8000-000000000017'::uuid,
   false,
   null,
   false,
-  'Official source lists this venue for FC Dallas matches; confirm kickoff-day availability and audio with the venue.',
+  case
+    when venue.venue_id = 'a1000000-0000-4000-8000-000000000017'::uuid
+      then 'Venue listing says all televised games, subject to match clashes; confirm this specific fixture with the venue.'
+    else 'Official FC Dallas Where To Watch directory lists this venue for every FC Dallas match; confirm kickoff-day availability and audio with the venue.'
+  end,
   venue.confidence,
   now(),
   null,
