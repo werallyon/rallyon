@@ -187,7 +187,7 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
                 Broadcast Network
               </span>
               <span className="font-bold text-white text-xs block">
-                {game.broadcastNetwork || 'ESPN Broadcast'}
+                {game.broadcast?.network || game.broadcastNetwork || 'Not confirmed'}
               </span>
               <span className="text-[10px] text-emerald-400 block">
                 {game.broadcast?.broadcastType === 'NATIONAL_OTA'
