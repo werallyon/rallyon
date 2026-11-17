@@ -30,6 +30,7 @@ test('DFW city seeds are merged into existing local storage rather than hidden b
   assert.match(marketsData, /id: 'city_frisco'[\s\S]*market_id: 'market_dfw'/);
   assert.match(marketsData, /id: 'city_mansfield'[\s\S]*market_id: 'market_dfw'/);
   assert.match(marketsData, /id: 'city_the_colony'[\s\S]*market_id: 'market_dfw'/);
+  assert.match(marketsData, /id: 'city_aubrey'[\s\S]*market_id: 'market_dfw'/);
   assert.match(marketService, /const parsedCities: City\[\] = storedCities \? JSON\.parse\(storedCities\) : \[\]/);
   assert.match(marketService, /SEEDED_CITIES\.filter\(\(seeded\) => !parsedCities\.some\(\(stored\) => stored\.id === seeded\.id\)\)/);
 });
@@ -54,7 +55,7 @@ test('DFW game programming is limited to official club and venue commitments', (
   assert.match(programmingMigration, /https:\/\/goatsarena\.us\/locations\/aubrey/);
   assert.match(programmingMigration, /'OFFICIAL',/);
   assert.match(programmingMigration, /'VENUE',/);
-  assert.match(programmingMigration, /game\.league = 'MLS'/);
+  assert.match(programmingMigration, /where league = 'MLS'/);
   assert.match(programmingMigration, /game\.league = 'NFL'/);
   assert.match(programmingMigration, /extract\(isodow from game\.start_time at time zone 'America\/Chicago'\) = 7/);
   assert.match(programmingMigration, /audio_on, screen/);
