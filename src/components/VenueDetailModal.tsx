@@ -608,7 +608,7 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
           </div>
 
           {/* STRUCTURED VENUE TRUTH */}
-          {venue.venueTruthVerified === false ? (
+          {venue.venueTruthComplete === false ? (
             <div className="rounded-2xl bg-neutral-900/90 border border-neutral-800 p-4 space-y-3">
               <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
                 <span className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5">
@@ -638,7 +638,7 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
                 Venue Truth Intelligence
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400 font-medium">
-                Verified Profile
+                Structured Details
               </span>
             </div>
 
