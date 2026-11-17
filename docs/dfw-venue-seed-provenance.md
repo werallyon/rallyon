@@ -2,7 +2,7 @@
 
 Updated: 2026-11-17
 
-The DFW market catalog includes 26 cities. This first-pass production directory contains 14 real DFW businesses/venues with a published street address and a geospatial point. The records are **unclaimed directory listings**, not venue-verified RallyOn partners. No screen counts, sound-on promises, sports packages, live programming, or team-specific watch commitments are written into `venue_truth` or `venue_game_programming`.
+The DFW market catalog includes 26 cities. This first-pass production directory contains 16 real DFW businesses/venues with a published street address and a geospatial point. The records are **unclaimed directory listings**, not venue-verified RallyOn partners. No screen counts, sound-on promises, sports packages, live programming, or team-specific watch commitments are written into `venue_truth` or `venue_game_programming`.
 
 ## Seeded venues
 
@@ -22,6 +22,8 @@ The DFW market catalog includes 26 cities. This first-pass production directory 
 | Buffalo Bros Sundance Square | Fort Worth | [Official location page](https://www.buffalobrostexas.com/location/buffalo-bros-sundance-square/) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/buffalo-bros-mb106048803) |
 | The Derbyshire Pub | Frisco | [Official website and location](https://derbyshirefrisco.com/) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/the-derbyshire-mb200103843) |
 | Walk-On's Sports Bistreaux The Colony | The Colony | [Official location page](https://locate.walk-ons.com/tx/thecolony/restaurants-406.html) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/walk-ons-sports-bistreaux-mb200185850) |
+| BoomerJack's Bedford | Bedford | [Official location page](https://boomerjacks.com/location/bedford/) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/boomerjacks-grill-bar-mb705268) |
+| BoomerJack's Grapevine | Grapevine | [Official location page](https://boomerjacks.com/location/grapevine/) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/boomerjacks-grill-bar-19-mb105755997) |
 
 ## Data rules
 
