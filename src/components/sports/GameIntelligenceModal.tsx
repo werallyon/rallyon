@@ -193,10 +193,14 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
                 {game.broadcast?.network || game.broadcastNetwork || 'Not confirmed'}
               </span>
               <span className="text-[10px] text-emerald-400 block">
-                {game.broadcast?.broadcastType === 'NATIONAL_OTA'
+                {!game.broadcast
+                  ? 'Broadcast type unavailable'
+                  : game.broadcast.broadcastType === 'NATIONAL_OTA'
                   ? 'Over-the-Air (Free)'
-                  : game.broadcast?.broadcastType === 'STREAMING_EXCLUSIVE'
+                  : game.broadcast.broadcastType === 'STREAMING_EXCLUSIVE'
                   ? 'Streaming Only'
+                  : game.broadcast.broadcastType === 'REGIONAL'
+                  ? 'Regional sports network'
                   : 'Cable network'}
               </span>
             </div>
