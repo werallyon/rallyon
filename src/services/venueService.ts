@@ -11,7 +11,15 @@ function mapVenue(row: any): Venue {
     ? rawBaseline.category
     : (row.categories ?? []).find((category: string) => validCategories.includes(category)) || 'Sports Bar') as Venue['baseline']['category'];
   const priceLevel: Venue['baseline']['priceLevel'] = validPriceLevels.includes(rawBaseline.priceLevel) ? rawBaseline.priceLevel : undefined;
-  const venueTruthComplete = ['sports', 'environment', 'audience', 'experience'].every((section) => rawTruth[section] && Object.keys(rawTruth[section]).length > 0);
+  const requiredTruthFields: Record<string, string[]> = {
+    sports: ['numTvs', 'screenSizes', 'hasProjector', 'gameAudio', 'multipleGamesSimultaneous', 'sportsPackages', 'blackoutRestrictions', 'teamAffiliations'],
+    environment: ['energyBaseline', 'noiseBaseline', 'crowdBaseline', 'socialOpenness', 'seatingRatio', 'hasPatio', 'patioTvs', 'dogFriendly'],
+    audience: ['hardcoreFanRatio', 'casualRatio', 'familyFriendly', 'groupFriendly', 'soloFriendly', 'typicalCrowdAge'],
+    experience: ['watchParties', 'liveDj', 'giveaways', 'foodSpecials', 'drinkSpecials', 'teamEvents']
+  };
+  const venueTruthComplete = Object.entries(requiredTruthFields).every(([section, fields]) =>
+    fields.every((field) => Object.prototype.hasOwnProperty.call(rawTruth[section] ?? {}, field))
+  );
   const rawSeatingRatio = rawTruth.environment?.seatingRatio ?? {};
 
   return {
