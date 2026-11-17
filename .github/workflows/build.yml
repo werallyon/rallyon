@@ -78,8 +78,11 @@ jobs:
       - name: Start isolated local Supabase stack
         run: supabase --workdir validation start
 
-      - name: Reset local database and apply exact PR #22 migrations
+      - name: Reset local database and apply combined P0-B, P0-C and profile RPC migrations
         run: supabase --workdir validation db reset
+
+      - name: Verify canonical sports taxonomy, provider ACLs and league-scoped game constraints
+        run: bash validation/run-local-sql.sh validation/verify-p0b.sql
 
       - name: Verify profile contract, favorite backfill, RLS and RPC
         run: bash validation/run-local-sql.sh validation/supabase/verify.sql
