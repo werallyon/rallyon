@@ -55,7 +55,7 @@ test('operator broadcast and team records do not invent ESPN or placeholder reco
   assert.match(dashboard, /Unavailable for \{game\.status\.toLowerCase\(\)\}/);
   assert.match(dashboard, /network: game\.broadcast\?\.network \|\| game\.broadcastNetwork \|\| undefined/);
   assert.match(dashboard, /prog\.network \|\| 'Network not confirmed'/);
-  assert.match(dashboard, /game\.broadcastNetwork \|\| 'Broadcast not confirmed'/);
+  assert.match(dashboard, /game\.broadcast\?\.network \|\| game\.broadcastNetwork \|\| 'Broadcast not confirmed'/);
   assert.doesNotMatch(dashboard, /game\.broadcastNetwork \|\| 'ESPN/);
   assert.doesNotMatch(dashboard, /record \|\| '7-3'/);
   assert.doesNotMatch(dashboard, /record \|\| '8-2'/);
