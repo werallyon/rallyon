@@ -41,7 +41,7 @@ test('migration refuses unsafe legacy data and unknown pre-existing relations', 
   assert.ok(migration.includes("exact owner predicate allowlist"));
   assert.ok(migration.includes("on_auth_user_created"));
   assert.ok(migration.includes("btrim(regexp_replace(lower(v_bootstrap_source)"));
-  assert.ok(migration.includes("exact production-observed metadata-tolerant invoker-rights implementation"));
+  assert.ok(migration.includes("exact production-observed metadata-tolerant implementation"));
   assert.ok(migration.includes("security invoker"));
   assert.ok(migration.includes("search_path = pg_catalog, public"));
   assert.ok(migration.includes("profiles_insert_auth_admin"));
