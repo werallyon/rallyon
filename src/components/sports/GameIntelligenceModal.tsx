@@ -68,7 +68,7 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
       (isLive
         ? venueGame.verificationStatus === 'GAME_ON'
         : (game.status === 'UPCOMING' || game.status === 'DELAYED') &&
-          (venueGame.verificationStatus === 'LIKELY' || venueGame.verificationStatus === 'CONFIRMED'))
+          venueGame.verificationStatus === 'LIKELY')
     )
     .map((venueGame) => ({
       venue: venues.find((venue) => venue.id === venueGame.venueId),
