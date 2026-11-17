@@ -27,13 +27,7 @@ fc_dallas_venues as (
       90::numeric,
       'https://www.fcdallas.com/watchparty'::text,
       'FC Dallas official Where To Watch directory lists The Derbyshire as a location to watch every FC Dallas match. Network, screen allocation, and audio are not specified.'
-    ),
-    (
-      'a1000000-0000-4000-8000-000000000017'::uuid,
-      85::numeric,
-      'https://www.grandscape.com/directory/toca-social/'::text,
-      'Grandscape official venue listing says TOCA Social shows all televised games, subject to match clashes; full match audio is stated only for marquee matches. This fixture audio is not confirmed.'
-    )
+
   ) as venues(venue_id, confidence, source_url, verification_notes)
 )
 insert into public.venue_game_programming (
@@ -45,19 +39,12 @@ select
   venue.venue_id,
   game.id,
   null,
-  case
-    when venue.venue_id = 'a1000000-0000-4000-8000-000000000017'::uuid then 'PLANNED'
-    else 'CONFIRMED'
-  end,
-  venue.venue_id <> 'a1000000-0000-4000-8000-000000000017'::uuid,
+  'CONFIRMED',
+  true,
   false,
   null,
   false,
-  case
-    when venue.venue_id = 'a1000000-0000-4000-8000-000000000017'::uuid
-      then 'Venue listing says all televised games, subject to match clashes; confirm this specific fixture with the venue.'
-    else 'Official FC Dallas Where To Watch directory lists this venue for every FC Dallas match; confirm kickoff-day availability and audio with the venue.'
-  end,
+  'Official FC Dallas Where To Watch directory lists this venue for every FC Dallas match; confirm kickoff-day availability and audio with the venue.',
   venue.confidence,
   now(),
   null,
