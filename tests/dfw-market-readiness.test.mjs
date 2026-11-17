@@ -40,10 +40,10 @@ test('DFW directory seed contains real unclaimed venues without fabricated game 
   assert.match(venueMigration, /Shows all televised games \(match clash permitting\)/);
   assert.match(venueMigration, /Full match audio for marquee matches/);
   const provenance = readFileSync(new URL('../docs/dfw-venue-seed-provenance.md', import.meta.url), 'utf8');
-  for (const venue of ["Frankie''s Downtown", 'Press Box Grill', 'Happiest Hour', 'Christies Sports Bar', 'Harwood Arms', 'Texas Live!', 'Sidecar Social Frisco', 'The Green Gator', "Fat Daddy''s Sports & Spirits Cafe", "Morton''s Tavern", 'Texas Republic Fort Worth', 'Buffalo Bros Sundance Square', 'The Derbyshire Pub', "Walk-On''s Sports Bistreaux The Colony", "BoomerJack''s Bedford", "BoomerJack''s Grapevine", 'TOCA Social', "G.O.A.T''s Arena Aubrey"]) {
+  for (const venue of ["Frankie''s Downtown", 'Press Box Grill', 'Happiest Hour', 'Christies Sports Bar', 'Harwood Arms', 'Texas Live!', 'Sidecar Social Frisco', 'The Green Gator', "Fat Daddy''s Sports & Spirits Cafe", "Morton''s Tavern", 'Texas Republic Fort Worth', 'Buffalo Bros Sundance Square', 'The Derbyshire Pub', "Walk-On''s Sports Bistreaux The Colony", "BoomerJack''s Bedford", "BoomerJack''s Grapevine", 'TOCA Social', "G.O.A.T''s Arena Aubrey", 'Rogers Roundhouse']) {
     assert.ok(venueMigration.includes(venue), `missing DFW venue: ${venue}`);
   }
-  assert.equal((venueMigration.match(/'a1000000-0000-4000-8000-0000000000/g) ?? []).length, 18);
+  assert.equal((venueMigration.match(/'a1000000-0000-4000-8000-0000000000/g) ?? []).length, 19);
   assert.match(venueMigration, /'\{\}'::jsonb/);
   assert.match(venueMigration, /false,\s*null,\s*null,\s*null,\s*null,\s*false/);
   assert.doesNotMatch(venueMigration, /insert into public\.venue_game_programming/i);
