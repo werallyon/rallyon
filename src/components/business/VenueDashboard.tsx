@@ -73,7 +73,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [sponsorships, setSponsorships] = useState<Sponsorship[]>([]);
   const [analytics, setAnalytics] = useState<VenueAnalyticsSummary | null>(null);
-  const isDatabaseVenue = Boolean(supabase && !venue.id.startsWith('venue_'));
+  const isDatabaseVenue = Boolean(supabase && !venue.isDemoData && !venue.id.startsWith('venue_'));
 
   // Profile builder form states
   const [editName, setEditName] = useState(venue.name);
