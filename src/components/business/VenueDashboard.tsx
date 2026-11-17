@@ -48,7 +48,7 @@ import { useAuth } from '../../context/AuthContext';
 interface VenueDashboardProps {
   venue: Venue;
   onBackToApp: () => void;
-  onUpdateVenue?: (updatedVenue: Venue) => void;
+  onUpdateVenue?: (updatedVenue: Venue) => Promise<void>;
 }
 
 type DashboardTab =
@@ -73,7 +73,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [sponsorships, setSponsorships] = useState<Sponsorship[]>([]);
   const [analytics, setAnalytics] = useState<VenueAnalyticsSummary | null>(null);
-  const isDatabaseVenue = Boolean(supabase && !venue.id.startsWith('venue_'));
+  const isDatabaseVenue = Boolean(supabase && !venue.isDemoData && !venue.id.startsWith('venue_'));
 
   // Profile builder form states
   const [editName, setEditName] = useState(venue.name);
@@ -116,14 +116,22 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
     loadGamesAndProgramming();
 
     const refreshData = () => {
-      if (!isDatabaseVenue) setProgramming(businessVenueService.getProgrammingForVenue(venue.id));
+      if (isDatabaseVenue) {
+        // The browser store contains demo-only promotions, sponsorships and analytics.
+        // Never hydrate those values into a database-backed production venue.
+        setPromotions([]);
+        setSponsorships([]);
+        setAnalytics(null);
+        return;
+      }
+      setProgramming(businessVenueService.getProgrammingForVenue(venue.id));
       setPromotions(businessVenueService.getPromotionsForVenue(venue.id));
       setSponsorships(businessVenueService.getSponsorships().filter((s) => s.venue_id === venue.id));
       setAnalytics(businessVenueService.getVenueAnalytics(venue.id));
     };
 
     refreshData();
-    const unsub = businessVenueService.subscribe(refreshData);
+    const unsub = isDatabaseVenue ? () => undefined : businessVenueService.subscribe(refreshData);
     return () => {
       mounted = false;
       unsub();
@@ -138,16 +146,20 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
   // Handle programming toggle
   const handleToggleShowing = async (game: SportsGame, isShowing: boolean) => {
     if (!currentUser) return;
+    const canBeProgrammed = ['UPCOMING', 'DELAYED', 'LIVE', 'HALFTIME'].includes(game.status);
+    if (isShowing && !canBeProgrammed) {
+      showToast('Only upcoming, delayed, live, or halftime games can be programmed.');
+      return;
+    }
     const payload = {
       venue_id: venue.id,
       game_id: game.id,
-      network: game.broadcastNetwork || 'ESPN',
-      status: isShowing ? 'GAME_ON' : 'NOT_SHOWING' as VenueGameProgramming['status'],
-      audio_on: true,
-      screen: 'Main Video Wall',
-      featured: isShowing,
-      notes: isShowing ? 'Verified Airing on Main Screens • Sound ON' : 'Not showing tonight',
-      confidence: 100,
+      network: game.broadcast?.network || game.broadcastNetwork || undefined,
+      status: isShowing ? (game.status === 'LIVE' || game.status === 'HALFTIME' ? 'GAME_ON' : 'CONFIRMED') : 'NOT_SHOWING' as VenueGameProgramming['status'],
+      audio_on: false,
+      screen: '',
+      featured: false,
+      notes: isShowing ? 'Venue staff confirmed this game is being shown.' : 'Not showing tonight',
       is_confirmed: isShowing,
       created_by: currentUser.id,
       start_time: game.startTime,
@@ -196,7 +208,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
     showToast(`Game audio ${nextAudio ? 'ON' : 'OFF'}`);
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     const updated: Venue = {
       ...venue,
@@ -220,12 +232,25 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
         }
       }
     };
-    if (onUpdateVenue) onUpdateVenue(updated);
-    showToast('Venue Truth & Profile saved successfully.');
+    if (!onUpdateVenue) {
+      showToast('Venue profile editing is not connected yet. No changes were saved.');
+      return;
+    }
+    try {
+      await onUpdateVenue(updated);
+      showToast('Venue profile updates saved successfully.');
+    } catch (error) {
+      console.warn('Unable to save venue profile updates.', error);
+      showToast('Could not save venue profile updates. Please try again.');
+    }
   };
 
   const handleCreatePromo = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isDatabaseVenue) {
+      showToast('Production promotions are not connected yet.');
+      return;
+    }
     if (!newPromoTitle) return;
 
     businessVenueService.createPromotion({
@@ -246,9 +271,11 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
     showToast('Promotion created & published to fans.');
   };
 
-  const venueQR = businessVenueService.getOrCreateVenueQRCode(venue.id);
-  const reliability = businessVenueService.calculateVenueReliability(venue.id);
-  const placeMatch = googlePlacesService.getVenueMatch(venue.id);
+  const venueQR = isDatabaseVenue ? null : businessVenueService.getOrCreateVenueQRCode(venue.id);
+  const reliabilityScore = isDatabaseVenue
+    ? venue.reliabilityScore
+    : businessVenueService.calculateVenueReliability(venue.id).score;
+  const placeMatch = isDatabaseVenue ? null : googlePlacesService.getVenueMatch(venue.id);
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-sans max-w-4xl mx-auto pb-24 animate-fadeIn">
@@ -271,7 +298,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-neutral-400">
-              {venue.neighborhood} • Reliability Score: <span className="text-emerald-400 font-bold">{reliability.score}%</span>
+              {venue.neighborhood} • Reliability Score: <span className="text-emerald-400 font-bold">{reliabilityScore == null ? 'Not calculated' : `${reliabilityScore}%`}</span>
             </p>
           </div>
         </div>
@@ -279,7 +306,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
         <div className="flex items-center gap-2 text-xs">
           <div className="hidden sm:flex items-center gap-1 text-neutral-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Connected to Austin Matrix</span>
+            <span>{isDatabaseVenue ? 'Production venue workspace' : 'Connected to Demo Matrix'}</span>
           </div>
         </div>
       </header>
@@ -327,6 +354,18 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
         {/* TAB 1: OVERVIEW & BUSINESS VALUE STORY (Section 8 & 19) */}
         {activeTab === 'OVERVIEW' && (
           <div className="space-y-6">
+            {isDatabaseVenue ? (
+              <div className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 shadow-xl space-y-2">
+                <span className="text-xs font-black uppercase tracking-widest text-neutral-300">
+                  Venue Analytics
+                </span>
+                <h3 className="text-sm font-black text-white">Production analytics are not connected yet</h3>
+                <p className="text-xs text-neutral-400">
+                  RallyOn is not yet receiving verified engagement events for this venue. We will not display estimated views, visits, check-ins, or ROI as real results.
+                </p>
+              </div>
+            ) : (
+              <>
             {/* ROI Value Proposition Banner (Section 19) */}
             <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/20 via-neutral-900 to-neutral-950 border border-amber-500/40 shadow-xl space-y-4">
               <div className="flex items-center justify-between">
@@ -363,7 +402,8 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
                 </div>
               </div>
             </div>
-
+              </>
+            )}
             {/* Tonight's Live Programming Highlights */}
             <div className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 space-y-4">
               <div className="flex items-center justify-between">
@@ -395,7 +435,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
                               {prog.status}
                             </span>
                             <span className="text-xs font-bold text-neutral-300">
-                              {prog.network || 'ESPN'} • {prog.screen}
+                              {prog.network || 'Network not confirmed'} • {prog.screen || 'Screen details not provided'}
                             </span>
                           </div>
                           <h4 className="text-sm font-black text-white">
@@ -473,7 +513,8 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
             <div className="space-y-3">
               {upcomingGames.map((game) => {
                 const existing = programming.find((p) => p.game_id === game.id);
-                const isShowing = existing && existing.status === 'GAME_ON';
+                const isShowing = existing && (existing.status === 'CONFIRMED' || existing.status === 'GAME_ON');
+                const canBeProgrammed = ['UPCOMING', 'DELAYED', 'LIVE', 'HALFTIME'].includes(game.status);
 
                 return (
                   <div
@@ -491,7 +532,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
                             {game.league}
                           </span>
                           <span className="text-[11px] text-neutral-400">
-                            {game.broadcastNetwork || 'ESPN / National'}
+                            {game.broadcast?.network || game.broadcastNetwork || 'Broadcast not confirmed'}
                           </span>
                           {game.status === 'LIVE' && (
                             <span className="text-[10px] font-black bg-red-500 text-white px-2 py-0.5 rounded animate-pulse">
@@ -501,7 +542,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
                         </div>
 
                         <h4 className="text-sm font-black text-white">
-                          {game.awayTeam.name} ({game.awayTeam.record || '7-3'}) @ {game.homeTeam.name} ({game.homeTeam.record || '8-2'})
+                          {game.awayTeam.name}{game.awayTeam.record ? ` (${game.awayTeam.record})` : ''} @ {game.homeTeam.name}{game.homeTeam.record ? ` (${game.homeTeam.record})` : ''}
                         </h4>
 
                         {existing && (
@@ -510,7 +551,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
                               {existing.audio_on ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
                               Audio {existing.audio_on ? 'ON' : 'OFF'}
                             </span>
-                            <span>Screen: {existing.screen}</span>
+                            <span>Screen: {existing.screen || 'Screen details not provided'}</span>
                           </div>
                         )}
                       </div>
@@ -535,13 +576,17 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
                               Not Showing
                             </button>
                           </>
-                        ) : (
+                        ) : canBeProgrammed ? (
                           <button
                             onClick={() => handleToggleShowing(game, true)}
                             className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl shadow-lg transition-transform active:scale-95"
                           >
                             + Confirm Showing
                           </button>
+                        ) : (
+                          <span className="px-3 py-2 text-xs text-neutral-500">
+                            Unavailable for {game.status.toLowerCase()}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -555,6 +600,11 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
         {/* TAB 3: VENUE PROFILE BUILDER (Section 9) */}
         {activeTab === 'PROFILE' && (
           <form onSubmit={handleSaveProfile} className="space-y-5">
+            {!onUpdateVenue && (
+              <div className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800 text-xs text-neutral-400">
+                Venue profile editing is not connected yet. Changes in this form cannot be saved.
+              </div>
+            )}
             <div className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 space-y-4">
               <h3 className="text-sm font-black text-white">Business Information</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -669,7 +719,8 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
 
             <button
               type="submit"
-              className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-2xl shadow-xl transition-transform active:scale-95"
+              disabled={!onUpdateVenue}
+              className="w-full py-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-black text-xs rounded-2xl shadow-xl transition-transform active:scale-95"
             >
               Save Venue Truth Updates
             </button>
@@ -684,16 +735,23 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
                 <h3 className="text-base font-black text-white">Active Promotions</h3>
                 <p className="text-xs text-neutral-400">Incentivize fans to check in with RallyOn</p>
               </div>
-              <button
-                onClick={() => setShowNewPromoModal(true)}
-                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black flex items-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Create Offer</span>
-              </button>
+              {!isDatabaseVenue && (
+                <button
+                  onClick={() => setShowNewPromoModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Create Offer</span>
+                </button>
+              )}
             </div>
 
-            {promotions.length > 0 ? (
+            {isDatabaseVenue ? (
+              <div className="p-8 text-center bg-neutral-900 rounded-3xl border border-neutral-800">
+                <p className="text-sm font-bold text-white">Production promotions are not connected yet</p>
+                <p className="text-xs text-neutral-400 mt-2">Offers cannot be published or redeemed from this production workspace yet.</p>
+              </div>
+            ) : promotions.length > 0 ? (
               <div className="space-y-3">
                 {promotions.map((p) => (
                   <div key={p.id} className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800 flex items-center justify-between">
@@ -733,7 +791,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
             )}
 
             {/* Create Promo Modal */}
-            {showNewPromoModal && (
+            {!isDatabaseVenue && showNewPromoModal && (
               <div className="p-5 bg-neutral-950 border border-neutral-800 rounded-2xl space-y-3">
                 <h4 className="text-xs font-bold text-white">Create New Promotion</h4>
                 <input
@@ -788,7 +846,11 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
               </p>
             </div>
 
-            {sponsorships.length > 0 ? (
+            {isDatabaseVenue ? (
+              <div className="p-6 text-center bg-neutral-900 rounded-3xl border border-neutral-800 text-xs text-neutral-400">
+                Production sponsorship management and campaign reporting are not connected yet.
+              </div>
+            ) : sponsorships.length > 0 ? (
               <div className="space-y-3">
                 {sponsorships.map((s) => (
                   <div key={s.id} className="p-4 rounded-2xl bg-neutral-900 border border-amber-500/30 space-y-2">
@@ -819,6 +881,12 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
         {/* TAB 6: CHECK-INS & QR CODES (Section 14 & 15) */}
         {activeTab === 'CHECKINS' && (
           <div className="space-y-4">
+            {isDatabaseVenue ? (
+              <div className="p-6 text-center bg-neutral-900 rounded-3xl border border-neutral-800 space-y-2">
+                <h3 className="text-sm font-black text-white">Production check-ins are not connected yet</h3>
+                <p className="text-xs text-neutral-400">A verified, rotating venue QR token is not available for this production venue. No demo token is shown.</p>
+              </div>
+            ) : (
             <div className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 text-center space-y-3">
               <h3 className="text-sm font-black text-white">Venue QR Table Token</h3>
               <p className="text-xs text-neutral-400 max-w-sm mx-auto">
@@ -830,14 +898,24 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
               </div>
 
               <div className="p-2.5 bg-neutral-950 rounded-xl border border-neutral-800 text-xs text-neutral-400 inline-block">
-                Token: <span className="font-mono text-amber-400">{venueQR.token}</span>
+                Token: <span className="font-mono text-amber-400">{venueQR?.token}</span>
               </div>
             </div>
+            )}
           </div>
         )}
 
         {/* TAB 7: ANALYTICS ROI (Section 18 & 19) */}
-        {activeTab === 'ANALYTICS' && analytics && (
+        {activeTab === 'ANALYTICS' && isDatabaseVenue && (
+          <div className="p-6 text-center bg-neutral-900 rounded-3xl border border-neutral-800 space-y-2">
+            <h3 className="text-sm font-black text-white">Production analytics are not connected yet</h3>
+            <p className="text-xs text-neutral-400">
+              Engagement and ROI reporting will appear here once verified events are available from the production analytics service.
+            </p>
+          </div>
+        )}
+
+        {activeTab === 'ANALYTICS' && !isDatabaseVenue && analytics && (
           <div className="space-y-4">
             <h3 className="text-base font-black text-white">Performance & Discovery Analytics</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -876,12 +954,14 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
               <h3 className="text-sm font-black text-white">Monetization & Subscription Tier</h3>
               <div className="p-3 bg-neutral-950 rounded-2xl border border-neutral-800 flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-black text-amber-400 block">PRO VENUE TIER</span>
-                  <p className="text-[11px] text-neutral-400">Unlimited programming, promotions, and real-time crowd analytics.</p>
+                  <span className="text-xs font-black text-amber-400 block">{isDatabaseVenue ? 'Subscription details unavailable' : 'PRO VENUE TIER'}</span>
+                  <p className="text-[11px] text-neutral-400">{isDatabaseVenue ? 'Production billing and entitlements are not connected to this workspace.' : 'Unlimited programming, promotions, and real-time crowd analytics.'}</p>
                 </div>
-                <span className="px-2 py-1 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  ACTIVE
-                </span>
+                {!isDatabaseVenue && (
+                  <span className="px-2 py-1 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    ACTIVE
+                  </span>
+                )}
               </div>
             </div>
 
@@ -889,10 +969,10 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
             <div className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 space-y-2">
               <h3 className="text-sm font-black text-white">Google Places Match Status</h3>
               <p className="text-xs text-neutral-400">
-                Place ID: <span className="font-mono text-white">{placeMatch?.placeId || 'Not Linked'}</span>
+                Place ID: <span className="font-mono text-white">{isDatabaseVenue ? venue.googlePlaceId || 'Not Linked' : placeMatch?.placeId || 'Not Linked'}</span>
               </p>
               <p className="text-[11px] text-emerald-400">
-                Match Confidence: {placeMatch?.matchConfidence || 99}% ({placeMatch?.matchSource})
+                Match Confidence: {isDatabaseVenue ? 'Not available from production data' : placeMatch ? `${placeMatch.matchConfidence}% (${placeMatch.matchSource})` : 'Not verified'}
               </p>
             </div>
           </div>
