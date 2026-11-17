@@ -496,6 +496,7 @@ values
   null,
   null,
   false
+),
 (
   'a1000000-0000-4000-8000-000000000019'::uuid,
   'b2c1d8e4-7a6f-4d31-9c52-8f0a1e6b4d20'::uuid,
