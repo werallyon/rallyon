@@ -66,16 +66,22 @@ export const MapScreen: React.FC<MapScreenProps> = ({
   // Keep the selected venue valid when a market loads or its venue list changes.
   useEffect(() => {
     setSelectedMarkerVenue((current) => {
-      if (current && venues.some((venue) => venue.id === current.id)) return current;
+      if (current) {
+        const refreshed = venues.find((venue) => venue.id === current.id);
+        if (refreshed) return refreshed;
+      }
       return venues[0] || null;
     });
   }, [venues]);
 
+  // Only venues with usable coordinates can be positioned on this canvas.
+  const locatedVenues = useMemo(() => venues.filter((venue) =>
+    Number.isFinite(venue.latitude) && Number.isFinite(venue.longitude)
+  ), [venues]);
+
   // Project the venues actually supplied by the active market, regardless of city.
   const bounds = useMemo(() => {
-    const located = venues.filter((venue) =>
-      Number.isFinite(venue.latitude) && Number.isFinite(venue.longitude)
-    );
+    const located = locatedVenues;
     if (located.length === 0) {
       return { minLat: -0.01, maxLat: 0.01, minLon: -0.01, maxLon: 0.01 };
     }
@@ -95,7 +101,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({
       minLon: rawMinLon - lonPadding,
       maxLon: rawMaxLon + lonPadding
     };
-  }, [venues]);
+  }, [locatedVenues]);
 
   const marketLabel = useMemo(() => {
     const cities = [...new Set(venues.map((venue) =>
@@ -106,15 +112,15 @@ export const MapScreen: React.FC<MapScreenProps> = ({
   }, [venues]);
 
   const centralVenue = useMemo(() => {
-    if (venues.length === 0) return null;
+    if (locatedVenues.length === 0) return null;
     const centerLat = (bounds.minLat + bounds.maxLat) / 2;
     const centerLon = (bounds.minLon + bounds.maxLon) / 2;
-    return venues.reduce((closest, venue) => {
+    return locatedVenues.reduce((closest, venue) => {
       const currentDistance = Math.hypot(venue.latitude - centerLat, venue.longitude - centerLon);
       const closestDistance = Math.hypot(closest.latitude - centerLat, closest.longitude - centerLon);
       return currentDistance < closestDistance ? venue : closest;
-    }, venues[0]);
-  }, [venues, bounds]);
+    }, locatedVenues[0]);
+  }, [locatedVenues, bounds]);
 
   const projectCoords = (lat: number, lon: number) => {
     const xPercent = ((lon - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * 100;
@@ -176,7 +182,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({
 
   // Filter venues on map
   const visibleVenues = useMemo(() => {
-    return venues.filter((venue) => {
+    return locatedVenues.filter((venue) => {
       const markerStatus = getMarkerStatus(venue);
       if (markerCategory === 'ALL') return true;
       if (markerCategory === 'FRIENDS') return markerStatus.type === 'FRIENDS';
@@ -185,7 +191,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({
       if (markerCategory === 'ACTIVE') return markerStatus.type === 'ACTIVE';
       return true;
     });
-  }, [venues, markerCategory, liveStates, presences, venueGames]);
+  }, [locatedVenues, markerCategory, liveStates, presences, venueGames]);
 
   const selectedVenueMatch = selectedMarkerVenue
     ? matchResults.find((m) => m.venueId === selectedMarkerVenue.id)
