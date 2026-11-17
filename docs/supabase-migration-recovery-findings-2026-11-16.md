@@ -145,4 +145,20 @@ The live `public.handle_new_user()` remains SECURITY INVOKER, owned by postgres,
 - PR #30's market-aware map and WGS84 coordinate validation passed current-head Build Check #413.
 - None of those PR changes have been deployed or merged into production.
 
+### Historical source-provenance follow-up (2026-11-17)
+
+A deeper Git commit-history search found additional original repository artifacts that were not returned by the earlier exact-name search. These are **historical source candidates**, not proof of the exact bytes applied to the hosted ledger; Supabase's ledger stores versions/names, not source-file hashes.
+
+| Hosted ledger entry | Repository artifact located | Provenance and remaining qualification |
+|---|---|---|
+| 20261110232218 `create_rallyon_core_data_model` | `supabase/migrations/20261110_create_rallyon_core_data_model.sql`, commit `28dcf24aa5d1911e209522c48bc9d77033f0ae76` | Source is present in Git history and identifies itself as applied 2026-11-10. Filename version differs from hosted version; exact deployed-byte parity is not proven. |
+| 20261111040641 `rallyon_production_hardening_v1` | `supabase/migrations/20261111_rallyon_production_hardening_v1.sql`, commit `3e7ee3ebc33affb489783708b37e3f81ddecd5af`; later refresh commit `594a21e65313775e19c0ddfd163a52f394fd58d0` | The original and refreshed source history is located. The refresh adds a `system_sync_tokens` table definition after the table had been provisioned directly in production. It is therefore not safe to assume the refreshed file is byte-identical to the deployed migration. |
+| 20261111043646 `rallyon_sync_games_schedule_v2` | `supabase/migrations/20261111043646_rallyon_sync_games_schedule_v2.sql`, commit `b4d779eaddf6dfd2ab96c2baba45b2d5977d2bad` | Exact version/file-name match recovered in repository history. Hosted migration source checksum is not available, so byte identity is still unverified. |
+| 20261111043827 `rallyon_sync_games_schedule_v3` | `supabase/migrations/20261111043830_rallyon_sync_games_schedule_v3.sql`, commit `cab8ce245858567b0f6cc23131c1f45c59cb99f4` | SQL source located, but filename version differs from hosted ledger by three seconds. Do not rename or mark repaired without a forward-only migration plan. |
+| No hosted v4 ledger entry | `supabase/migrations/20261111050000_rallyon_sync_games_schedule_timeout_v4.sql`, commit `e2f0fc0d4ecaa262940cfc9c66b1efcaf6f8e393` | Repository artifact is recovered but is not recorded in the hosted ledger; live cron command inspection also did not show its 120-second timeout argument. Treat it as unapplied/unverified, not as production state. |
+
+This reduces the number of entirely unlocated repository-source gaps for the ledger to the following entries: `20261110231015 create_profiles_and_auth_triggers`, `20261111022535 venue_game_programming_claimed_owner_rls`, `20261111022546 20261110_venue_programming_claimed_operator_policies`, `20261111024400 schedule_sync_games_daily`, and `20261111024425 add_sync_token_guard`. The core-model, hardening, and v2/v3 scheduling SQL now have historical repository artifacts, but their hosted byte-level provenance qualifications above remain open.
+
+The recovery search was expanded to repository commits for migration, profiles, core data model, scheduling, and production-hardening terms. The located commit SHAs and exact paths are recorded above so a future reviewer can inspect immutable source history. No migration was replayed, renamed, marked repaired, or applied to production during this follow-up.
+
 The five missing historical migration source files remain a provenance gap. The owner-supplied recovered SQL evidence remains partial/non-original-source evidence as documented above. Do not recreate those files as if their original bytes or complete side effects were recovered. Production rollout remains **NO-GO** until the historical migration strategy, combined PR reviews, and real signup gate are closed.
