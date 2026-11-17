@@ -146,6 +146,11 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
   // Handle programming toggle
   const handleToggleShowing = async (game: SportsGame, isShowing: boolean) => {
     if (!currentUser) return;
+    const canBeProgrammed = ['UPCOMING', 'DELAYED', 'LIVE', 'HALFTIME'].includes(game.status);
+    if (isShowing && !canBeProgrammed) {
+      showToast('Only upcoming, delayed, live, or halftime games can be programmed.');
+      return;
+    }
     const payload = {
       venue_id: venue.id,
       game_id: game.id,
@@ -510,6 +515,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
               {upcomingGames.map((game) => {
                 const existing = programming.find((p) => p.game_id === game.id);
                 const isShowing = existing && (existing.status === 'CONFIRMED' || existing.status === 'GAME_ON');
+                const canBeProgrammed = ['UPCOMING', 'DELAYED', 'LIVE', 'HALFTIME'].includes(game.status);
 
                 return (
                   <div
@@ -571,13 +577,17 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
                               Not Showing
                             </button>
                           </>
-                        ) : (
+                        ) : canBeProgrammed ? (
                           <button
                             onClick={() => handleToggleShowing(game, true)}
                             className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl shadow-lg transition-transform active:scale-95"
                           >
                             + Confirm Showing
                           </button>
+                        ) : (
+                          <span className="px-3 py-2 text-xs text-neutral-500">
+                            Unavailable for {game.status.toLowerCase()}
+                          </span>
                         )}
                       </div>
                     </div>
