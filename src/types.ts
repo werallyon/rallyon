@@ -162,7 +162,7 @@ export interface VenueTruth {
 export interface VenueBaselineCharacteristics {
   category: 'Sports Bar' | 'Pub' | 'Beer Garden' | 'Brewery' | 'Entertainment' | 'Lounge';
   neighborhood: string;
-  priceLevel?: '
+  priceLevel?: string;
 }
 
 export type VenueStatus = 'LIVE' | 'PEAK' | 'BUILDING' | 'STEADY' | 'CHILL' | 'CLOSING';
