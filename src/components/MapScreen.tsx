@@ -214,6 +214,14 @@ export const MapScreen: React.FC<MapScreenProps> = ({
         map: mapRef.current,
         position,
         title: venue.name + ' · ' + status.label,
+        icon: {
+          path: 'M -8,0 A 8,8 0 1,1 8,0 A 8,8 0 1,1 -8,0',
+          fillColor: status.type === 'GAME_ON' ? '#f59e0b' : status.type === 'FRIENDS' ? '#3b82f6' : status.type === 'TRENDING' ? '#9333ea' : status.type === 'ACTIVE' ? '#10b981' : '#52525b',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+          scale: 1.4
+        },
         label: match ? { text: String(match.score), color: '#111827', fontWeight: '700' } : undefined
       });
       marker.addListener('click', () => setSelectedMarkerVenue(venue));
