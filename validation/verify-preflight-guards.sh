@@ -79,6 +79,19 @@ cp "$BASE_BACKUP" "$BASE"
 rm -f "$BASE_BACKUP"
 
 expect_preflight_failure \
+  "unknown Auth bootstrap body" \
+  "differs from the exact production-observed metadata-tolerant implementation" \
+  "create or replace function public.handle_new_user()
+returns trigger language plpgsql security invoker
+set search_path = public
+as \$\$
+begin
+  perform 1;
+  return new;
+end;
+\$\$;"
+
+expect_preflight_failure \
   "missing RPC profile column" \
   "profile schema is incompatible" \
   "alter table public.profiles drop column current_intent;"
