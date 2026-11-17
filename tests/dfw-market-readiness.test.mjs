@@ -88,7 +88,7 @@ test('database venue mapping preserves market/city IDs and safely defaults empty
   assert.ok(venueService.includes('rawTruth.experience?.drinkSpecials ?? []'));
   assert.ok(venueService.includes("rawBaseline.priceLevel : undefined"));
   assert.ok(venueService.includes('...(priceLevel ? { priceLevel } : {})'));
-  assert.ok(venueService.includes('venueTruthVerified'));
+  assert.ok(venueService.includes('venueTruthComplete'));
   assert.ok(venueService.includes('Number.isFinite(Number(rawBaseline.capacity))'));
   assert.ok(venueService.includes('Number(rawBaseline.capacity) : 0'));
 });
