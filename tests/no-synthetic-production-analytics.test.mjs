@@ -49,6 +49,8 @@ test('operator broadcast and team records do not invent ESPN or placeholder reco
   assert.doesNotMatch(dashboard, /record \|\| '8-2'/);
   assert.match(dashboard, /audio_on: false/);
   assert.match(dashboard, /screen: ''/);
+  assert.match(dashboard, /prog\.screen \|\| 'Screen details not provided'/);
+  assert.match(dashboard, /existing\.screen \|\| 'Screen details not provided'/);
   assert.match(dashboard, /featured: false/);
   assert.match(dashboard, /Venue staff confirmed this game is being shown/);
   assert.doesNotMatch(dashboard, /network: game\.broadcastNetwork \|\| 'Network not confirmed'/);
