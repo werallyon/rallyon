@@ -92,6 +92,7 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
   }, [venue.id, venue.isDemoData]);
   const now = Date.now();
   const activePromotions = promotions.filter((promo) => (promo.status === 'ACTIVE' || promo.status === 'SCHEDULED') && new Date(promo.start_at).getTime() <= now && new Date(promo.end_at).getTime() > now);
+  const hasPublishedSpecial = venue.features?.some((feature) => /happy hour|special|deal|discount|offer|wing night|taco of the month/i.test(feature)) ?? false;
   const programming = businessVenueService.getProgrammingForVenue(venue.id);
   const googlePlace = googlePlacesService.getPlaceForVenue(venue.id);
   const reliability = businessVenueService.calculateVenueReliability(venue.id);
@@ -298,6 +299,13 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {activePromotions.length === 0 && !hasPublishedSpecial && (
+            <div className="rounded-2xl bg-neutral-900/70 border border-neutral-800 p-4">
+              <span className="text-[11px] font-black uppercase tracking-wider text-neutral-400">Game-Day Specials</span>
+              <p className="mt-1 text-xs text-neutral-400">No current specials have been published or confirmed by this venue. Check with staff before heading over.</p>
             </div>
           )}
 
