@@ -48,7 +48,7 @@ import { useAuth } from '../../context/AuthContext';
 interface VenueDashboardProps {
   venue: Venue;
   onBackToApp: () => void;
-  onUpdateVenue?: (updatedVenue: Venue) => void;
+  onUpdateVenue?: (updatedVenue: Venue) => Promise<void>;
 }
 
 type DashboardTab =
@@ -204,7 +204,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
     showToast(`Game audio ${nextAudio ? 'ON' : 'OFF'}`);
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     const updated: Venue = {
       ...venue,
@@ -228,8 +228,17 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
         }
       }
     };
-    if (onUpdateVenue) onUpdateVenue(updated);
-    showToast('Venue Truth & Profile saved successfully.');
+    if (!onUpdateVenue) {
+      showToast('Venue profile editing is not connected yet. No changes were saved.');
+      return;
+    }
+    try {
+      await onUpdateVenue(updated);
+      showToast('Venue profile updates saved successfully.');
+    } catch (error) {
+      console.warn('Unable to save venue profile updates.', error);
+      showToast('Could not save venue profile updates. Please try again.');
+    }
   };
 
   const handleCreatePromo = (e: React.FormEvent) => {
