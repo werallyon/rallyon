@@ -27,8 +27,8 @@ test('Google Maps venue markers use valid WGS84 coordinates from active market d
 
 test('map remains usable without a key and never simulates GPS or hardcodes Austin', () => {
   assert.match(source, /if \(!apiKey\)/);
-  assert.match(source, /Google Maps integration is ready/);
-  assert.match(source, /locatedVenues\.slice\(0, 6\)/);
+  assert.match(source, /DFW venue map preview/);
+  assert.match(source, /visibleVenues\.map\(\(venue\) =>/);
   assert.doesNotMatch(source, /Center on My Location|User Location Pulse|Downtown|Austin geographic bounds/);
 });
 
