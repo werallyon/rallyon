@@ -1,4 +1,4 @@
-import { Venue, VenueGame, VenueGameProgramming } from '../types';
+import { Venue, VenueGame, VenueGameProgramming, Promotion } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { isDemoMode } from '../config/dataMode';
 
@@ -65,6 +65,61 @@ export async function getVenueGameProgramming(): Promise<VenueGameProgramming[]>
     source_url: row.source_url ?? undefined,
     verification_notes: row.verification_notes ?? undefined
   }));
+}
+
+
+function mapPromotion(row: any): Promotion {
+  return {
+    id: row.id,
+    venue_id: row.venue_id,
+    game_id: row.game_id ?? undefined,
+    title: row.title,
+    description: row.description ?? '',
+    promotion_type: row.promotion_type,
+    discount_value: row.discount_value ?? undefined,
+    terms: row.terms ?? '',
+    start_at: row.start_at,
+    end_at: row.end_at,
+    status: row.status,
+    claims_count: Number(row.claims_count ?? 0)
+  };
+}
+
+export async function getVenuePromotions(venueId: string, includeInactive = false): Promise<Promotion[]> {
+  if (!supabase) return [];
+  let query = supabase.from('venue_promotions').select('*').eq('venue_id', venueId).order('start_at', { ascending: true });
+  if (!includeInactive) {
+    const now = new Date().toISOString();
+    query = query.in('status', ['ACTIVE', 'SCHEDULED']).lte('start_at', now).gt('end_at', now);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []).map(mapPromotion);
+}
+
+export async function createVenuePromotion(params: Omit<Promotion, 'id' | 'claims_count'> & { created_by: string }): Promise<Promotion> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { data, error } = await supabase.from('venue_promotions').insert({
+    venue_id: params.venue_id,
+    game_id: params.game_id ?? null,
+    title: params.title.trim(),
+    description: params.description.trim(),
+    promotion_type: params.promotion_type,
+    discount_value: params.discount_value ?? null,
+    terms: params.terms.trim(),
+    start_at: params.start_at,
+    end_at: params.end_at,
+    status: params.status,
+    created_by: params.created_by
+  }).select('*').single();
+  if (error) throw error;
+  return mapPromotion(data);
+}
+
+export async function deleteVenuePromotion(id: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { error } = await supabase.from('venue_promotions').delete().eq('id', id);
+  if (error) throw error;
 }
 
 export async function toggleVenueFavorite(userId: string, venueId: string, saved: boolean): Promise<void> {
