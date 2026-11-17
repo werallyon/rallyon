@@ -248,7 +248,8 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
 
   const venueQR = businessVenueService.getOrCreateVenueQRCode(venue.id);
   const reliability = businessVenueService.calculateVenueReliability(venue.id);
-  const placeMatch = googlePlacesService.getVenueMatch(venue.id);
+  const reliabilityScore = isDatabaseVenue ? venue.reliabilityScore : reliability.score;
+  const placeMatch = isDatabaseVenue ? null : googlePlacesService.getVenueMatch(venue.id);
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-sans max-w-4xl mx-auto pb-24 animate-fadeIn">
@@ -271,7 +272,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-neutral-400">
-              {venue.neighborhood} • Reliability Score: <span className="text-emerald-400 font-bold">{reliability.score}%</span>
+              {venue.neighborhood} • Reliability Score: <span className="text-emerald-400 font-bold">{reliabilityScore == null ? 'Not calculated' : `${reliabilityScore}%`}</span>
             </p>
           </div>
         </div>
@@ -911,10 +912,10 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
             <div className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 space-y-2">
               <h3 className="text-sm font-black text-white">Google Places Match Status</h3>
               <p className="text-xs text-neutral-400">
-                Place ID: <span className="font-mono text-white">{placeMatch?.placeId || 'Not Linked'}</span>
+                Place ID: <span className="font-mono text-white">{isDatabaseVenue ? venue.googlePlaceId || 'Not Linked' : placeMatch?.placeId || 'Not Linked'}</span>
               </p>
               <p className="text-[11px] text-emerald-400">
-                Match Confidence: {placeMatch?.matchConfidence || 99}% ({placeMatch?.matchSource})
+                Match Confidence: {isDatabaseVenue ? 'Not available from production data' : placeMatch ? `${placeMatch.matchConfidence}% (${placeMatch.matchSource})` : 'Not verified'}
               </p>
             </div>
           </div>
