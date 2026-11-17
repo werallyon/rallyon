@@ -523,6 +523,33 @@ values
   null,
   null,
   false
+),
+(
+  'a1000000-0000-4000-8000-000000000020'::uuid,
+  'b2c1d8e4-7a6f-4d31-9c52-8f0a1e6b4d20'::uuid,
+  'a0000000-0000-4000-8000-000000000004'::uuid,
+  'Shark Club Sports Bar & Grill Plano',
+  '8451 Parkwood Boulevard',
+  'Parkwood Boulevard',
+  'Plano',
+  'TX',
+  33.09084,
+  -96.81475,
+  '(469) 535-5200',
+  'https://www.sharkclub.com/location/plano/',
+  null,
+  array['Sports Bar', 'Restaurant', 'Bar & Grill'],
+  array[]::text[],
+  '[]'::jsonb,
+  array['40+ TVs', 'Two 20-foot media walls', 'Sports ticker', 'Happy hour Monday-Friday 2-6pm and nightly 9pm-close'],
+  jsonb_build_object('category', 'Sports Bar', 'neighborhood', 'Parkwood Boulevard'),
+  '{}'::jsonb,
+  false,
+  null,
+  null,
+  null,
+  null,
+  false
 )
 on conflict (id) do nothing;
 
