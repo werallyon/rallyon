@@ -422,7 +422,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
                               {prog.status}
                             </span>
                             <span className="text-xs font-bold text-neutral-300">
-                              {prog.network || 'Network not confirmed'} • {prog.screen}
+                              {prog.network || 'Network not confirmed'} • {prog.screen || 'Screen details not provided'}
                             </span>
                           </div>
                           <h4 className="text-sm font-black text-white">
@@ -537,7 +537,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
                               {existing.audio_on ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
                               Audio {existing.audio_on ? 'ON' : 'OFF'}
                             </span>
-                            <span>Screen: {existing.screen}</span>
+                            <span>Screen: {existing.screen || 'Screen details not provided'}</span>
                           </div>
                         )}
                       </div>
