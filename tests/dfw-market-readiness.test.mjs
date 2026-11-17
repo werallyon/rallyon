@@ -18,7 +18,7 @@ test('DFW migration seeds a stable market and broad metro city coverage without 
   assert.match(migration, /'dallas-fort-worth'/);
   assert.match(migration, /'b2c1d8e4-7a6f-4d31-9c52-8f0a1e6b4d20'::uuid/);
   assert.match(migration, /'PREPARING'/);
-  for (const city of ['Dallas, TX', 'Fort Worth, TX', 'Arlington, TX', 'Plano, TX', 'Frisco, TX', 'Denton, TX', 'McKinney, TX', 'Mansfield, TX', 'The Colony, TX', 'Aubrey, TX']) {
+  for (const city of ['Dallas, TX', 'Fort Worth, TX', 'Arlington, TX', 'Plano, TX', 'Frisco, TX', 'Denton, TX', 'McKinney, TX', 'Mansfield, TX', 'The Colony, TX', 'Aubrey, TX', 'Mesquite, TX']) {
     assert.ok(migration.includes(city), `missing DFW city: ${city}`);
   }
   assert.match(migration, /Venue rows are intentionally not fabricated/);
@@ -40,10 +40,10 @@ test('DFW directory seed contains real unclaimed venues without fabricated game 
   assert.match(venueMigration, /Shows all televised games \(match clash permitting\)/);
   assert.match(venueMigration, /Full match audio for marquee matches/);
   const provenance = readFileSync(new URL('../docs/dfw-venue-seed-provenance.md', import.meta.url), 'utf8');
-  for (const venue of ["Frankie''s Downtown", 'Press Box Grill', 'Happiest Hour', 'Christies Sports Bar', 'Harwood Arms', 'Texas Live!', 'Sidecar Social Frisco', 'The Green Gator', "Fat Daddy''s Sports & Spirits Cafe", "Morton''s Tavern", 'Texas Republic Fort Worth', 'Buffalo Bros Sundance Square', 'The Derbyshire Pub', "Walk-On''s Sports Bistreaux The Colony", "BoomerJack''s Bedford", "BoomerJack''s Grapevine", 'TOCA Social', "G.O.A.T''s Arena Aubrey", 'Rogers Roundhouse', 'Shark Club Sports Bar & Grill Plano', 'City Works Eatery & Pour House Fort Worth']) {
+  for (const venue of ["Frankie''s Downtown", 'Press Box Grill', 'Happiest Hour', 'Christies Sports Bar', 'Harwood Arms', 'Texas Live!', 'Sidecar Social Frisco', 'The Green Gator', "Fat Daddy''s Sports & Spirits Cafe", "Morton''s Tavern", 'Texas Republic Fort Worth', 'Buffalo Bros Sundance Square', 'The Derbyshire Pub', "Walk-On''s Sports Bistreaux The Colony", "BoomerJack''s Bedford", "BoomerJack''s Grapevine", 'TOCA Social', "G.O.A.T''s Arena Aubrey", 'Rogers Roundhouse', 'Shark Club Sports Bar & Grill Plano', 'City Works Eatery & Pour House Fort Worth', '19 Degrees Sports Bar & Grill - McKinney', 'Ojos Locos Sports Cantina - Mesquite', 'The Hive Bar']) {
     assert.ok(venueMigration.includes(venue), `missing DFW venue: ${venue}`);
   }
-  assert.equal((venueMigration.match(/'a1000000-0000-4000-8000-0000000000/g) ?? []).length, 21);
+  assert.equal((venueMigration.match(/'a1000000-0000-4000-8000-0000000000/g) ?? []).length, 24);
   assert.match(venueMigration, /'\{\}'::jsonb/);
   assert.match(venueMigration, /false,\s*null,\s*null,\s*null,\s*null,\s*false/);
   assert.doesNotMatch(venueMigration, /insert into public\.venue_game_programming/i);
