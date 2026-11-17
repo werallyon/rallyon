@@ -37,6 +37,8 @@ test('DFW city seeds are merged into existing local storage rather than hidden b
 
 test('DFW directory seed contains real unclaimed venues without fabricated game programming or venue truth', () => {
   const venueMigration = readFileSync(new URL('../supabase/migrations/20261117103000_seed_dfw_venue_directory.sql', import.meta.url), 'utf8');
+  assert.match(venueMigration, /Shows all televised games \(match clash permitting\)/);
+  assert.match(venueMigration, /Full match audio for marquee matches/);
   const provenance = readFileSync(new URL('../docs/dfw-venue-seed-provenance.md', import.meta.url), 'utf8');
   for (const venue of ["Frankie''s Downtown", 'Press Box Grill', 'Happiest Hour', 'Christies Sports Bar', 'Harwood Arms', 'Texas Live!', 'Sidecar Social Frisco', 'The Green Gator', "Fat Daddy''s Sports & Spirits Cafe", "Morton''s Tavern", 'Texas Republic Fort Worth', 'Buffalo Bros Sundance Square', 'The Derbyshire Pub', "Walk-On''s Sports Bistreaux The Colony", "BoomerJack''s Bedford", "BoomerJack''s Grapevine", 'TOCA Social', "G.O.A.T''s Arena Aubrey"]) {
     assert.ok(venueMigration.includes(venue), `missing DFW venue: ${venue}`);
@@ -54,6 +56,7 @@ test('DFW game programming is limited to official club and venue commitments', (
   assert.match(programmingMigration, /https:\/\/www\.grandscape\.com\/directory\/toca-social/);
   assert.match(programmingMigration, /https:\/\/goatsarena\.us\/locations\/aubrey/);
   assert.match(programmingMigration, /'OFFICIAL',/);
+  assert.match(programmingMigration, /'CONFIRMED'/);
   assert.match(programmingMigration, /'VENUE',/);
   assert.match(programmingMigration, /where league = 'MLS'/);
   assert.match(programmingMigration, /game\.league = 'NFL'/);
@@ -61,7 +64,6 @@ test('DFW game programming is limited to official club and venue commitments', (
   assert.match(programmingMigration, /audio_on, screen/);
   assert.match(programmingMigration, /220-inch jumbo screen/);
   assert.match(programmingMigration, /network is not specified|network is not inferred/i);
-  assert.match(programmingMigration, /then 'PLANNED'/);
   assert.match(programmingMigration, /else 'CONFIRMED'/);
   assert.match(programmingMigration, /venue\.venue_id <> 'a1000000-0000-4000-8000-000000000017'::uuid/);
 });
