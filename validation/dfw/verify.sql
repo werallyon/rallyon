@@ -55,5 +55,5 @@ begin
     raise exception 'DFW seed includes unverified price or capacity values';
   end if;
 
-  raise notice 'PASS: DFW market, 25 cities, 11 real unclaimed venues, valid city links and trust boundaries';
+  raise notice 'PASS: DFW market, 26 cities, 14 real unclaimed venues, valid city links and trust boundaries';
 end $$;
