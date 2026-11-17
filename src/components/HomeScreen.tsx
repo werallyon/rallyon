@@ -592,7 +592,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
                       <a
                         href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-                          `${venue.name} ${venue.address} Austin TX`
+                          `${venue.name} ${venue.address} ${venue.city} ${venue.state}`
                         )}`}
                         target="_blank"
                         rel="noreferrer"
