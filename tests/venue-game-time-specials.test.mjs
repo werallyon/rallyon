@@ -12,7 +12,7 @@ const validation = read('../validation/dfw/verify.sql');
 test('venue specials are stored centrally with a strict time window and optional game link', () => {
   assert.match(migration, /create table public\.venue_promotions/);
   assert.match(migration, /game_id uuid references public\.games\(id\)/);
-  assert.match(migration, /end_at > start_at/);
+  assert.match(migration, /end_at > start_at/);\n  assert.match(migration, /status in \\('ACTIVE','SCHEDULED'\\)[\\s\\S]*start_at <= now\\(\\)/);
   assert.match(migration, /FOOD_SPECIAL/);
   assert.match(migration, /DRINK_SPECIAL/);
   assert.match(service, /from\('venue_promotions'\)/);
