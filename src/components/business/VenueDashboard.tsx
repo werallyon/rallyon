@@ -150,7 +150,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
       venue_id: venue.id,
       game_id: game.id,
       network: game.broadcast?.network || game.broadcastNetwork || undefined,
-      status: isShowing ? 'GAME_ON' : 'NOT_SHOWING' as VenueGameProgramming['status'],
+      status: isShowing ? (game.status === 'LIVE' || game.status === 'HALFTIME' ? 'GAME_ON' : 'CONFIRMED') : 'NOT_SHOWING' as VenueGameProgramming['status'],
       audio_on: false,
       screen: '',
       featured: false,
@@ -500,7 +500,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
             <div className="space-y-3">
               {upcomingGames.map((game) => {
                 const existing = programming.find((p) => p.game_id === game.id);
-                const isShowing = existing && existing.status === 'GAME_ON';
+                const isShowing = existing && (existing.status === 'CONFIRMED' || existing.status === 'GAME_ON');
 
                 return (
                   <div
