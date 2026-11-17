@@ -28,7 +28,7 @@ test('DFW city seeds are merged into existing local storage rather than hidden b
   assert.match(marketsData, /id: 'city_plano'[\s\S]*market_id: 'market_dfw'/);
   assert.match(marketsData, /id: 'city_frisco'[\s\S]*market_id: 'market_dfw'/);
   assert.match(marketsData, /id: 'city_mansfield'[\s\S]*market_id: 'market_dfw'/);
-  assert.match(marketsData, /id: 'city_the_colony'[\\s\\S]*market_id: 'market_dfw'/);
+  assert.match(marketsData, /id: 'city_the_colony'[\s\S]*market_id: 'market_dfw'/);
   assert.match(marketService, /const parsedCities: City\[\] = storedCities \? JSON\.parse\(storedCities\) : \[\]/);
   assert.match(marketService, /SEEDED_CITIES\.filter\(\(seeded\) => !parsedCities\.some\(\(stored\) => stored\.id === seeded\.id\)\)/);
 });
