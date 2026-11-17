@@ -8,7 +8,7 @@ const intelligence = readFileSync(new URL('../src/components/sports/GameIntellig
 test('missing ESPN broadcast metadata remains unknown instead of defaulting to ESPN', () => {
   assert.match(provider, /const rawBroadcast = competition\.broadcasts\?\.\[0\]\?\.names\?\.\[0\];/);
   assert.doesNotMatch(provider, /competition\.broadcasts\?\.\[0\].*\|\|\s*'ESPN'/);
-  assert.match(provider, /broadcast = rawBroadcast && netUpper/);
+  assert.match(provider, /if \(rawBroadcast && netUpper\)/);\n  assert.match(provider, /broadcast = \{/);
 });
 
 test('provider does not infer streaming subscriptions from network names', () => {
