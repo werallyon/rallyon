@@ -56,7 +56,7 @@ end $$;
 -- Existing games JSONB participants/home_team/away_team remain intact for compatibility.
 -- Provider IDs are normalized into mapping tables to support multiple providers per entity.
 
-create table if not exists public.sports (
+create table public.sports (
   id uuid primary key default gen_random_uuid(),
   code text not null unique,
   slug text not null unique,
@@ -71,7 +71,7 @@ create table if not exists public.sports (
   constraint sports_code_format check (code ~ '^[A-Z0-9_]+$')
 );
 
-create table if not exists public.leagues (
+create table public.leagues (
   id uuid primary key default gen_random_uuid(),
   sport_id uuid not null references public.sports(id) on delete restrict,
   code text not null,
@@ -88,7 +88,7 @@ create table if not exists public.leagues (
   constraint leagues_code_format check (code ~ '^[A-Z0-9_]+$')
 );
 
-create table if not exists public.teams (
+create table public.teams (
   id uuid primary key default gen_random_uuid(),
   league_id uuid not null references public.leagues(id) on delete restrict,
   name text not null,
@@ -115,7 +115,7 @@ create table if not exists public.teams (
 
 -- One canonical entity may be represented by several provider IDs.
 -- Provider IDs are unique within a provider and entity type, preventing duplicate ingestion.
-create table if not exists public.sport_provider_ids (
+create table public.sport_provider_ids (
   id uuid primary key default gen_random_uuid(),
   sport_id uuid not null references public.sports(id) on delete cascade,
   provider text not null,
@@ -124,7 +124,7 @@ create table if not exists public.sport_provider_ids (
   constraint sport_provider_identity_unique unique (provider, external_id)
 );
 
-create table if not exists public.league_provider_ids (
+create table public.league_provider_ids (
   id uuid primary key default gen_random_uuid(),
   league_id uuid not null references public.leagues(id) on delete cascade,
   provider text not null,
@@ -133,7 +133,7 @@ create table if not exists public.league_provider_ids (
   constraint league_provider_identity_unique unique (provider, external_id)
 );
 
-create table if not exists public.team_provider_ids (
+create table public.team_provider_ids (
   id uuid primary key default gen_random_uuid(),
   team_id uuid not null references public.teams(id) on delete cascade,
   provider text not null,
@@ -171,25 +171,25 @@ alter table public.games
     references public.teams(id, league_id)
     on delete set null (away_team_id);
 
-create index if not exists leagues_sport_active_idx
+create index leagues_sport_active_idx
   on public.leagues (sport_id, is_active, name);
-create index if not exists teams_league_active_idx
+create index teams_league_active_idx
   on public.teams (league_id, is_active, name);
-create index if not exists teams_name_lower_idx
+create index teams_name_lower_idx
   on public.teams (lower(name));
-create index if not exists sport_provider_ids_entity_idx
+create index sport_provider_ids_entity_idx
   on public.sport_provider_ids (sport_id);
-create index if not exists league_provider_ids_entity_idx
+create index league_provider_ids_entity_idx
   on public.league_provider_ids (league_id);
-create index if not exists team_provider_ids_entity_idx
+create index team_provider_ids_entity_idx
   on public.team_provider_ids (team_id);
-create index if not exists games_league_start_time_idx
+create index games_league_start_time_idx
   on public.games (league_id, start_time)
   where league_id is not null;
-create index if not exists games_home_team_start_time_idx
+create index games_home_team_start_time_idx
   on public.games (home_team_id, start_time)
   where home_team_id is not null;
-create index if not exists games_away_team_start_time_idx
+create index games_away_team_start_time_idx
   on public.games (away_team_id, start_time)
   where away_team_id is not null;
 
