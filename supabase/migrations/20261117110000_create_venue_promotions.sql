@@ -37,7 +37,7 @@ create policy venue_promotions_public_active_read
   for select
   to anon, authenticated
   using (
-    status = 'ACTIVE'
+    status in ('ACTIVE','SCHEDULED')
     and start_at <= now()
     and end_at > now()
   );
