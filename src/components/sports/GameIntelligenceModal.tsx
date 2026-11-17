@@ -201,7 +201,9 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
                   ? 'Streaming Only'
                   : game.broadcast.broadcastType === 'REGIONAL'
                   ? 'Regional sports network'
-                  : 'Cable network'}
+                  : game.broadcast.broadcastType === 'CABLE'
+                    ? 'Cable network'
+                    : 'Broadcast type unavailable'}
               </span>
             </div>
 
@@ -276,7 +278,7 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
                 <Tv className="w-3.5 h-3.5 text-amber-400" />
                 Venues listing this game ({matchingVenues.length})
               </span>
-              <span className="text-[10px] text-emerald-400 font-bold">Sound & Screens</span>
+              <span className="text-[10px] text-neutral-400 font-bold">Programming details</span>
             </div>
 
             {matchingVenues.length === 0 ? (
