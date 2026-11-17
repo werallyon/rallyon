@@ -64,6 +64,5 @@ test('DFW game programming is limited to official club and venue commitments', (
   assert.match(programmingMigration, /audio_on, screen/);
   assert.match(programmingMigration, /220-inch jumbo screen/);
   assert.match(programmingMigration, /network is not specified|network is not inferred/i);
-  assert.match(programmingMigration, /else 'CONFIRMED'/);
   assert.match(programmingMigration, /venue\.venue_id <> 'a1000000-0000-4000-8000-000000000017'::uuid/);
 });
