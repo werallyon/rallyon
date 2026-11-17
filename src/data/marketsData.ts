@@ -568,6 +568,18 @@ export const SEEDED_CITIES: City[] = [
     status: 'ACTIVE'
   },
   {
+    id: 'city_mesquite',
+    market_id: 'market_dfw',
+    name: 'Mesquite, TX',
+    state: 'Texas',
+    state_code: 'TX',
+    country: 'USA',
+    latitude: 32.7668,
+    longitude: -96.5992,
+    population: 150000,
+    status: 'ACTIVE'
+  },
+  {
     id: 'city_richardson',
     market_id: 'market_dfw',
     name: 'Richardson, TX',
