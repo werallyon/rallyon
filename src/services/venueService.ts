@@ -7,10 +7,10 @@ function mapVenue(row: any): Venue {
   const rawTruth = row.venue_truth && typeof row.venue_truth === 'object' ? row.venue_truth : {};
   const validCategories = ['Sports Bar', 'Pub', 'Beer Garden', 'Brewery', 'Entertainment', 'Lounge'];
   const validPriceLevels = ['$', '$$', '$$$', '$$$$'];
-  const baselineCategory = validCategories.includes(rawBaseline.category)
+  const baselineCategory = (validCategories.includes(rawBaseline.category)
     ? rawBaseline.category
-    : (row.categories ?? []).find((category: string) => validCategories.includes(category)) || 'Sports Bar';
-  const priceLevel = validPriceLevels.includes(rawBaseline.priceLevel) ? rawBaseline.priceLevel : '$$';
+    : (row.categories ?? []).find((category: string) => validCategories.includes(category)) || 'Sports Bar') as Venue['baseline']['category'];
+  const priceLevel = (validPriceLevels.includes(rawBaseline.priceLevel) ? rawBaseline.priceLevel : '$') as Venue['baseline']['priceLevel'];
   const rawSeatingRatio = rawTruth.environment?.seatingRatio ?? {};
 
   return {
