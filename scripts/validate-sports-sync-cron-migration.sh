@@ -14,8 +14,15 @@ if [[ ! -f "$MIGRATION" ]]; then
   exit 1
 fi
 
-PROJECT_ID="$(basename "$WORKDIR")"
-DB_CONTAINER="$(docker ps --filter "label=com.supabase.cli.project=$PROJECT_ID" --format '{{.Names}}' | grep -E '(^|_)db_' | head -n 1)"
+# Supabase labels local containers with config.toml's project_id, not the
+# workdir directory name. Keep these separate so nested workdirs work reliably.
+PROJECT_ID="$(sed -nE 's/^[[:space:]]*project_id[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$WORKDIR/config.toml" | head -n 1)"
+if [[ -z "$PROJECT_ID" ]]; then
+  echo "Could not read project_id from $WORKDIR/config.toml" >&2
+  exit 1
+fi
+
+DB_CONTAINER="$(docker ps --filter "label=com.supabase.cli.project=$PROJECT_ID" --format '{{.Names}}' | grep -E '(^|_)db_' | head -n 1 || true)"
 if [[ -z "$DB_CONTAINER" ]]; then
   echo "Could not find the isolated Cron validation database container for project label $PROJECT_ID" >&2
   exit 1
