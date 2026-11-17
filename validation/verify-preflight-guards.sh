@@ -120,6 +120,10 @@ select (
   and has_schema_privilege('supabase_auth_admin', 'public', 'USAGE')
   and p.proconfig @> array['search_path=pg_catalog, public']::text[]
   and has_table_privilege('supabase_auth_admin', 'public.profiles', 'INSERT')
+  and not has_table_privilege('supabase_auth_admin', 'public.profiles', 'SELECT')
+  and not has_table_privilege('supabase_auth_admin', 'public.profiles', 'UPDATE')
+  and not has_table_privilege('supabase_auth_admin', 'public.profiles', 'DELETE')
+  and not has_column_privilege('supabase_auth_admin', 'public.profiles', 'id', 'SELECT')
   and exists (
     select 1 from pg_policies pol
     where pol.schemaname = 'public' and pol.tablename = 'profiles'
