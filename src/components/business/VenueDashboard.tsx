@@ -327,6 +327,17 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
         {/* TAB 1: OVERVIEW & BUSINESS VALUE STORY (Section 8 & 19) */}
         {activeTab === 'OVERVIEW' && (
           <div className="space-y-6">
+            {isDatabaseVenue ? (
+              <div className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 shadow-xl space-y-2">
+                <span className="text-xs font-black uppercase tracking-widest text-neutral-300">
+                  Venue Analytics
+                </span>
+                <h3 className="text-sm font-black text-white">Production analytics are not connected yet</h3>
+                <p className="text-xs text-neutral-400">
+                  RallyOn is not yet receiving verified engagement events for this venue. We will not display estimated views, visits, check-ins, or ROI as real results.
+                </p>
+              </div>
+            ) : (
             {/* ROI Value Proposition Banner (Section 19) */}
             <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/20 via-neutral-900 to-neutral-950 border border-amber-500/40 shadow-xl space-y-4">
               <div className="flex items-center justify-between">
@@ -364,6 +375,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
               </div>
             </div>
 
+            )}
             {/* Tonight's Live Programming Highlights */}
             <div className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 space-y-4">
               <div className="flex items-center justify-between">
@@ -837,7 +849,16 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
         )}
 
         {/* TAB 7: ANALYTICS ROI (Section 18 & 19) */}
-        {activeTab === 'ANALYTICS' && analytics && (
+        {activeTab === 'ANALYTICS' && isDatabaseVenue && (
+          <div className="p-6 text-center bg-neutral-900 rounded-3xl border border-neutral-800 space-y-2">
+            <h3 className="text-sm font-black text-white">Production analytics are not connected yet</h3>
+            <p className="text-xs text-neutral-400">
+              Engagement and ROI reporting will appear here once verified events are available from the production analytics service.
+            </p>
+          </div>
+        )}
+
+        {activeTab === 'ANALYTICS' && !isDatabaseVenue && analytics && (
           <div className="space-y-4">
             <h3 className="text-base font-black text-white">Performance & Discovery Analytics</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
