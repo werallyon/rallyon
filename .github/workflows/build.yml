@@ -20,6 +20,15 @@ jobs:
       - name: Validate unique root Supabase migration versions
         run: bash scripts/check-migration-version-uniqueness.sh
 
+      - name: Checkout coordinated PR #17 migration for cross-PR version check
+        uses: actions/checkout@v4
+        with:
+          ref: feat/p0-b-canonical-sports-model
+          path: p0b
+
+      - name: Validate PR #17 migration version against the actual PR #22 root list
+        run: bash scripts/check-cross-pr-migration-version-uniqueness.sh p0b/supabase/migrations/20261113120000_p0b_canonical_sports_leagues_teams.sql supabase/migrations
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
