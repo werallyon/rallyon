@@ -13,13 +13,13 @@ begin
   end if;
 
   select count(*) into v_count from public.cities where market_id = v_market_id;
-  if v_count <> 27 then
-    raise exception 'Expected 27 DFW cities, found %', v_count;
+  if v_count <> 28 then
+    raise exception 'Expected 28 DFW cities, found %', v_count;
   end if;
 
   select count(*) into v_count from public.venues where market_id = v_market_id;
-  if v_count <> 21 then
-    raise exception 'Expected 21 DFW venues, found %', v_count;
+  if v_count <> 24 then
+    raise exception 'Expected 24 DFW venues, found %', v_count;
   end if;
 
   if exists (
@@ -153,5 +153,5 @@ begin
     raise exception 'DFW promotions must not be seeded as if a venue operator confirmed them';
   end if;
 
-  raise notice 'PASS: DFW market, 27 cities, 21 real unclaimed venues, 3 source-backed game-to-venue rows, RLS-protected venue promotions and trust boundaries';
+  raise notice 'PASS: DFW market, 28 cities, 24 real unclaimed venues, 3 source-backed game-to-venue rows, RLS-protected venue promotions and trust boundaries';
 end $$;
