@@ -24,6 +24,7 @@ test('venue specials are stored centrally with a strict time window and optional
 test('only a claimed venue owner can create, edit or remove promotions', () => {
   assert.ok(migration.includes('venue_promotions_owner_insert'));
   assert.ok(migration.includes('created_by = (select auth.uid())'));
+  assert.ok(migration.includes('created_by uuid not null references auth.users(id) on delete cascade'));
   assert.ok(migration.includes('v.claimed = true'));
   assert.ok(migration.includes('v.claimed_by_user_id = (select auth.uid())'));
   assert.ok(migration.includes('v.claimed_by_user_id = venue_promotions.created_by'));
