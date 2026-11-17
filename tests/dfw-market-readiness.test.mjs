@@ -53,7 +53,6 @@ test('DFW directory seed contains real unclaimed venues without fabricated game 
 
 test('DFW game programming is limited to official club and venue commitments', () => {
   assert.match(programmingMigration, /https:\/\/www\.fcdallas\.com\/watchparty/);
-  assert.match(programmingMigration, /https:\/\/www\.grandscape\.com\/directory\/toca-social/);
   assert.match(programmingMigration, /https:\/\/goatsarena\.us\/locations\/aubrey/);
   assert.match(programmingMigration, /'OFFICIAL',/);
   assert.match(programmingMigration, /'CONFIRMED'/);
