@@ -21,6 +21,13 @@ test('local demo analytics remain limited to non-database venues', () => {
   assert.match(dashboard, /\) : \([\s\S]*ROI Value Proposition Banner/);
 });
 
+test('venue profile editing never reports a save when no persistence callback exists', () => {
+  assert.match(dashboard, /onUpdateVenue\?: \(updatedVenue: Venue\) => Promise<void>/);
+  assert.match(dashboard, /if \(!onUpdateVenue\) \{[\s\S]*No changes were saved/);
+  assert.match(dashboard, /await onUpdateVenue\(updated\)/);
+  assert.doesNotMatch(dashboard, /if \(onUpdateVenue\) onUpdateVenue\(updated\);\s*showToast\('Venue Truth & Profile saved successfully\.'/);
+});
+
 test('database-backed venues never hydrate demo promotions, sponsorships, or analytics', () => {
   assert.match(dashboard, /if \(isDatabaseVenue\) \{[\s\S]*setPromotions\(\[\]\);[\s\S]*setSponsorships\(\[\]\);[\s\S]*setAnalytics\(null\);[\s\S]*return;/);
   assert.match(dashboard, /isDatabaseVenue \? \(\) => undefined : businessVenueService\.subscribe/);
