@@ -382,7 +382,7 @@ export const LiveScreen: React.FC<LiveScreenProps> = ({
                   <div className="mt-3 pt-2.5 border-t border-neutral-800/80 flex items-center justify-between text-xs">
                     <span className="text-emerald-400 font-bold flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      GAME ON at {confirmedVenues.length} Austin venues
+                      GAME ON at {confirmedVenues.length} local venues
                     </span>
                     <span className="text-amber-400 font-bold group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
                       Find Venues →
@@ -449,7 +449,7 @@ export const LiveScreen: React.FC<LiveScreenProps> = ({
           <div className="relative w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl">
             <h2 className="text-lg font-black text-white mb-1">Broadcast Live Signal</h2>
             <p className="text-xs text-neutral-400 mb-4">
-              Help the RallyOn network verify live conditions in Austin right now.
+              Help the RallyOn network verify live conditions in your area right now.
             </p>
 
             <form onSubmit={handleQuickReport} className="space-y-3.5">
