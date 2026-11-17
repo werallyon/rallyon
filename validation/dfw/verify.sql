@@ -61,8 +61,8 @@ begin
     'f0000000-0000-4000-8000-000000000001'::uuid,
     'f0000000-0000-4000-8000-000000000002'::uuid
   );
-  if v_count <> 4 then
-    raise exception 'Expected 4 official DFW game-to-venue rows, found %', v_count;
+  if v_count <> 3 then
+    raise exception 'Expected 3 official DFW game-to-venue rows, found %', v_count;
   end if;
 
   if exists (
@@ -70,7 +70,8 @@ begin
     from public.venue_game_programming p
     where p.game_id = 'f0000000-0000-4000-8000-000000000001'::uuid
       and (
-        p.status not in ('CONFIRMED', 'PLANNED')
+        p.status <> 'CONFIRMED'
+        or not p.is_confirmed
         or p.source_type <> 'OFFICIAL'
         or p.network is not null
         or p.screen is not null
@@ -87,16 +88,6 @@ begin
       and p.is_confirmed
   ) <> 2 then
     raise exception 'Expected two official FC Dallas partner venues with confirmed match listings';
-  end if;
-
-  if not exists (
-    select 1 from public.venue_game_programming p
-    where p.game_id = 'f0000000-0000-4000-8000-000000000001'::uuid
-      and p.venue_id = 'a1000000-0000-4000-8000-000000000017'::uuid
-      and p.status = 'PLANNED'
-      and not p.is_confirmed
-  ) then
-    raise exception 'TOCA Social conditional match listing must remain planned, not confirmed';
   end if;
 
   if not exists (
@@ -124,5 +115,5 @@ begin
     raise exception 'DFW programming rows must retain their source URLs';
   end if;
 
-  raise notice 'PASS: DFW market, 27 cities, 18 real unclaimed venues, 4 source-backed game-to-venue rows and trust boundaries';
+  raise notice 'PASS: DFW market, 27 cities, 18 real unclaimed venues, 3 source-backed game-to-venue rows and trust boundaries';
 end $$;
