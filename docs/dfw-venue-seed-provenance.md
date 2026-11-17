@@ -25,7 +25,7 @@ The DFW market catalog includes 27 cities. This first-pass production directory 
 | BoomerJack's Bedford | Bedford | [Official location page](https://boomerjacks.com/location/bedford/) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/boomerjacks-grill-bar-mb705268) |
 | BoomerJack's Grapevine | Grapevine | [Official location page](https://boomerjacks.com/location/grapevine/) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/boomerjacks-grill-bar-19-mb105755997) |
 | TOCA Social | The Colony | [Official Grandscape directory](https://www.grandscape.com/directory/toca-social/) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/toca-social-grandscape-mb200158435) |
-| G.O.A.T's Arena Aubrey | Aubrey | [Official Aubrey venue page](https://goatsarena.us/locations/aubrey) | [Official contact/location page](https://goatsarena.us/contact) |
+| G.O.A.T's Arena Aubrey | Aubrey | [Official Aubrey venue page](https://goatsarena.us/locations/aubrey) | [Address-level geocode for the same building address](https://www.merchantcircle.com/tx-aubrey/health-and-beauty/dental/orthodontists) |
 
 ## Data rules
 
