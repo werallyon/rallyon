@@ -19,6 +19,7 @@ test('game-to-venue matching joins programming rows to real venue IDs', () => {
   assert.match(intelligence, /game\.status === 'UPCOMING' \|\| game\.status === 'DELAYED'/);
   assert.match(intelligence, /venueGame\.verificationStatus === 'GAME_ON'/);
   assert.match(intelligence, /venueGame\.verificationStatus === 'LIKELY'/);
+  assert.match(intelligence, /venueGame\.verificationStatus === 'CONFIRMED'/);
   assert.doesNotMatch(intelligence, /currentGames/);
 });
 
