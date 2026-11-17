@@ -29,6 +29,13 @@ test('game intelligence does not claim an unverified ESPN broadcast or confirmed
   assert.doesNotMatch(intelligence, /ESPN Broadcast|Confirmed Austin Venues/);
 });
 
+test('game intelligence does not invent odds, totals, or a host stadium when provider data is absent', () => {
+  assert.match(intelligence, /summary\?\.odds\?\.details \|\| game\.liveDetails\?\.headline \|\| 'Odds unavailable'/);
+  assert.match(intelligence, /No verified total available/);
+  assert.match(intelligence, /summary\?\.venue\?\.name \|\| game\.venueName \|\| 'Venue details unavailable'/);
+  assert.doesNotMatch(intelligence, /'Even Line'|'Live ESPN Feed'|'Host Stadium'/);
+});
+
 test('home game cards do not label missing network data as a live broadcast', () => {
   assert.match(home, /game\.broadcast\?\.network \|\| game\.broadcastNetwork \|\| 'Broadcast details unavailable'/);
   assert.doesNotMatch(home, /game\.broadcastNetwork \|\| 'Live Broadcast'/);
