@@ -98,7 +98,8 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
           username: `p0_${label}_${suffix.slice(0, 8)}`,
           firstName: 'RallyOn',
           lastName: label.toUpperCase(),
-          name: `RallyOn ${label.toUpperCase()}`
+          name: `RallyOn ${label.toUpperCase()}`,
+          onboardingCompleted: 'not-a-boolean'
         }
       }
     });
@@ -125,7 +126,7 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
       for (const [label, account] of [['A', userA], ['B', userB]]) {
         const { data, error } = await account.client
           .from('profiles')
-          .select('id, username, first_name, last_name, display_name')
+          .select('id, username, first_name, last_name, display_name, onboarding_completed, onboarding_step')
           .eq('id', account.user.id)
           .single();
         assert.ifError(error);
@@ -133,6 +134,8 @@ test('P0-A/P0-C local Auth and PostgREST enforce user ownership', { timeout: 90_
         assert.equal(data.first_name, 'RallyOn');
         assert.equal(data.last_name, label);
         assert.equal(data.display_name, `RallyOn ${label}`);
+        assert.equal(data.onboarding_completed, false, 'malformed user-editable onboarding metadata must safely default to false');
+        assert.equal(data.onboarding_step, 'welcome');
       }
     });
 
