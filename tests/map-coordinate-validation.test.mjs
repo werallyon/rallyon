@@ -8,7 +8,8 @@ test('Google Maps replaces the schematic canvas and uses a DFW default center', 
   assert.match(source, /loadGoogleMaps\(apiKey\)/);
   assert.match(source, /VITE_GOOGLE_MAPS_API_KEY/);
   assert.match(source, /new maps\.Map\(/);
-  assert.match(source, /center: \{ lat: 32\.7767, lng: -96\.7970 \}/);
+  assert.match(source, /center: \{ lat: activeMarket\.latitude, lng: activeMarket\.longitude \}/);
+  assert.match(source, /activeMarket\.name venue preview/);
   assert.doesNotMatch(source, /<svg|projectCoords|relative positions/i);
 });
 
