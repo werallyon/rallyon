@@ -2,7 +2,7 @@
 set -euo pipefail
 
 WORKDIR="${1:-validation/cron}"
-MIGRATION="${2:-supabase/migrations/20261114170000_rallyon_sync_games_schedule_timeout_v4.sql}"
+MIGRATION="${2:-supabase/migrations/20261117000000_rallyon_sync_games_schedule_timeout_v4.sql}"
 
 if [[ ! -f "$WORKDIR/config.toml" ]]; then
   echo "Missing isolated Supabase config: $WORKDIR/config.toml" >&2
