@@ -524,7 +524,6 @@ values
   null,
   false
 )
-)
 on conflict (id) do nothing;
 
 commit;
