@@ -89,3 +89,47 @@ test('a failed earlier profile write cannot leak optimistic state into a later f
   assert.equal(service.getCurrentUser().firstName, 'Canonical');
   assert.equal(service.getCurrentUser().homeCity, 'Committed City');
 });
+
+
+test('the latest queued profile write failure is returned to its caller and leaves canonical state unchanged', async () => {
+  const latestRpc = deferred();
+  const userId = '00000000-0000-4000-8000-000000000002';
+  const authUser = { id: userId, email: 'latest@example.com' };
+  let rpcCalls = 0;
+  const client = {
+    auth: {
+      onAuthStateChange() { return { data: { subscription: { unsubscribe() {} } } }; },
+      async getUser() { return { data: { user: authUser }, error: null }; }
+    },
+    async rpc() {
+      rpcCalls += 1;
+      return latestRpc.promise;
+    }
+  };
+
+  const service = new AuthService(client);
+  service.currentUser = {
+    id: userId,
+    email: authUser.email,
+    firstName: 'Canonical',
+    lastName: 'User',
+    name: 'Canonical User',
+    username: 'canonical',
+    emailVerified: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    favoriteTeams: [],
+    locationPermissionStatus: 'PROMPT',
+    notificationPermissionStatus: 'PROMPT'
+  };
+
+  const latestSave = service.updateUser(userId, { firstName: 'Must Not Persist' });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(rpcCalls, 1);
+
+  latestRpc.resolve({ data: null, error: { message: 'latest transaction failed' } });
+  const result = await latestSave;
+
+  assert.equal(result.success, false);
+  assert.match(result.error, /latest transaction failed/);
+  assert.equal(service.getCurrentUser().firstName, 'Canonical');
+});
