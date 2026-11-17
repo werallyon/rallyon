@@ -533,7 +533,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
                             {game.league}
                           </span>
                           <span className="text-[11px] text-neutral-400">
-                            {game.broadcastNetwork || 'Broadcast not confirmed'}
+                            {game.broadcast?.network || game.broadcastNetwork || 'Broadcast not confirmed'}
                           </span>
                           {game.status === 'LIVE' && (
                             <span className="text-[10px] font-black bg-red-500 text-white px-2 py-0.5 rounded animate-pulse">
