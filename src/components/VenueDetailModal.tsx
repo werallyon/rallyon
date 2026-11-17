@@ -184,7 +184,7 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
               <span>•</span>
               <span>{venue.neighborhood}</span>
               <span>•</span>
-              <span>{venue.baseline.priceLevel}</span>
+              {venue.baseline.priceLevel && <><span>•</span><span>{venue.baseline.priceLevel}</span></>}
               {googlePlace && (
                 <>
                   <span>•</span>
@@ -609,7 +609,30 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
           </div>
 
           {/* STRUCTURED VENUE TRUTH */}
-          <div className="rounded-2xl bg-neutral-900/90 border border-neutral-800 p-4 space-y-4">
+          {venue.venueTruthVerified === false ? (
+            <div className="rounded-2xl bg-neutral-900/90 border border-neutral-800 p-4 space-y-3">
+              <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+                <span className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-neutral-500" />
+                  Venue Truth Intelligence
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400 font-medium">Not confirmed</span>
+              </div>
+              <p className="text-xs text-neutral-400">Screen count, audio, projection, seating and crowd details have not been confirmed by this venue. RallyOn does not guess these specifications.</p>
+              {venue.features && venue.features.length > 0 && (
+                <div className="pt-2 border-t border-neutral-800">
+                  <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block mb-1.5">Publicly Listed Venue Highlights</span>
+                  <div className="flex flex-wrap gap-1">
+                    {venue.features.map((item, idx) => (
+                      <span key={idx} className="text-[11px] px-2.5 py-1 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-300">{item}</span>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[10px] text-neutral-500">Published details can change. Confirm current specials and game-time availability with staff.</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-neutral-900/90 border border-neutral-800 p-4 space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
               <span className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-amber-400" />
@@ -748,7 +771,8 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
                 <p className="mt-2 text-[10px] text-neutral-500">Published venue details can change. Confirm current specials and game-time availability with staff.</p>
               </div>
             )}
-          </div>
+            </div>
+          )}
 
           {/* Location & Contact Info */}
           <div className="p-4 rounded-2xl bg-neutral-900/80 border border-neutral-800 space-y-2 text-xs">
