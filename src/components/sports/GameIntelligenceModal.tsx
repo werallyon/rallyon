@@ -177,14 +177,14 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
                 Broadcast Network
               </span>
               <span className="font-bold text-white text-xs block">
-                {game.broadcastNetwork || 'ESPN Broadcast'}
+                {game.broadcast?.network || game.broadcastNetwork || 'Not confirmed'}
               </span>
               <span className="text-[10px] text-emerald-400 block">
                 {game.broadcast?.broadcastType === 'NATIONAL_OTA'
                   ? 'Over-the-Air (Free)'
                   : game.broadcast?.broadcastType === 'STREAMING_EXCLUSIVE'
                   ? 'Streaming Only'
-                  : 'Cable & Sports Bars'}
+                  : 'Check local listings'}
               </span>
             </div>
 
@@ -252,12 +252,12 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
             )}
           </div>
 
-          {/* Confirmed Austin Watch Venues */}
+          {/* Venues listing this game */}
           <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-white flex items-center gap-1.5">
                 <Tv className="w-3.5 h-3.5 text-amber-400" />
-                Confirmed Austin Venues Showing Game ({matchingVenues.length})
+                Venues listing this game ({matchingVenues.length})
               </span>
               <span className="text-[10px] text-emerald-400 font-bold">Sound & Screens</span>
             </div>
