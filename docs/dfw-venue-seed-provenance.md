@@ -2,7 +2,7 @@
 
 Updated: 2026-11-17
 
-This first-pass production directory contains 11 real DFW businesses/venues with a published street address and a geospatial point. The records are **unclaimed directory listings**, not venue-verified RallyOn partners. No screen counts, sound-on promises, sports packages, live programming, or team-specific watch commitments are written into `venue_truth` or `venue_game_programming`.
+This first-pass production directory contains 14 real DFW businesses/venues with a published street address and a geospatial point. The records are **unclaimed directory listings**, not venue-verified RallyOn partners. No screen counts, sound-on promises, sports packages, live programming, or team-specific watch commitments are written into `venue_truth` or `venue_game_programming`.
 
 ## Seeded venues
 
@@ -19,6 +19,9 @@ This first-pass production directory contains 11 real DFW businesses/venues with
 | Fat Daddy's Sports & Spirits Cafe | Mansfield | [Official sports page](https://www.fatdaddyslive.com/sports) | [Venue coordinates from Foursquare check-in listing](https://untappd.com/v/fat-daddy-s-sports-spirits-cafe/77762/photos) |
 | Morton's Tavern | Fort Worth | Business directory record: 212 Lipscomb Street, Fort Worth, TX 76104 | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/mortons-tavern-mb200156159) |
 | Texas Republic Fort Worth | Fort Worth | [Official locations page](https://www.txrbars.com/locations) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/texas-republic-mb985562) |
+| Buffalo Bros Sundance Square | Fort Worth | [Official location page](https://www.buffalobrostexas.com/location/buffalo-bros-sundance-square/) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/buffalo-bros-mb106048803) |
+| The Derbyshire Pub | Frisco | [Official website and location](https://derbyshirefrisco.com/) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/the-derbyshire-mb200103843) |
+| Walk-On's Sports Bistreaux The Colony | The Colony | [Official location page](https://locate.walk-ons.com/tx/thecolony/restaurants-406.html) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/walk-ons-sports-bistreaux-mb200185850) |
 
 ## Data rules
 
