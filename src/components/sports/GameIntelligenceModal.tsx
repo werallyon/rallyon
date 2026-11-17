@@ -58,20 +58,23 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
     };
   }, [game.id, game.league]);
 
-  // Join venue records to the authoritative programming rows for this game.
-  // Only show venue-confirmed schedules or active GAME_ON reports.
+  const isLive = game.status === 'LIVE' || game.status === 'HALFTIME';
+
+  // Only show upcoming listings for future/delayed games and GAME_ON reports
+  // while the event is actually live. A stale GAME_ON row must not survive a final.
   const matchingVenues = venueGames
     .filter((venueGame) =>
       venueGame.gameId === game.id &&
-      venueGame.verificationStatus !== 'NOT_CONFIRMED'
+      (isLive
+        ? venueGame.verificationStatus === 'GAME_ON'
+        : (game.status === 'UPCOMING' || game.status === 'DELAYED') &&
+          venueGame.verificationStatus === 'LIKELY')
     )
     .map((venueGame) => ({
       venue: venues.find((venue) => venue.id === venueGame.venueId),
       venueGame
     }))
     .filter((match): match is { venue: Venue; venueGame: VenueGame } => Boolean(match.venue));
-
-  const isLive = game.status === 'LIVE' || game.status === 'HALFTIME';
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
