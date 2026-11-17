@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   MapPin,
   Crosshair,
@@ -63,21 +63,63 @@ export const MapScreen: React.FC<MapScreenProps> = ({
   const [markerCategory, setMarkerCategory] = useState<MarkerCategory>('ALL');
   const [zoomLevel, setZoomLevel] = useState(1);
 
-  // Austin geographic bounds for SVG coordinate mapping:
-  // North: 30.43 (Anderson Ln / North Austin / Lake Travis)
-  // South: 30.16 (South Manchaca / Armadillo Den)
-  // West: -97.89 (Oasis Lake Travis)
-  // East: -97.70 (East Austin / Manor Rd)
-  const bounds = {
-    minLat: 30.16,
-    maxLat: 30.43,
-    minLon: -97.89,
-    maxLon: -97.70
-  };
+  // Keep the selected venue valid when a market loads or its venue list changes.
+  useEffect(() => {
+    setSelectedMarkerVenue((current) => {
+      if (current && venues.some((venue) => venue.id === current.id)) return current;
+      return venues[0] || null;
+    });
+  }, [venues]);
+
+  // Project the venues actually supplied by the active market. The previous
+  // fixed Austin bounds pushed Dallas/Texarkana venues to the map edges.
+  const bounds = useMemo(() => {
+    const located = venues.filter((venue) =>
+      Number.isFinite(venue.latitude) && Number.isFinite(venue.longitude)
+    );
+    if (located.length === 0) {
+      return { minLat: -0.01, maxLat: 0.01, minLon: -0.01, maxLon: 0.01 };
+    }
+
+    const latitudes = located.map((venue) => venue.latitude);
+    const longitudes = located.map((venue) => venue.longitude);
+    const rawMinLat = Math.min(...latitudes);
+    const rawMaxLat = Math.max(...latitudes);
+    const rawMinLon = Math.min(...longitudes);
+    const rawMaxLon = Math.max(...longitudes);
+    const latPadding = Math.max(0.01, (rawMaxLat - rawMinLat) * 0.15);
+    const lonPadding = Math.max(0.01, (rawMaxLon - rawMinLon) * 0.15);
+
+    return {
+      minLat: rawMinLat - latPadding,
+      maxLat: rawMaxLat + latPadding,
+      minLon: rawMinLon - lonPadding,
+      maxLon: rawMaxLon + lonPadding
+    };
+  }, [venues]);
+
+  const marketLabel = useMemo(() => {
+    const cities = [...new Set(venues.map((venue) =>
+      [venue.city, venue.state].filter(Boolean).join(', ')
+    ).filter(Boolean))];
+    if (cities.length === 1) return cities[0];
+    return cities.length > 1 ? 'Nearby markets' : 'Your market';
+  }, [venues]);
+
+  const centralVenue = useMemo(() => {
+    if (venues.length === 0) return null;
+    const centerLat = (bounds.minLat + bounds.maxLat) / 2;
+    const centerLon = (bounds.minLon + bounds.maxLon) / 2;
+    return venues.reduce((closest, venue) => {
+      const currentDistance = Math.hypot(venue.latitude - centerLat, venue.longitude - centerLon);
+      const closestDistance = Math.hypot(closest.latitude - centerLat, closest.longitude - centerLon);
+      return currentDistance < closestDistance ? venue : closest;
+    }, venues[0]);
+  }, [venues, bounds]);
 
   const projectCoords = (lat: number, lon: number) => {
     const xPercent = ((lon - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * 100;
-    // Latitude is inverted in SVG (higher lat = lower Y)
+    // Latitude is inverted in SVG (higher lat = lower Y).
     const yPercent = (1 - (lat - bounds.minLat) / (bounds.maxLat - bounds.minLat)) * 100;
     return {
       x: Math.max(5, Math.min(95, xPercent)),
@@ -188,69 +230,32 @@ export const MapScreen: React.FC<MapScreenProps> = ({
         </div>
       </div>
 
-      {/* INTERACTIVE AUSTIN VENUE CANVAS / SVG MAP */}
+      {/* Market-aware venue location canvas. Pins use the active venues' coordinates. */}
       <div className="relative w-full h-full bg-[#0a0f18] overflow-hidden select-none">
-        {/* SVG Base Map with Austin Geography */}
         <svg
           className="w-full h-full"
           viewBox="0 0 1000 1000"
           preserveAspectRatio="none"
+          role="img"
+          aria-label={`Venue locations in ${marketLabel}`}
         >
-          {/* Subtle Grid Lines */}
           <defs>
             <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
               <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#161f30" strokeWidth="0.8" />
             </pattern>
-            <linearGradient id="riverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#1e3a5f" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="#0f2744" stopOpacity="0.9" />
-            </linearGradient>
+            <radialGradient id="marketGlow">
+              <stop offset="0%" stopColor="#1d3557" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#0a0f18" stopOpacity="0" />
+            </radialGradient>
           </defs>
-
           <rect width="1000" height="1000" fill="url(#grid)" />
-
-          {/* Lady Bird Lake / Colorado River Curve across Austin */}
-          <path
-            d="M 50 150 Q 250 180 400 380 T 550 560 Q 620 590 750 610 T 950 630"
-            fill="none"
-            stroke="url(#riverGrad)"
-            strokeWidth="38"
-            strokeLinecap="round"
-          />
-
-          {/* Major Austin Arteries / Highway lines (MoPac, I-35, US-183, Ben White) */}
-          {/* I-35 North-South */}
-          <path d="M 680 50 L 670 450 L 680 950" stroke="#1f2c42" strokeWidth="10" fill="none" />
-          {/* MoPac (Loop 1) */}
-          <path d="M 420 50 L 400 500 L 430 950" stroke="#1f2c42" strokeWidth="9" fill="none" />
-          {/* US-183 (Research Blvd) */}
-          <path d="M 200 180 L 800 220" stroke="#1f2c42" strokeWidth="7" fill="none" />
-          {/* Ben White / US-290 */}
-          <path d="M 200 780 L 850 740" stroke="#1f2c42" strokeWidth="8" fill="none" />
-
-          {/* Austin Region Area Labels */}
-          <text x="540" y="200" fill="#2d4365" fontSize="22" fontWeight="800" letterSpacing="4">
-            NORTH AUSTIN
+          <ellipse cx="500" cy="500" rx="440" ry="440" fill="url(#marketGlow)" />
+          <text x="500" y="145" textAnchor="middle" fill="#3b5982" fontSize="24" fontWeight="900" letterSpacing="4">
+            {marketLabel.toUpperCase()}
           </text>
-          <text x="560" y="440" fill="#2d4365" fontSize="22" fontWeight="800" letterSpacing="4">
-            UT CAMPUS
+          <text x="500" y="180" textAnchor="middle" fill="#52627a" fontSize="14" fontWeight="600" letterSpacing="2">
+            VENUE LOCATIONS · RELATIVE POSITIONS
           </text>
-          <text x="510" y="540" fill="#3b5982" fontSize="26" fontWeight="900" letterSpacing="5">
-            DOWNTOWN
-          </text>
-          <text x="780" y="500" fill="#2d4365" fontSize="20" fontWeight="800" letterSpacing="4">
-            EAST AUSTIN
-          </text>
-          <text x="440" y="720" fill="#2d4365" fontSize="22" fontWeight="800" letterSpacing="4">
-            SOUTH LAMAR
-          </text>
-          <text x="120" y="280" fill="#1e3450" fontSize="18" fontWeight="800" letterSpacing="3">
-            LAKE TRAVIS
-          </text>
-
-          {/* User Location Pulse (Simulated Downtown / South Austin) */}
-          <circle cx="520" cy="560" r="16" fill="#3b82f6" fillOpacity="0.2" className="animate-ping" />
-          <circle cx="520" cy="560" r="8" fill="#3b82f6" stroke="#ffffff" strokeWidth="2.5" />
         </svg>
 
         {/* Dynamic Venue Markers Overlay */}
@@ -299,15 +304,14 @@ export const MapScreen: React.FC<MapScreenProps> = ({
         })}
       </div>
 
-      {/* Floating GPS Center Button */}
+      {/* Select the venue closest to the center of this market's coordinate bounds. */}
       <button
         onClick={() => {
-          // Center on downtown
-          const dtVenue = venues.find((v) => v.neighborhood.includes('Downtown'));
-          if (dtVenue) setSelectedMarkerVenue(dtVenue);
+          if (centralVenue) setSelectedMarkerVenue(centralVenue);
         }}
-        className="absolute bottom-40 right-4 z-20 p-2.5 rounded-full bg-neutral-900/90 border border-neutral-700 text-white shadow-xl hover:bg-neutral-800 transition-colors"
-        title="Center on My Location"
+        disabled={!centralVenue}
+        className="absolute bottom-40 right-4 z-20 p-2.5 rounded-full bg-neutral-900/90 border border-neutral-700 text-white shadow-xl hover:bg-neutral-800 transition-colors disabled:opacity-40"
+        title="Select a central venue"
       >
         <Crosshair className="w-5 h-5 text-amber-400" />
       </button>
@@ -379,7 +383,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({
 
             <a
               href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-                `${selectedMarkerVenue.name} ${selectedMarkerVenue.address} Austin TX`
+                `${selectedMarkerVenue.name} ${selectedMarkerVenue.address} ${selectedMarkerVenue.city} ${selectedMarkerVenue.state}`
               )}`}
               target="_blank"
               rel="noreferrer"
