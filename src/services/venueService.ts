@@ -3,8 +3,20 @@ import { supabase } from '../lib/supabaseClient';
 import { isDemoMode } from '../config/dataMode';
 
 function mapVenue(row: any): Venue {
+  const rawBaseline = row.baseline && typeof row.baseline === 'object' ? row.baseline : {};
+  const rawTruth = row.venue_truth && typeof row.venue_truth === 'object' ? row.venue_truth : {};
+  const validCategories = ['Sports Bar', 'Pub', 'Beer Garden', 'Brewery', 'Entertainment', 'Lounge'];
+  const validPriceLevels = ['$', '$$', '$$$', '$$$$'];
+  const baselineCategory = validCategories.includes(rawBaseline.category)
+    ? rawBaseline.category
+    : (row.categories ?? []).find((category: string) => validCategories.includes(category)) || 'Sports Bar';
+  const priceLevel = validPriceLevels.includes(rawBaseline.priceLevel) ? rawBaseline.priceLevel : '$$';
+  const rawSeatingRatio = rawTruth.environment?.seatingRatio ?? {};
+
   return {
     id: row.id,
+    market_id: row.market_id ?? undefined,
+    city_id: row.city_id ?? undefined,
     isDemoData: Boolean(row.is_demo_data),
     name: row.name,
     address: row.address,
@@ -20,8 +32,56 @@ function mapVenue(row: any): Venue {
     atmosphere: row.atmosphere ?? [],
     fanBases: row.fan_bases ?? [],
     features: row.features ?? [],
-    baseline: row.baseline ?? { category: 'Sports Bar', neighborhood: row.neighborhood ?? '', priceLevel: '$$', capacity: 0 },
-    venueTruth: row.venue_truth ?? { sports: {}, environment: {}, audience: {}, experience: {} },
+    baseline: {
+      category: baselineCategory,
+      neighborhood: rawBaseline.neighborhood ?? row.neighborhood ?? '',
+      priceLevel,
+      capacity: Number.isFinite(Number(rawBaseline.capacity)) ? Number(rawBaseline.capacity) : 0
+    },
+    venueTruth: {
+      sports: {
+        numTvs: Number(rawTruth.sports?.numTvs ?? 0),
+        screenSizes: rawTruth.sports?.screenSizes ?? '',
+        hasProjector: Boolean(rawTruth.sports?.hasProjector),
+        gameAudio: Boolean(rawTruth.sports?.gameAudio),
+        multipleGamesSimultaneous: Boolean(rawTruth.sports?.multipleGamesSimultaneous),
+        sportsPackages: rawTruth.sports?.sportsPackages ?? [],
+        blackoutRestrictions: rawTruth.sports?.blackoutRestrictions ?? [],
+        teamAffiliations: rawTruth.sports?.teamAffiliations ?? []
+      },
+      environment: {
+        energyBaseline: Number(rawTruth.environment?.energyBaseline ?? 0),
+        noiseBaseline: Number(rawTruth.environment?.noiseBaseline ?? 0),
+        crowdBaseline: Number(rawTruth.environment?.crowdBaseline ?? 0),
+        socialOpenness: Number(rawTruth.environment?.socialOpenness ?? 0),
+        seatingRatio: {
+          bar: Number(rawSeatingRatio.bar ?? 0),
+          tables: Number(rawSeatingRatio.tables ?? 0),
+          standing: Number(rawSeatingRatio.standing ?? 0)
+        },
+        hasPatio: Boolean(rawTruth.environment?.hasPatio),
+        patioTvs: Boolean(rawTruth.environment?.patioTvs),
+        dogFriendly: Boolean(rawTruth.environment?.dogFriendly)
+      },
+      audience: {
+        hardcoreFanRatio: Number(rawTruth.audience?.hardcoreFanRatio ?? 0),
+        casualRatio: Number(rawTruth.audience?.casualRatio ?? 0),
+        familyFriendly: Boolean(rawTruth.audience?.familyFriendly),
+        groupFriendly: Boolean(rawTruth.audience?.groupFriendly),
+        soloFriendly: Boolean(rawTruth.audience?.soloFriendly),
+        typicalCrowdAge: rawTruth.audience?.typicalCrowdAge ?? ''
+      },
+      experience: {
+        watchParties: Boolean(rawTruth.experience?.watchParties),
+        liveDj: Boolean(rawTruth.experience?.liveDj),
+        giveaways: Boolean(rawTruth.experience?.giveaways),
+        foodSpecials: rawTruth.experience?.foodSpecials ?? [],
+        drinkSpecials: rawTruth.experience?.drinkSpecials ?? [],
+        teamEvents: rawTruth.experience?.teamEvents ?? []
+      },
+      goodFor: rawTruth.goodFor ?? [],
+      avoidIf: rawTruth.avoidIf ?? []
+    },
     claimed: Boolean(row.claimed),
     googlePlaceId: row.google_place_id ?? undefined,
     googlePlaceData: row.google_place_data ?? undefined,
