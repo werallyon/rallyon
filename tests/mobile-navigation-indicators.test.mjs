@@ -15,6 +15,14 @@ test('profile navigation has no synthetic activity badge', () => {
   assert.doesNotMatch(navigation, /friendActivityCount/);
 });
 
+test('mobile navigation has accessible primary semantics and thumb-sized targets', () => {
+  assert.match(navigation, /aria-label="Primary navigation"/);
+  assert.match(navigation, /aria-current=\{isActive \? 'page' : undefined\}/);
+  assert.match(navigation, /min-h-\[56px\]/);
+  assert.match(navigation, /min-w-0/);
+  assert.match(navigation, /focus-visible:ring-2/);
+});
+
 test('live navigation count includes active games and halftime', () => {
   assert.match(app, /liveBadgeCount=\{games\.filter\(\(g\) => g\.status === 'LIVE' \|\| g\.status === 'HALFTIME'\)\.length\}/);
 });
