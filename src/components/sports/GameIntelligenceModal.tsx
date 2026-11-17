@@ -56,7 +56,7 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
     };
   }, [game.id, game.league]);
 
-  // Find venues in Austin confirmed or likely showing this game
+  // Find venues that list this game in their current programming.
   const matchingVenues = venues.filter((v) =>
     v.currentGames.some((cg) => cg.gameId === game.id)
   );
