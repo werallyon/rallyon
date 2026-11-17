@@ -64,3 +64,15 @@ test('DFW game programming is limited to official club and venue commitments', (
   assert.match(programmingMigration, /220-inch jumbo screen/);
   assert.match(programmingMigration, /network is not specified|network is not inferred/i);
 });
+
+test('fan-facing Home, Search and Live screens are market-neutral rather than Austin-specific', () => {
+  const home = readFileSync(new URL('../src/components/HomeScreen.tsx', import.meta.url), 'utf8');
+  const search = readFileSync(new URL('../src/components/SearchScreen.tsx', import.meta.url), 'utf8');
+  const live = readFileSync(new URL('../src/components/LiveScreen.tsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(home, /Austin TX/);
+  assert.match(home, /venue\.city, venue\.state/);
+  assert.doesNotMatch(search, /Austin|South Lamar/);
+  assert.match(search, /Popular Searches/);
+  assert.doesNotMatch(live, /Austin/);
+  assert.match(live, /GAME ON at \{confirmedVenues\.length\} venues/);
+});
