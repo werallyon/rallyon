@@ -39,7 +39,7 @@ A synthetic trigger smoke test passed inside a rolled-back transaction. A real G
 
 ## Isolated validation evidence
 
-Current-head Build Check #426 passed on PR #22 head `aee16e6d104c0950fb45e70ffc28e48d86f1da35`. Its two jobs passed:
+Current-head Build Check #454 (run `44028935777`) passed on PR #22 head `72a79f6c5ed3f3932b2990f484086dc181ed7caf`. Its two jobs passed:
 - Exact combined P0-B/P0-C/RPC migration replay on an isolated local Supabase stack.
 - Profile/favorite contract, canonical sports constraints, provider ACLs, league-scoped game references, Auth/PostgREST/RLS lifecycle tests, and negative preflight cases.
 - Root and cross-PR migration-version uniqueness, byte-identical P0-B staging, regression tests, Edge Function types, TypeScript, and production build.
