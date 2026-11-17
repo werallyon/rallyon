@@ -13,13 +13,13 @@ begin
   end if;
 
   select count(*) into v_count from public.cities where market_id = v_market_id;
-  if v_count <> 26 then
-    raise exception 'Expected 26 DFW cities, found %', v_count;
+  if v_count <> 27 then
+    raise exception 'Expected 27 DFW cities, found %', v_count;
   end if;
 
   select count(*) into v_count from public.venues where market_id = v_market_id;
-  if v_count <> 16 then
-    raise exception 'Expected 16 DFW venues, found %', v_count;
+  if v_count <> 18 then
+    raise exception 'Expected 18 DFW venues, found %', v_count;
   end if;
 
   if exists (
@@ -55,5 +55,56 @@ begin
     raise exception 'DFW seed includes unverified price or capacity values';
   end if;
 
-  raise notice 'PASS: DFW market, 26 cities, 16 real unclaimed venues, valid city links and trust boundaries';
+  select count(*) into v_count
+  from public.venue_game_programming
+  where game_id in (
+    'f0000000-0000-4000-8000-000000000001'::uuid,
+    'f0000000-0000-4000-8000-000000000002'::uuid
+  );
+  if v_count <> 4 then
+    raise exception 'Expected 4 official DFW game-to-venue rows, found %', v_count;
+  end if;
+
+  if exists (
+    select 1
+    from public.venue_game_programming p
+    where p.game_id = 'f0000000-0000-4000-8000-000000000001'::uuid
+      and (
+        p.status <> 'CONFIRMED'
+        or not p.is_confirmed
+        or p.source_type <> 'OFFICIAL'
+        or p.network is not null
+        or p.screen is not null
+        or p.audio_on
+      )
+  ) then
+    raise exception 'FC Dallas programming contains unsupported broadcast, screen, or audio claims';
+  end if;
+
+  if not exists (
+    select 1
+    from public.venue_game_programming p
+    where p.game_id = 'f0000000-0000-4000-8000-000000000002'::uuid
+      and p.venue_id = 'a1000000-0000-4000-8000-000000000018'::uuid
+      and p.status = 'CONFIRMED'
+      and p.is_confirmed
+      and p.source_type = 'VENUE'
+      and p.audio_on
+      and p.screen = '220-inch jumbo screen'
+  ) then
+    raise exception 'G.O.A.T''s Arena Cowboys Sunday programming is missing or lacks its sourced audio/screen facts';
+  end if;
+
+  if exists (
+    select 1 from public.venue_game_programming
+    where game_id in (
+      'f0000000-0000-4000-8000-000000000001'::uuid,
+      'f0000000-0000-4000-8000-000000000002'::uuid
+    )
+      and source_url is null
+  ) then
+    raise exception 'DFW programming rows must retain their source URLs';
+  end if;
+
+  raise notice 'PASS: DFW market, 27 cities, 18 real unclaimed venues, 4 source-backed game-to-venue rows and trust boundaries';
 end $$;
