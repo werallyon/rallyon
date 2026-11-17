@@ -160,7 +160,6 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
       screen: '',
       featured: false,
       notes: isShowing ? 'Venue staff confirmed this game is being shown.' : 'Not showing tonight',
-      confidence: 100,
       is_confirmed: isShowing,
       created_by: currentUser.id,
       start_time: game.startTime,
