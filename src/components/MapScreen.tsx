@@ -252,9 +252,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({
     : null;
   const selectedVenueLive = selectedMarkerVenue ? liveStates[selectedMarkerVenue.id] : null;
   const isSaved = selectedMarkerVenue ? savedVenueIds.includes(selectedMarkerVenue.id) : false;
-  const marketLabel = locatedVenues.length
-    ? Array.from(new Set(locatedVenues.map((venue) => [venue.city, venue.state].filter(Boolean).join(', ')).filter(Boolean))).join(' · ')
-    : activeMarket.name;
+  const marketLabel = activeMarket.name;
 
   const selectCentralVenue = () => {
     if (!locatedVenues.length) return;
