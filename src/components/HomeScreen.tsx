@@ -295,7 +295,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   className="mt-2 pt-1.5 border-t border-neutral-800/80 flex items-center justify-between text-[10px] text-neutral-400 cursor-pointer"
                 >
                   <span className="truncate max-w-[140px]">
-                    {game.liveDetails?.situation || game.broadcastNetwork || 'Live Broadcast'}
+                    {game.liveDetails?.situation || game.broadcast?.network || game.broadcastNetwork || 'Broadcast details unavailable'}
                   </span>
                   <span className={`font-semibold ${isSelected ? 'text-amber-400' : 'text-neutral-500'}`}>
                     {isSelected ? 'Filtering ✓' : 'Tap to match'}
