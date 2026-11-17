@@ -50,6 +50,9 @@ test('database-backed venues do not receive demo QR tokens, demo plan claims, or
 test('operator broadcast and team records do not invent ESPN or placeholder records', () => {
   assert.match(dashboard, /status: isShowing \? \(game\.status === 'LIVE' \|\| game\.status === 'HALFTIME' \? 'GAME_ON' : 'CONFIRMED'\)/);
   assert.match(dashboard, /existing\.status === 'CONFIRMED' \|\| existing\.status === 'GAME_ON'/);
+  assert.match(dashboard, /\['UPCOMING', 'DELAYED', 'LIVE', 'HALFTIME'\]\.includes\(game\.status\)/);
+  assert.match(dashboard, /if \(isShowing && !canBeProgrammed\)/);
+  assert.match(dashboard, /Unavailable for \{game\.status\.toLowerCase\(\)\}/);
   assert.match(dashboard, /network: game\.broadcast\?\.network \|\| game\.broadcastNetwork \|\| undefined/);
   assert.match(dashboard, /prog\.network \|\| 'Network not confirmed'/);
   assert.match(dashboard, /game\.broadcastNetwork \|\| 'Broadcast not confirmed'/);
