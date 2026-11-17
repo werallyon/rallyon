@@ -56,7 +56,7 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
     };
   }, [game.id, game.league]);
 
-  // Find venues in Austin confirmed or likely showing this game
+  // Find venues that list this game in their current programming.
   const matchingVenues = venues.filter((v) =>
     v.currentGames.some((cg) => cg.gameId === game.id)
   );
@@ -177,14 +177,14 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
                 Broadcast Network
               </span>
               <span className="font-bold text-white text-xs block">
-                {game.broadcastNetwork || 'ESPN Broadcast'}
+                {game.broadcast?.network || game.broadcastNetwork || 'Not confirmed'}
               </span>
               <span className="text-[10px] text-emerald-400 block">
                 {game.broadcast?.broadcastType === 'NATIONAL_OTA'
                   ? 'Over-the-Air (Free)'
                   : game.broadcast?.broadcastType === 'STREAMING_EXCLUSIVE'
                   ? 'Streaming Only'
-                  : 'Cable & Sports Bars'}
+                  : 'Check local listings'}
               </span>
             </div>
 
@@ -194,10 +194,10 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
                 Odds & Spread
               </span>
               <span className="font-bold text-white text-xs block truncate">
-                {summary?.odds?.details || game.liveDetails?.headline || 'Even Line'}
+                {summary?.odds?.details || game.liveDetails?.headline || 'Odds unavailable'}
               </span>
               <span className="text-[10px] text-neutral-400 block">
-                {summary?.odds?.overUnder ? `O/U ${summary.odds.overUnder}` : 'Live ESPN Feed'}
+                {summary?.odds?.overUnder ? `O/U ${summary.odds.overUnder}` : 'No verified total available'}
               </span>
             </div>
           </div>
@@ -236,7 +236,7 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
               <MapPin className="w-4 h-4 text-amber-400" />
               <div>
                 <span className="font-bold text-white block">
-                  {summary?.venue?.name || game.venueName || 'Host Stadium'}
+                  {summary?.venue?.name || game.venueName || 'Venue details unavailable'}
                 </span>
                 {summary?.venue?.city && (
                   <span className="text-[10px] text-neutral-400">
@@ -252,12 +252,12 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
             )}
           </div>
 
-          {/* Confirmed Austin Watch Venues */}
+          {/* Venues listing this game */}
           <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-white flex items-center gap-1.5">
                 <Tv className="w-3.5 h-3.5 text-amber-400" />
-                Confirmed Austin Venues Showing Game ({matchingVenues.length})
+                Venues listing this game ({matchingVenues.length})
               </span>
               <span className="text-[10px] text-emerald-400 font-bold">Sound & Screens</span>
             </div>
@@ -314,7 +314,7 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
         <div className="p-4 border-t border-neutral-800 bg-neutral-950 flex items-center justify-between">
           <div className="flex items-center gap-2 text-[10px] text-neutral-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span>ESPN Sports Feed Grounded</span>
+            <span>Sports data source</span>
           </div>
           <button
             onClick={onClose}
