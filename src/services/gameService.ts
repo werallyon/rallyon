@@ -40,20 +40,21 @@ function sortGamesForFanDisplay(a: SportsGame, b: SportsGame): number {
 }
 
 function mapGame(row: any): SportsGame {
-  const fallbackTeam = (participant: any, label: string) => ({
-    name: participant?.name ?? label,
-    abbrev: participant?.abbrev ?? '',
-    logo: participant?.logo ?? '',
-  });
   const participants = Array.isArray(row.participants) ? row.participants : [];
+  const mapTeam = (team: any, participant: any) => ({
+    ...(team ?? {}),
+    name: team?.name ?? team?.displayName ?? participant?.name ?? participant?.displayName ?? 'Team not confirmed',
+    abbrev: team?.abbrev ?? participant?.abbrev ?? '',
+    logo: team?.logo ?? participant?.logo ?? '',
+  });
   return {
     id: row.id,
     league: row.league,
     sport: row.sport ?? undefined,
     eventType: row.event_type ?? undefined,
     participants: participants.length ? participants : undefined,
-    homeTeam: row.home_team ?? fallbackTeam(participants[0], 'Event'),
-    awayTeam: row.away_team ?? fallbackTeam(participants[1], 'Participants'),
+    homeTeam: mapTeam(row.home_team, participants[0]),
+    awayTeam: mapTeam(row.away_team, participants[1]),
     startTime: row.start_time,
     status: row.status,
     liveDetails: row.live_details ?? undefined,
