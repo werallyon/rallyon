@@ -16,10 +16,12 @@ import {
   SportsGame,
   VenueGame,
   Presence,
-  RallyMatchResult
+  RallyMatchResult,
+  Market
 } from '../types';
 
 interface MapScreenProps {
+  activeMarket: Market;
   venues: Venue[];
   liveStates: Record<string, VenueLiveState>;
   matchResults: RallyMatchResult[];
@@ -98,6 +100,7 @@ const getMapsApiKey = (): string => {
 };
 
 export const MapScreen: React.FC<MapScreenProps> = ({
+  activeMarket,
   venues,
   liveStates,
   matchResults,
@@ -169,7 +172,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({
       .then((maps) => {
         if (cancelled || !mapElementRef.current) return;
         const map = new maps.Map(mapElementRef.current, {
-          center: { lat: 32.7767, lng: -96.7970 },
+          center: { lat: activeMarket.latitude, lng: activeMarket.longitude },
           zoom: 9,
           mapTypeControl: true,
           mapTypeControlOptions: { style: 1 },
@@ -196,7 +199,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({
       markersRef.current = [];
       mapRef.current = null;
     };
-  }, [apiKey]);
+  }, [apiKey, activeMarket.latitude, activeMarket.longitude]);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current || !window.google?.maps) return;
@@ -234,10 +237,10 @@ export const MapScreen: React.FC<MapScreenProps> = ({
     } else if (visibleVenues.length > 1) {
       mapRef.current.fitBounds(bounds, 56);
     } else {
-      mapRef.current.setCenter({ lat: 32.7767, lng: -96.7970 });
+      mapRef.current.setCenter({ lat: activeMarket.latitude, lng: activeMarket.longitude });
       mapRef.current.setZoom(9);
     }
-  }, [mapReady, visibleVenues, matchResults, liveStates, presences, venueGames]);
+  }, [mapReady, visibleVenues, matchResults, liveStates, presences, venueGames, activeMarket.latitude, activeMarket.longitude]);
 
   useEffect(() => {
     if (!mapRef.current || !selectedMarkerVenue) return;
@@ -251,7 +254,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({
   const isSaved = selectedMarkerVenue ? savedVenueIds.includes(selectedMarkerVenue.id) : false;
   const marketLabel = locatedVenues.length
     ? Array.from(new Set(locatedVenues.map((venue) => [venue.city, venue.state].filter(Boolean).join(', ')).filter(Boolean))).join(' · ')
-    : 'Dallas–Fort Worth';
+    : activeMarket.name;
 
   const selectCentralVenue = () => {
     if (!locatedVenues.length) return;
@@ -316,12 +319,12 @@ export const MapScreen: React.FC<MapScreenProps> = ({
               <div className="flex items-center gap-3">
                 <MapPin className="h-8 w-8 shrink-0 text-amber-600" />
                 <div className="min-w-0 text-left">
-                  <h3 className="text-base font-black text-neutral-900">DFW venue map preview</h3>
+                  <h3 className="text-base font-black text-neutral-900">{activeMarket.name} venue preview</h3>
                   <p className="text-xs text-neutral-600">Google Maps activates when VITE_GOOGLE_MAPS_API_KEY is configured.</p>
                 </div>
               </div>
               <div className="mt-3 flex items-center justify-between text-xs font-semibold text-neutral-500">
-                <span>Dallas–Fort Worth</span>
+                <span>{activeMarket.name}</span>
                 <span>{visibleVenues.length} matching venues</span>
               </div>
               {visibleVenues.length > 0 ? (
