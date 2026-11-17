@@ -91,7 +91,7 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
     return () => { mounted = false; };
   }, [venue.id, venue.isDemoData]);
   const now = Date.now();
-  const activePromo = promotions.find((promo) => promo.status === 'ACTIVE' && new Date(promo.start_at).getTime() <= now && new Date(promo.end_at).getTime() > now);
+  const activePromo = promotions.find((promo) => (promo.status === 'ACTIVE' || promo.status === 'SCHEDULED') && new Date(promo.start_at).getTime() <= now && new Date(promo.end_at).getTime() > now);
   const programming = businessVenueService.getProgrammingForVenue(venue.id);
   const googlePlace = googlePlacesService.getPlaceForVenue(venue.id);
   const reliability = businessVenueService.calculateVenueReliability(venue.id);
