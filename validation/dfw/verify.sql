@@ -13,13 +13,13 @@ begin
   end if;
 
   select count(*) into v_count from public.cities where market_id = v_market_id;
-  if v_count <> 25 then
-    raise exception 'Expected 25 DFW cities, found %', v_count;
+  if v_count <> 26 then
+    raise exception 'Expected 26 DFW cities, found %', v_count;
   end if;
 
   select count(*) into v_count from public.venues where market_id = v_market_id;
-  if v_count <> 11 then
-    raise exception 'Expected 11 DFW venues, found %', v_count;
+  if v_count <> 14 then
+    raise exception 'Expected 14 DFW venues, found %', v_count;
   end if;
 
   if exists (
@@ -34,7 +34,7 @@ begin
     select 1 from public.venues v
     left join public.cities c on c.id = v.city_id
     where v.market_id = v_market_id
-      and (c.id is null or c.market_id <> v_market_id)
+      and (c.id is null or c.market_id is distinct from v_market_id)
   ) then
     raise exception 'DFW venue references a city outside the DFW market';
   end if;
