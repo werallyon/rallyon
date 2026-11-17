@@ -29,6 +29,9 @@ jobs:
       - name: Validate PR #17 migration version against the actual PR #22 root list
         run: bash scripts/check-cross-pr-migration-version-uniqueness.sh p0b/supabase/migrations/20261113120000_p0b_canonical_sports_leagues_teams.sql supabase/migrations
 
+      - name: Remove temporary PR #17 checkout before TypeScript scans
+        run: rm -rf p0b
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
