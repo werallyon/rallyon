@@ -69,10 +69,10 @@ begin
     raise exception 'P0-C preflight: public.profiles must have authenticated owner-scoped SELECT, INSERT, and UPDATE policies (UPDATE requires USING and WITH CHECK)';
   end if;
 
-  -- Normalize the known legacy production bootstrap/grant shape before the
-  -- strict checks below. This is intentionally narrow: only the canonical
-  -- handle_new_user() implementation owned by postgres/supabase_admin is
-  -- eligible for hardening. Unknown trigger implementations fail closed.
+  -- Validate the production-observed Auth bootstrap before the strict checks
+  -- below. This is intentionally narrow: only the canonical handle_new_user()
+  -- implementation owned by postgres/supabase_admin is eligible for the
+  -- invoker-rights/search_path normalization below. Unknown bodies fail closed.
   declare
     v_bootstrap_oid oid;
     v_bootstrap_source text;
@@ -95,7 +95,7 @@ begin
 
     -- A missing trigger is reported by the strict trigger preflight below,
     -- preserving its specific diagnostic. If a trigger exists, its function
-    -- must match the known-safe implementation before we change its rights.
+    -- must match the exact reviewed implementation before we pin its rights.
     if v_bootstrap_oid is not null then
       -- Match the exact production-observed, metadata-tolerant bootstrap body.
       -- Unknown or older implementations fail closed for manual reconciliation;
