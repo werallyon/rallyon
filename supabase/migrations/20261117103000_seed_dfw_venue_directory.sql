@@ -496,6 +496,33 @@ values
   null,
   null,
   false
+(
+  'a1000000-0000-4000-8000-000000000019'::uuid,
+  'b2c1d8e4-7a6f-4d31-9c52-8f0a1e6b4d20'::uuid,
+  'a0000000-0000-4000-8000-000000000002'::uuid,
+  'Rogers Roundhouse',
+  '1616 Rogers Road',
+  'Fort Worth',
+  'Fort Worth',
+  'TX',
+  32.7270905508,
+  -97.3652696,
+  '(817) 367-9348',
+  'https://www.rogersroundhouse.com/',
+  null,
+  array['Beer Garden', 'Sports Bar', 'Restaurant'],
+  array[]::text[],
+  '[]'::jsonb,
+  array['Dog-friendly patio with TVs', '30 draft taps', 'Friday live music'],
+  jsonb_build_object('category', 'Beer Garden', 'neighborhood', 'Fort Worth'),
+  '{}'::jsonb,
+  false,
+  null,
+  null,
+  null,
+  null,
+  false
+)
 )
 on conflict (id) do nothing;
 
