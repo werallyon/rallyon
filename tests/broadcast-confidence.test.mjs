@@ -9,7 +9,8 @@ const home = readFileSync(new URL('../src/components/HomeScreen.tsx', import.met
 test('missing ESPN broadcast metadata remains unknown instead of defaulting to ESPN', () => {
   assert.match(provider, /const rawBroadcast = competition\.broadcasts\?\.\[0\]\?\.names\?\.\[0\];/);
   assert.doesNotMatch(provider, /competition\.broadcasts\?\.\[0\].*\|\|\s*'ESPN'/);
-  assert.match(provider, /if \(rawBroadcast && netUpper\)/);\n  assert.match(provider, /broadcast = \{/);
+  assert.match(provider, /if \(rawBroadcast && netUpper\)/);
+  assert.match(provider, /broadcast = \{/);
 });
 
 test('provider does not infer streaming subscriptions from network names', () => {
