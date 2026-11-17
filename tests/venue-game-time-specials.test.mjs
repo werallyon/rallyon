@@ -26,6 +26,7 @@ test('only a claimed venue owner can create, edit or remove promotions', () => {
   assert.ok(migration.includes('created_by = (select auth.uid())'));
   assert.ok(migration.includes('v.claimed = true'));
   assert.ok(migration.includes('v.claimed_by_user_id = (select auth.uid())'));
+  assert.ok(migration.includes('v.claimed_by_user_id = venue_promotions.created_by'));
   assert.ok(migration.includes('venue_promotions_owner_update'));
   assert.ok(migration.includes('venue_promotions_owner_delete'));
   assert.ok(migration.includes('grant insert ('));
