@@ -725,6 +725,21 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
                 </div>
               </div>
             )}
+            {venue.features && venue.features.length > 0 && (
+              <div className="pt-3 border-t border-neutral-800">
+                <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block mb-1.5">
+                  Publicly Listed Venue Highlights
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {venue.features.map((item, idx) => (
+                    <span key={idx} className="text-[11px] px-2.5 py-1 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-300">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-2 text-[10px] text-neutral-500">Published venue details can change. Confirm current specials and game-time availability with staff.</p>
+              </div>
+            )}
           </div>
 
           {/* Location & Contact Info */}
