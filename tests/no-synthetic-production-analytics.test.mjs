@@ -20,3 +20,29 @@ test('local demo analytics remain limited to non-database venues', () => {
   assert.match(dashboard, /activeTab === 'ANALYTICS' && !isDatabaseVenue && analytics/);
   assert.match(dashboard, /\) : \([\s\S]*ROI Value Proposition Banner/);
 });
+
+test('database-backed venues never hydrate demo promotions, sponsorships, or analytics', () => {
+  assert.match(dashboard, /if \(isDatabaseVenue\) \{[\s\S]*setPromotions\(\[\]\);[\s\S]*setSponsorships\(\[\]\);[\s\S]*setAnalytics\(null\);[\s\S]*return;/);
+  assert.match(dashboard, /isDatabaseVenue \? \(\) => undefined : businessVenueService\.subscribe/);
+  assert.match(dashboard, /Production promotions are not connected yet/);
+  assert.match(dashboard, /Production sponsorship management and campaign reporting are not connected yet/);
+  assert.match(dashboard, /!isDatabaseVenue && showNewPromoModal/);
+  assert.match(dashboard, /if \(isDatabaseVenue\) \{[\s\S]*Production promotions are not connected yet/);
+});
+
+test('database-backed venues do not receive demo QR tokens, demo plan claims, or Austin matrix labels', () => {
+  assert.match(dashboard, /venueQR = isDatabaseVenue \? null : businessVenueService\.getOrCreateVenueQRCode/);
+  assert.match(dashboard, /Production check-ins are not connected yet/);
+  assert.match(dashboard, /isDatabaseVenue \? 'Subscription details unavailable' : 'PRO VENUE TIER'/);
+  assert.match(dashboard, /isDatabaseVenue \? 'Production venue workspace' : 'Connected to Demo Matrix'/);
+  assert.doesNotMatch(dashboard, /Connected to Austin Matrix/);
+});
+
+test('operator broadcast and team records do not invent ESPN or placeholder records', () => {
+  assert.match(dashboard, /network: game\.broadcastNetwork \|\| 'Network not confirmed'/);
+  assert.match(dashboard, /prog\.network \|\| 'Network not confirmed'/);
+  assert.match(dashboard, /game\.broadcastNetwork \|\| 'Broadcast not confirmed'/);
+  assert.doesNotMatch(dashboard, /game\.broadcastNetwork \|\| 'ESPN/);
+  assert.doesNotMatch(dashboard, /record \|\| '7-3'/);
+  assert.doesNotMatch(dashboard, /record \|\| '8-2'/);
+});
