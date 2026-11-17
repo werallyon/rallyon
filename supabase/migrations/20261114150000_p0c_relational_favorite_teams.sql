@@ -133,7 +133,10 @@ end;$production$), '[[:space:]]+', ' ', 'g')) then
   end;
 
   -- Auth GoTrue inserts the profile as supabase_auth_admin. Keep the trigger
-  -- INVOKER and grant that role only INSERT, constrained by a dedicated policy.
+  -- INVOKER and grant that role only schema USAGE plus table INSERT, constrained
+  -- by a dedicated policy.
+  grant usage on schema public to supabase_auth_admin;
+
   if not has_table_privilege('supabase_auth_admin', 'public.profiles', 'INSERT') then
     grant insert on table public.profiles to supabase_auth_admin;
   end if;
