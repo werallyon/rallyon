@@ -38,10 +38,20 @@ export class MarketService {
   private loadFromStorage(): void {
     try {
       const storedMarkets = localStorage.getItem(STORAGE_MARKETS_KEY);
-      this.markets = storedMarkets ? JSON.parse(storedMarkets) : SEEDED_MARKETS;
+      const parsedMarkets: Market[] = storedMarkets ? JSON.parse(storedMarkets) : [];
+      // Add newly shipped market definitions without discarding user-created markets.
+      this.markets = [
+        ...SEEDED_MARKETS.filter((seeded) => !parsedMarkets.some((stored) => stored.id === seeded.id)),
+        ...parsedMarkets
+      ];
 
       const storedCities = localStorage.getItem(STORAGE_CITIES_KEY);
-      this.cities = storedCities ? JSON.parse(storedCities) : SEEDED_CITIES;
+      const parsedCities: City[] = storedCities ? JSON.parse(storedCities) : [];
+      // Merge newly shipped city coverage into existing local storage.
+      this.cities = [
+        ...SEEDED_CITIES.filter((seeded) => !parsedCities.some((stored) => stored.id === seeded.id)),
+        ...parsedCities
+      ];
 
       const storedActiveId = localStorage.getItem(STORAGE_ACTIVE_MARKET_ID_KEY);
       if (storedActiveId && this.markets.some((m) => m.id === storedActiveId)) {
