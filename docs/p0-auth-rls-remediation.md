@@ -39,7 +39,7 @@ The PR #22 workflow checks unique versions in the actual root migration list, ch
 
 ## Validation evidence and limits
 
-Current-head Build Check #426 passed on PR #22 head `aee16e6d104c0950fb45e70ffc28e48d86f1da35`, including:
+Current-head Build Check #454 (run `44028935777`) passed on PR #22 head `72a79f6c5ed3f3932b2990f484086dc181ed7caf`, including:
 - actual root migration-version uniqueness and cross-PR uniqueness checks;
 - byte-identical P0-B combined replay check;
 - isolated local Supabase reset applying P0-B, P0-C, and the RPC in sequence;
