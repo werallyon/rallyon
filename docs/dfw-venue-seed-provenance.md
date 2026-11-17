@@ -2,7 +2,7 @@
 
 Updated: 2026-11-17
 
-The DFW market catalog includes 27 cities. This first-pass production directory contains 21 real DFW businesses/venues with a published street address and a geospatial point. The records are **unclaimed directory listings**, not venue-verified RallyOn partners. `venue_truth` remains empty. Game-to-venue rows are added only in a separate migration where an official club or venue source explicitly supports the relationship; no broadcast network is inferred where the venue source does not identify one.
+The DFW market catalog includes 27 cities. This first-pass production directory contains 24 real DFW businesses/venues with a published street address and a geospatial point. The records are **unclaimed directory listings**, not venue-verified RallyOn partners. `venue_truth` remains empty. Game-to-venue rows are added only in a separate migration where an official club or venue source explicitly supports the relationship; no broadcast network is inferred where the venue source does not identify one.
 
 ## Seeded venues
 
@@ -26,6 +26,9 @@ The DFW market catalog includes 27 cities. This first-pass production directory 
 | BoomerJack's Grapevine | Grapevine | [Official location page](https://boomerjacks.com/location/grapevine/) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/boomerjacks-grill-bar-19-mb105755997) |
 | TOCA Social | The Colony | [Official Grandscape directory](https://www.grandscape.com/directory/toca-social/) | [Texas TABC licensed-premises listing](https://drinkedin.net/bars/toca-social-grandscape-mb200158435) |
 | G.O.A.T's Arena Aubrey | Aubrey | [Official Aubrey venue page](https://goatsarena.us/locations/aubrey) | [Address-level geocode for the same building address](https://www.merchantcircle.com/tx-aubrey/health-and-beauty/dental/orthodontists) |\n| Rogers Roundhouse | Fort Worth | [Official venue website](https://www.rogersroundhouse.com/) | [Tarrant Appraisal District property record with venue name, address and coordinates](https://www.tad.org/export/property-pdf?account=04677358) |\n| Shark Club Sports Bar & Grill Plano | Plano | [Official Plano location page](https://www.sharkclub.com/location/plano/) | [Sandman Signature property coordinates for the same address](https://www.hotelplanner.com/Hotels/327063/Reservations-Sandman-Signature-Plano-Frisco-Hotel-Plano-8451-Parkwood-Blvd-75024) |\n| City Works Eatery & Pour House Fort Worth | Fort Worth | [Official Fort Worth location page](https://www.cityworksrestaurant.com/locations/fortworth/) | [Venue/event geolocation at the same street address](https://untappd.com/v/city-works-eatery-and-pour-house-fort-worth/7104347/event/518348) |
+| 19 Degrees Sports Bar & Grill - McKinney | McKinney | [Official venue website and McKinney StarCenter location](https://www.19degreesbar.com/) | [StarCenter venue geolocation](https://untappd.com/v/children-s-health-starcenter-mckinney/12638080/photos) |
+| Ojos Locos Sports Cantina - Mesquite | Mesquite | [Official Ojos Locos website](https://ojoslocos.com/) | [Address and coordinates for the Mesquite location](https://maps.roadtrippers.com/us/mesquite-tx/food-drink/ojos-locos-sports-cantina-mesquite-mesquite-tx--0) |
+| The Hive Bar | McKinney | [Official venue website and address](https://www.thehivebarmck.com/) | [Address-level geocode for 212 E Louisiana Street](https://maps.roadtrippers.com/us/mckinney-tx/entertainment/dragon-axe-mckinney-tx--0) |
 
 ## Data rules
 
