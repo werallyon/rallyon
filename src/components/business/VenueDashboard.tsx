@@ -591,6 +591,11 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
         {/* TAB 3: VENUE PROFILE BUILDER (Section 9) */}
         {activeTab === 'PROFILE' && (
           <form onSubmit={handleSaveProfile} className="space-y-5">
+            {!onUpdateVenue && (
+              <div className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800 text-xs text-neutral-400">
+                Venue profile editing is not connected yet. Changes in this form cannot be saved.
+              </div>
+            )}
             <div className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 space-y-4">
               <h3 className="text-sm font-black text-white">Business Information</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -705,7 +710,8 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
 
             <button
               type="submit"
-              className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-2xl shadow-xl transition-transform active:scale-95"
+              disabled={!onUpdateVenue}
+              className="w-full py-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-black text-xs rounded-2xl shadow-xl transition-transform active:scale-95"
             >
               Save Venue Truth Updates
             </button>
