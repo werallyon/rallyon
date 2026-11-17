@@ -56,10 +56,13 @@ begin
     new.raw_user_meta_data->>'lastName',
     coalesce(new.raw_user_meta_data->>'name', new.raw_user_meta_data->>'displayName'),
     coalesce(new.raw_user_meta_data->>'avatar', new.raw_user_meta_data->>'profilePhotoUrl'),
-    coalesce((new.raw_user_meta_data->>'onboardingCompleted')::boolean, false),
+    case lower(coalesce(new.raw_user_meta_data->>'onboardingCompleted', ''))
+      when 'true' then true
+      when 'false' then false
+      else false
+    end,
     coalesce(new.raw_user_meta_data->>'onboardingStep', 'welcome')
-  )
-  on conflict (id) do nothing;
+  );
   return new;
 end;
 $$;
