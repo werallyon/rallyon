@@ -51,7 +51,7 @@ test('unimplemented commercial provider stays unavailable and returns no fabrica
 
 test('empty Supabase games remain empty unless a real provider returns games', () => {
   assert.match(gameService, /supabase\.from\('games'\)\.select\('\*'\)/);
-  assert.match(gameService, /return\s+\(data\s*\?\?\s*\[\]\)\.map\(mapGame\)/);
+  assert.match(gameService, /return\s+\(data\s*\?\?\s*\[\]\)[\s\S]*?\.map\(mapGame\)[\s\S]*?\.filter\(\(game\) => isRelevantGame\(game, now\)\)[\s\S]*?\.sort\(sortGamesForFanDisplay\)/);
   assert.doesNotMatch(gameService, /SEEDED_GAMES|seedData/);
   assert.match(app, /storedGames\.length\s*\?\s*storedGames\s*:\s*await\s*sportsService\.getGames\(\)/);
 });
