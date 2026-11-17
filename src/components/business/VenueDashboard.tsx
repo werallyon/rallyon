@@ -338,6 +338,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
                 </p>
               </div>
             ) : (
+              <>
             {/* ROI Value Proposition Banner (Section 19) */}
             <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/20 via-neutral-900 to-neutral-950 border border-amber-500/40 shadow-xl space-y-4">
               <div className="flex items-center justify-between">
@@ -374,7 +375,7 @@ export const VenueDashboard: React.FC<VenueDashboardProps> = ({
                 </div>
               </div>
             </div>
-
+              </>
             )}
             {/* Tonight's Live Programming Highlights */}
             <div className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 space-y-4">
