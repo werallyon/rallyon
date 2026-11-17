@@ -43,6 +43,9 @@ test('fans only receive current active offers and database venues do not use bro
   assert.ok(fanDetail.includes('new Date(promo.end_at).getTime() > now'));
   assert.ok(fanDetail.includes('Show this offer to staff'));
   assert.ok(fanDetail.includes('Publicly Listed Venue Highlights'));
+  assert.ok(fanDetail.includes("venue.venueTruthVerified === false"));
+  assert.ok(fanDetail.includes('Not confirmed'));
+  assert.ok(fanDetail.includes('RallyOn does not guess these specifications'));
   assert.ok(fanDetail.includes('No current specials have been published or confirmed by this venue'));
   assert.ok(fanDetail.includes('hasPublishedSpecial'));
   assert.ok(fanDetail.includes('venue.features.map'));
