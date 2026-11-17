@@ -5,6 +5,10 @@ import test from 'node:test';
 const dashboard = readFileSync(new URL('../src/components/business/VenueDashboard.tsx', import.meta.url), 'utf8');
 const venueService = readFileSync(new URL('../src/services/venueService.ts', import.meta.url), 'utf8');
 
+test('venue classification respects the explicit database demo flag as well as legacy demo IDs', () => {
+  assert.match(dashboard, /const isDatabaseVenue = Boolean\(supabase && !venue\.isDemoData && !venue\.id\.startsWith\('venue_'\)\)/);
+});
+
 test('database-backed venues do not show synthetic ROI figures as production analytics', () => {
   assert.match(dashboard, /\{isDatabaseVenue \? \(/);
   assert.match(dashboard, /Production analytics are not connected yet/);
