@@ -97,12 +97,11 @@ begin
     -- preserving its specific diagnostic. If a trigger exists, its function
     -- must match the known-safe implementation before we change its rights.
     if v_bootstrap_oid is not null then
-      -- Accept only the two reviewed, side-effect-free profile bootstrap
-      -- bodies observed in production history. Preserve INVOKER rights: the
-      -- Auth admin role receives only INSERT and a dedicated INSERT policy.
+      -- Match the exact production-observed, metadata-tolerant bootstrap body.
+      -- Unknown or older implementations fail closed for manual reconciliation;
+      -- this migration never silently preserves an unsafe metadata cast.
       if btrim(regexp_replace(lower(v_bootstrap_source), '[[:space:]]+', ' ', 'g'))
-         not in (
-           btrim(regexp_replace(lower($production$begin
+         <> btrim(regexp_replace(lower($production$begin
   insert into public.profiles (
     id, username, first_name, last_name, display_name, avatar_url,
     onboarding_completed, onboarding_step
@@ -123,27 +122,8 @@ begin
   );
 
   return new;
-end;$production$), '[[:space:]]+', ' ', 'g')),
-           btrim(regexp_replace(lower($legacy$begin
-  insert into public.profiles (
-    id, username, first_name, last_name, display_name, avatar_url,
-    onboarding_completed, onboarding_step
-  )
-  values (
-    new.id,
-    new.raw_user_meta_data->>'username',
-    new.raw_user_meta_data->>'firstName',
-    new.raw_user_meta_data->>'lastName',
-    coalesce(new.raw_user_meta_data->>'name', new.raw_user_meta_data->>'displayName'),
-    coalesce(new.raw_user_meta_data->>'avatar', new.raw_user_meta_data->>'profilePhotoUrl'),
-    coalesce((new.raw_user_meta_data->>'onboardingCompleted')::boolean, false),
-    coalesce(new.raw_user_meta_data->>'onboardingStep', 'welcome')
-  )
-  on conflict (id) do nothing;
-  return new;
-end;$legacy$), '[[:space:]]+', ' ', 'g'))
-         ) then
-        raise exception 'P0-C preflight: Auth bootstrap function differs from both exact reviewed invoker-rights implementations; inspect it manually';
+end;$production$), '[[:space:]]+', ' ', 'g')) then
+        raise exception 'P0-C preflight: Auth bootstrap function differs from the exact production-observed metadata-tolerant implementation; inspect and reconcile it manually';
       end if;
 
       execute 'alter function public.handle_new_user() security invoker';
