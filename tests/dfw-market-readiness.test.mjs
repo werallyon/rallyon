@@ -44,7 +44,7 @@ test('DFW directory seed contains real unclaimed venues without fabricated game 
   assert.match(venueMigration, /'\{\}'::jsonb/);
   assert.match(venueMigration, /false,\s*null,\s*null,\s*null,\s*null,\s*false/);
   assert.doesNotMatch(venueMigration, /insert into public\.venue_game_programming/i);
-  assert.match(provenance, /No rows are added to `venue_game_programming`/);
+  assert.match(provenance, /A separate forward-only migration seeds game-specific programming/);
   assert.match(provenance, /DFW remains `PREPARING`/);
 });
 
@@ -52,8 +52,8 @@ test('DFW game programming is limited to official club and venue commitments', (
   assert.match(programmingMigration, /https:\/\/www\.fcdallas\.com\/watchparty/);
   assert.match(programmingMigration, /https:\/\/www\.grandscape\.com\/directory\/toca-social/);
   assert.match(programmingMigration, /https:\/\/goatsarena\.us\/locations\/aubrey/);
-  assert.match(programmingMigration, /source_type = 'OFFICIAL'/);
-  assert.match(programmingMigration, /source_type = 'VENUE'/);
+  assert.match(programmingMigration, /'OFFICIAL',/);
+  assert.match(programmingMigration, /'VENUE',/);
   assert.match(programmingMigration, /game\.league = 'MLS'/);
   assert.match(programmingMigration, /game\.league = 'NFL'/);
   assert.match(programmingMigration, /extract\(isodow from game\.start_time at time zone 'America\/Chicago'\) = 7/);
