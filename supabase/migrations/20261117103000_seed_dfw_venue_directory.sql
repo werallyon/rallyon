@@ -550,6 +550,33 @@ values
   null,
   null,
   false
+),
+(
+  'a1000000-0000-4000-8000-000000000021'::uuid,
+  'b2c1d8e4-7a6f-4d31-9c52-8f0a1e6b4d20'::uuid,
+  'a0000000-0000-4000-8000-000000000002'::uuid,
+  'City Works Eatery & Pour House Fort Worth',
+  '5288 Monahans Avenue',
+  'Clearfork',
+  'Fort Worth',
+  'TX',
+  32.7096,
+  -97.4018,
+  '(682) 207-1500',
+  'https://www.cityworksrestaurant.com/locations/fortworth/',
+  null,
+  array['Sports Bar', 'Restaurant'],
+  array[]::text[],
+  '[]'::jsonb,
+  array['12 extra-large HDTVs with state-of-the-art audio', 'Dog-friendly patio with four large HDTVs', '90 beers and 8 wines on tap', 'Venue states it shows most televised games; call for obscure matchups'],
+  jsonb_build_object('category', 'Sports Bar', 'neighborhood', 'Clearfork'),
+  '{}'::jsonb,
+  false,
+  null,
+  null,
+  null,
+  null,
+  false
 )
 on conflict (id) do nothing;
 
