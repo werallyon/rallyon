@@ -25,7 +25,7 @@ create table public.venue_promotions (
 
 create index venue_promotions_public_active_idx
   on public.venue_promotions (venue_id, start_at, end_at)
-  where status = 'ACTIVE';
+  where status in ('ACTIVE','SCHEDULED');
 create index venue_promotions_game_idx
   on public.venue_promotions (game_id)
   where game_id is not null;
