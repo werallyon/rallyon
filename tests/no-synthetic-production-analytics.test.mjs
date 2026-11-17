@@ -24,6 +24,8 @@ test('local demo analytics remain limited to non-database venues', () => {
 test('venue profile editing never reports a save when no persistence callback exists', () => {
   assert.match(dashboard, /onUpdateVenue\?: \(updatedVenue: Venue\) => Promise<void>/);
   assert.match(dashboard, /if \(!onUpdateVenue\) \{[\s\S]*No changes were saved/);
+  assert.match(dashboard, /Venue profile editing is not connected yet\. Changes in this form cannot be saved/);
+  assert.match(dashboard, /disabled=\{!onUpdateVenue\}/);
   assert.match(dashboard, /await onUpdateVenue\(updated\)/);
   assert.doesNotMatch(dashboard, /if \(onUpdateVenue\) onUpdateVenue\(updated\);\s*showToast\('Venue Truth & Profile saved successfully\.'/);
 });
