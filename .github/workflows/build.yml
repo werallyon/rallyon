@@ -58,7 +58,7 @@ jobs:
       - name: Configure isolated project and unique ports
         run: |
           BASE_PORT=$((20000 + GITHUB_RUN_ID % 10000))
-          sed -i "s/^project_id = .*/project_id = \"\$SUPABASE_PROJECT_ID\"/" validation/dfw/supabase/config.toml
+          sed -i "s/^project_id = .*/project_id = \"$SUPABASE_PROJECT_ID\"/" validation/dfw/supabase/config.toml
           sed -i "s/^port = 54371$/port = $((BASE_PORT + 1))/" validation/dfw/supabase/config.toml
           sed -i "s/^port = 54372$/port = $((BASE_PORT + 2))/" validation/dfw/supabase/config.toml
           sed -i "s/^shadow_port = 54370$/shadow_port = $BASE_PORT/" validation/dfw/supabase/config.toml
