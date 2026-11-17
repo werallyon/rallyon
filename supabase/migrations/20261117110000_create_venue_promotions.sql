@@ -17,7 +17,7 @@ create table public.venue_promotions (
   end_at timestamptz not null,
   status text not null default 'ACTIVE' check (status in ('ACTIVE','SCHEDULED','EXPIRED','PAUSED')),
   claims_count integer not null default 0 check (claims_count >= 0),
-  created_by uuid not null references auth.users(id) on delete restrict,
+  created_by uuid not null references auth.users(id) on delete cascade,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint venue_promotions_valid_window check (end_at > start_at)
