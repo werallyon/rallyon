@@ -194,7 +194,7 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
                   ? 'Over-the-Air (Free)'
                   : game.broadcast?.broadcastType === 'STREAMING_EXCLUSIVE'
                   ? 'Streaming Only'
-                  : 'Cable & Sports Bars'}
+                  : 'Cable network'}
               </span>
             </div>
 
