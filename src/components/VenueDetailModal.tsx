@@ -183,7 +183,6 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
               <span>{venue.baseline.category}</span>
               <span>•</span>
               <span>{venue.neighborhood}</span>
-              <span>•</span>
               {venue.baseline.priceLevel && <><span>•</span><span>{venue.baseline.priceLevel}</span></>}
               {googlePlace && (
                 <>
