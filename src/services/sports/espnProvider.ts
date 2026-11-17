@@ -324,53 +324,44 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
         status = 'DELAYED';
       }
 
-      // Broadcast Intelligence extraction
-      const rawBroadcast = competition.broadcasts?.[0]?.names?.[0] || competition.broadcasts?.[0]?.market || 'ESPN';
-      const netUpper = rawBroadcast.toUpperCase();
+      // Broadcast Intelligence extraction. Missing provider data must remain unknown:
+      // do not substitute ESPN or infer streaming rights from a network name.
+      const rawBroadcast = competition.broadcasts?.[0]?.names?.[0];
+      const netUpper = (rawBroadcast || '').trim().toUpperCase();
 
-      let broadcastType: BroadcastIntelligence['broadcastType'] = 'CABLE';
-      if (
-        netUpper.includes('ABC') ||
-        netUpper.includes('FOX') ||
-        netUpper.includes('CBS') ||
-        netUpper.includes('NBC')
-      ) {
-        broadcastType = 'NATIONAL_OTA';
-      } else if (
-        netUpper.includes('+') ||
-        netUpper.includes('PEACOCK') ||
-        netUpper.includes('PRIME') ||
-        netUpper.includes('APPLE') ||
-        netUpper.includes('MAX')
-      ) {
-        broadcastType = 'STREAMING_EXCLUSIVE';
-      } else if (
-        netUpper.includes('REGIONAL') ||
-        netUpper.includes('BALLY') ||
-        netUpper.includes('YES') ||
-        netUpper.includes('NESN') ||
-        netUpper.includes('MARQUEE')
-      ) {
-        broadcastType = 'REGIONAL';
+      let broadcast: BroadcastIntelligence | undefined;
+      if (rawBroadcast && netUpper) {
+        let broadcastType: BroadcastIntelligence['broadcastType'] = 'CABLE';
+
+        if (/^(ABC|FOX|CBS|NBC)$/.test(netUpper)) {
+          broadcastType = 'NATIONAL_OTA';
+        } else if (
+          netUpper.includes('ESPN+') ||
+          netUpper.includes('PEACOCK') ||
+          netUpper.includes('PRIME VIDEO') ||
+          netUpper.includes('APPLE TV') ||
+          netUpper === 'MAX'
+        ) {
+          broadcastType = 'STREAMING_EXCLUSIVE';
+        } else if (
+          netUpper.includes('REGIONAL') ||
+          netUpper.includes('BALLY') ||
+          netUpper.includes('YES NETWORK') ||
+          netUpper.includes('NESN') ||
+          netUpper.includes('MARQUEE')
+        ) {
+          broadcastType = 'REGIONAL';
+        }
+
+        broadcast = {
+          network: rawBroadcast.trim(),
+          broadcastType,
+          ...(broadcastType === 'REGIONAL'
+            ? { regionalAvailability: 'Regional Sports Network (Check Local Listings)' }
+            : {}),
+          externalProvider: 'ESPN Public Feeds'
+        };
       }
-
-      const broadcast: BroadcastIntelligence = {
-        network: rawBroadcast,
-        broadcastType,
-        regionalAvailability:
-          broadcastType === 'REGIONAL'
-            ? 'Regional Sports Network (Check Local Listings)'
-            : 'Available Nationally',
-        streamingAvailability: netUpper.includes('ESPN')
-          ? ['ESPN+']
-          : netUpper.includes('NBC')
-          ? ['Peacock']
-          : netUpper.includes('CBS')
-          ? ['Paramount+']
-          : undefined,
-        externalProvider: 'ESPN Public Feeds',
-        lastVerified: new Date().toISOString()
-      };
 
       const situation = this.extractSituationText(event, league);
 
