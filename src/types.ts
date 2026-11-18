@@ -545,6 +545,11 @@ export interface Promotion {
   end_at: string;
   status: 'ACTIVE' | 'SCHEDULED' | 'EXPIRED' | 'PAUSED';
   claims_count: number;
+  source_type?: 'VENUE_CONFIRMED' | 'OFFICIAL_PUBLIC_SOURCE' | 'COMMUNITY_REPORTED';
+  source_url?: string;
+  source_label?: string;
+  verified_at?: string;
+  verified_by?: string;
   qr_code_id?: string;
 }
 
