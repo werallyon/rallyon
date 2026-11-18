@@ -659,7 +659,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </div>
 
           {/* Platform Moderation Console Quick Launch */}
-          {onOpenAdminModeration && (
+          {onOpenAdminModeration && currentUser?.isPlatformAdmin === true && (
             <div className="p-4 rounded-2xl bg-red-950/20 border border-red-500/30 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black uppercase tracking-wider text-red-400 flex items-center gap-1.5">

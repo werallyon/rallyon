@@ -51,7 +51,7 @@ export type GameStatus =
 
 export interface BroadcastIntelligence {
   network: string; // e.g. "ESPN", "FOX", "CBS", "NBC", "ABC", "TNT", "SEC Network"
-  broadcastType: 'NATIONAL_OTA' | 'CABLE' | 'REGIONAL' | 'STREAMING_EXCLUSIVE';
+  broadcastType: 'NATIONAL_OTA' | 'CABLE' | 'REGIONAL' | 'STREAMING_EXCLUSIVE' | 'UNKNOWN';
   regionalAvailability?: string; // "National", "Texas / SW Regional", "Blackout in Austin"
   streamingAvailability?: string[]; // ["ESPN+", "Peacock", "Paramount+"]
   broadcastStartTime?: string;
@@ -162,7 +162,7 @@ export interface VenueTruth {
 export interface VenueBaselineCharacteristics {
   category: 'Sports Bar' | 'Pub' | 'Beer Garden' | 'Brewery' | 'Entertainment' | 'Lounge';
   neighborhood: string;
-  priceLevel: '$' | '$$' | '$$$' | '$$$$';
+  priceLevel?: string;
   capacity: number;
 }
 
@@ -209,6 +209,7 @@ export interface Venue {
   features?: string[];
   baseline: VenueBaselineCharacteristics;
   venueTruth: VenueTruth;
+  venueTruthComplete?: boolean;
   claimed: boolean;
   googlePlaceId?: string;
   googlePlaceData?: GooglePlaceData;
@@ -351,6 +352,9 @@ export interface User {
   currentIntent: UserIntent;
   privacy: 'FRIENDS_ONLY' | 'ANONYMOUS' | 'HIDDEN';
   savedVenueIds: string[];
+
+  // Trusted Supabase app_metadata role; never sourced from user-editable metadata.
+  isPlatformAdmin?: boolean;
 
   // Business / Venue management association
   businessAccountId?: string;
@@ -521,6 +525,8 @@ export interface VenueGameProgramming {
 export type PromotionType =
   | 'CHECK_IN_DISCOUNT'
   | 'GAME_SPECIAL'
+  | 'FOOD_SPECIAL'
+  | 'DRINK_SPECIAL'
   | 'TIME_LIMITED'
   | 'FREE_ITEM'
   | 'GROUP_OFFER'

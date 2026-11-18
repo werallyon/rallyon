@@ -29,8 +29,8 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
     'Cowboys',
     'Longhorns',
     'NFL Sunday Ticket',
-    'Downtown Austin',
-    'South Lamar',
+    'Sports bars near me',
+    'Game-day specials',
     'Arsenal FC',
     'Laser Projector',
     'Game Audio'
@@ -144,7 +144,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
 
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-2">
-              Popular Searches in Austin
+              Popular Searches
             </span>
             <div className="flex flex-wrap gap-2">
               {popularSearches.map((term) => (
@@ -162,7 +162,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
           <div className="p-4 rounded-2xl bg-neutral-900/60 border border-neutral-800 text-xs text-neutral-400 space-y-1">
             <span className="font-bold text-white block">RallyOn Universal Sports Index</span>
             <p>
-              Type any sports franchise, college team, or venue vibe to discover real-time watch hubs across Austin.
+              Type any sports franchise, college team, or venue vibe to discover real-time watch hubs near you.
             </p>
           </div>
         </div>

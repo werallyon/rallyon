@@ -46,6 +46,7 @@ export function mergeAuthUserWithProfile(authUser: any, profile?: ProfileRow | n
     profilePhotoUrl: p.avatar_url ?? m.profilePhotoUrl ?? m.avatar ?? '',
     avatar: p.avatar_url ?? m.avatar ?? m.profilePhotoUrl ?? '',
     authProvider: m.authProvider || 'EMAIL', emailVerified: Boolean(authUser.email_confirmed_at),
+    isPlatformAdmin: authUser.app_metadata?.role === 'admin',
     onboardingCompleted: Boolean(p.onboarding_completed ?? m.onboardingCompleted),
     onboardingStep: (p.onboarding_step ?? m.onboardingStep ?? 'welcome') as User['onboardingStep'],
     createdAt: p.created_at ?? m.createdAt ?? authUser.created_at ?? now, updatedAt: p.updated_at ?? now, lastActiveAt: now,

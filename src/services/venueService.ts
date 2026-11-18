@@ -1,10 +1,31 @@
-import { Venue, VenueGame, VenueGameProgramming } from '../types';
+import { Venue, VenueGame, VenueGameProgramming, Promotion } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { isDemoMode } from '../config/dataMode';
 
 function mapVenue(row: any): Venue {
+  const rawBaseline = row.baseline && typeof row.baseline === 'object' ? row.baseline : {};
+  const rawTruth = row.venue_truth && typeof row.venue_truth === 'object' ? row.venue_truth : {};
+  const validCategories = ['Sports Bar', 'Pub', 'Beer Garden', 'Brewery', 'Entertainment', 'Lounge'];
+  const validPriceLevels = ['$', '$$', '$$$', '$$$$'];
+  const baselineCategory = (validCategories.includes(rawBaseline.category)
+    ? rawBaseline.category
+    : (row.categories ?? []).find((category: string) => validCategories.includes(category)) || 'Sports Bar') as Venue['baseline']['category'];
+  const priceLevel: Venue['baseline']['priceLevel'] = validPriceLevels.includes(rawBaseline.priceLevel) ? rawBaseline.priceLevel : undefined;
+  const requiredTruthFields: Record<string, string[]> = {
+    sports: ['numTvs', 'screenSizes', 'hasProjector', 'gameAudio', 'multipleGamesSimultaneous', 'sportsPackages', 'blackoutRestrictions', 'teamAffiliations'],
+    environment: ['energyBaseline', 'noiseBaseline', 'crowdBaseline', 'socialOpenness', 'seatingRatio', 'hasPatio', 'patioTvs', 'dogFriendly'],
+    audience: ['hardcoreFanRatio', 'casualRatio', 'familyFriendly', 'groupFriendly', 'soloFriendly', 'typicalCrowdAge'],
+    experience: ['watchParties', 'liveDj', 'giveaways', 'foodSpecials', 'drinkSpecials', 'teamEvents']
+  };
+  const venueTruthComplete = Object.entries(requiredTruthFields).every(([section, fields]) =>
+    fields.every((field) => Object.prototype.hasOwnProperty.call(rawTruth[section] ?? {}, field))
+  );
+  const rawSeatingRatio = rawTruth.environment?.seatingRatio ?? {};
+
   return {
     id: row.id,
+    market_id: row.market_id ?? undefined,
+    city_id: row.city_id ?? undefined,
     isDemoData: Boolean(row.is_demo_data),
     name: row.name,
     address: row.address,
@@ -20,8 +41,57 @@ function mapVenue(row: any): Venue {
     atmosphere: row.atmosphere ?? [],
     fanBases: row.fan_bases ?? [],
     features: row.features ?? [],
-    baseline: row.baseline ?? { category: 'Sports Bar', neighborhood: row.neighborhood ?? '', priceLevel: '$$', capacity: 0 },
-    venueTruth: row.venue_truth ?? { sports: {}, environment: {}, audience: {}, experience: {} },
+    baseline: {
+      category: baselineCategory,
+      neighborhood: rawBaseline.neighborhood ?? row.neighborhood ?? '',
+      ...(priceLevel ? { priceLevel } : {}),
+      capacity: Number.isFinite(Number(rawBaseline.capacity)) ? Number(rawBaseline.capacity) : 0
+    },
+    venueTruthComplete,
+    venueTruth: {
+      sports: {
+        numTvs: Number(rawTruth.sports?.numTvs ?? 0),
+        screenSizes: rawTruth.sports?.screenSizes ?? '',
+        hasProjector: Boolean(rawTruth.sports?.hasProjector),
+        gameAudio: Boolean(rawTruth.sports?.gameAudio),
+        multipleGamesSimultaneous: Boolean(rawTruth.sports?.multipleGamesSimultaneous),
+        sportsPackages: rawTruth.sports?.sportsPackages ?? [],
+        blackoutRestrictions: rawTruth.sports?.blackoutRestrictions ?? [],
+        teamAffiliations: rawTruth.sports?.teamAffiliations ?? []
+      },
+      environment: {
+        energyBaseline: Number(rawTruth.environment?.energyBaseline ?? 0),
+        noiseBaseline: Number(rawTruth.environment?.noiseBaseline ?? 0),
+        crowdBaseline: Number(rawTruth.environment?.crowdBaseline ?? 0),
+        socialOpenness: Number(rawTruth.environment?.socialOpenness ?? 0),
+        seatingRatio: {
+          bar: Number(rawSeatingRatio.bar ?? 0),
+          tables: Number(rawSeatingRatio.tables ?? 0),
+          standing: Number(rawSeatingRatio.standing ?? 0)
+        },
+        hasPatio: Boolean(rawTruth.environment?.hasPatio),
+        patioTvs: Boolean(rawTruth.environment?.patioTvs),
+        dogFriendly: Boolean(rawTruth.environment?.dogFriendly)
+      },
+      audience: {
+        hardcoreFanRatio: Number(rawTruth.audience?.hardcoreFanRatio ?? 0),
+        casualRatio: Number(rawTruth.audience?.casualRatio ?? 0),
+        familyFriendly: Boolean(rawTruth.audience?.familyFriendly),
+        groupFriendly: Boolean(rawTruth.audience?.groupFriendly),
+        soloFriendly: Boolean(rawTruth.audience?.soloFriendly),
+        typicalCrowdAge: rawTruth.audience?.typicalCrowdAge ?? ''
+      },
+      experience: {
+        watchParties: Boolean(rawTruth.experience?.watchParties),
+        liveDj: Boolean(rawTruth.experience?.liveDj),
+        giveaways: Boolean(rawTruth.experience?.giveaways),
+        foodSpecials: rawTruth.experience?.foodSpecials ?? [],
+        drinkSpecials: rawTruth.experience?.drinkSpecials ?? [],
+        teamEvents: rawTruth.experience?.teamEvents ?? []
+      },
+      goodFor: rawTruth.goodFor ?? [],
+      avoidIf: rawTruth.avoidIf ?? []
+    },
     claimed: Boolean(row.claimed),
     googlePlaceId: row.google_place_id ?? undefined,
     googlePlaceData: row.google_place_data ?? undefined,
@@ -65,6 +135,61 @@ export async function getVenueGameProgramming(): Promise<VenueGameProgramming[]>
     source_url: row.source_url ?? undefined,
     verification_notes: row.verification_notes ?? undefined
   }));
+}
+
+
+function mapPromotion(row: any): Promotion {
+  return {
+    id: row.id,
+    venue_id: row.venue_id,
+    game_id: row.game_id ?? undefined,
+    title: row.title,
+    description: row.description ?? '',
+    promotion_type: row.promotion_type,
+    discount_value: row.discount_value ?? undefined,
+    terms: row.terms ?? '',
+    start_at: row.start_at,
+    end_at: row.end_at,
+    status: row.status,
+    claims_count: Number(row.claims_count ?? 0)
+  };
+}
+
+export async function getVenuePromotions(venueId: string, includeInactive = false): Promise<Promotion[]> {
+  if (!supabase) return [];
+  let query = supabase.from('venue_promotions').select('*').eq('venue_id', venueId).order('start_at', { ascending: true });
+  if (!includeInactive) {
+    const now = new Date().toISOString();
+    query = query.in('status', ['ACTIVE', 'SCHEDULED']).lte('start_at', now).gt('end_at', now);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []).map(mapPromotion);
+}
+
+export async function createVenuePromotion(params: Omit<Promotion, 'id' | 'claims_count'> & { created_by: string }): Promise<Promotion> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { data, error } = await supabase.from('venue_promotions').insert({
+    venue_id: params.venue_id,
+    game_id: params.game_id ?? null,
+    title: params.title.trim(),
+    description: params.description.trim(),
+    promotion_type: params.promotion_type,
+    discount_value: params.discount_value ?? null,
+    terms: params.terms.trim(),
+    start_at: params.start_at,
+    end_at: params.end_at,
+    status: params.status,
+    created_by: params.created_by
+  }).select('*').single();
+  if (error) throw error;
+  return mapPromotion(data);
+}
+
+export async function deleteVenuePromotion(id: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { error } = await supabase.from('venue_promotions').delete().eq('id', id);
+  if (error) throw error;
 }
 
 export async function toggleVenueFavorite(userId: string, venueId: string, saved: boolean): Promise<void> {
@@ -160,4 +285,98 @@ export async function getFavoriteVenueIds(userId: string): Promise<string[]> {
   const { data, error } = await supabase.from('venue_favorites').select('venue_id').eq('user_id', userId);
   if (error) throw error;
   return (data ?? []).map((row: any) => row.venue_id);
+}
+
+
+export interface VenueClaimRequestRecord {
+  id: string;
+  venue_id: string;
+  applicant_user_id: string;
+  applicant_name: string;
+  applicant_email: string;
+  applicant_phone: string;
+  applicant_role: string;
+  verification_method: 'PHONE_CALL' | 'BUSINESS_EMAIL' | 'UTILITY_BILL' | 'MANUAL_AUDIT';
+  notes: string;
+  status: 'PENDING' | 'APPROVED' | 'DENIED' | 'NEEDS_VERIFICATION';
+  review_notes: string;
+  created_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  venue?: { name: string; city: string; state: string } | null;
+}
+
+export interface VenueClaimRequestInput {
+  venue_id: string;
+  applicant_user_id: string;
+  applicant_name: string;
+  applicant_email: string;
+  applicant_phone: string;
+  applicant_role: string;
+  verification_method: 'PHONE_CALL' | 'BUSINESS_EMAIL' | 'UTILITY_BILL' | 'MANUAL_AUDIT';
+  notes?: string;
+}
+
+export async function submitVenueClaimRequest(params: VenueClaimRequestInput): Promise<{ id: string; status: 'PENDING'; created_at: string }> {
+  if (!supabase) throw new Error('Venue claim service is unavailable. Please try again later.');
+  if (!params.applicant_user_id) throw new Error('Sign in before requesting venue ownership verification.');
+  const { data, error } = await supabase
+    .from('venue_claim_requests')
+    .insert({
+      venue_id: params.venue_id,
+      applicant_user_id: params.applicant_user_id,
+      applicant_name: params.applicant_name.trim(),
+      applicant_email: params.applicant_email.trim().toLowerCase(),
+      applicant_phone: params.applicant_phone.trim(),
+      applicant_role: params.applicant_role.trim(),
+      verification_method: params.verification_method,
+      notes: (params.notes ?? '').trim()
+    })
+    .select('id,status,created_at')
+    .single();
+  if (error) {
+    if (error.code === '23505') throw new Error('A claim for this venue is already pending review.');
+    if (error.code === '42501') throw new Error('You cannot claim this venue. It may already be claimed or your session has expired.');
+    throw error;
+  }
+  return { id: data.id, status: data.status, created_at: data.created_at };
+}
+
+export async function getMyVenueClaimRequests(userId: string): Promise<Array<{ id: string; venue_id: string; status: string; created_at: string }>> {
+  if (!supabase || !userId) return [];
+  const { data, error } = await supabase
+    .from('venue_claim_requests')
+    .select('id,venue_id,status,created_at')
+    .eq('applicant_user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getVenueClaimRequests(): Promise<VenueClaimRequestRecord[]> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { data, error } = await supabase
+    .from('venue_claim_requests')
+    .select('id,venue_id,applicant_user_id,applicant_name,applicant_email,applicant_phone,applicant_role,verification_method,notes,status,review_notes,created_at,reviewed_at,reviewed_by,venue:venues(name,city,state)')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as VenueClaimRequestRecord[];
+}
+
+export async function reviewVenueClaimRequest(
+  requestId: string,
+  status: 'APPROVED' | 'DENIED' | 'NEEDS_VERIFICATION',
+  reviewNotes = ''
+): Promise<VenueClaimRequestRecord> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { data, error } = await supabase.rpc('review_venue_claim_request', {
+    p_request_id: requestId,
+    p_status: status,
+    p_review_notes: reviewNotes.trim()
+  });
+  if (error) {
+    if (error.code === '42501') throw new Error('Platform administrator access is required to review venue claims.');
+    throw error;
+  }
+  return data as VenueClaimRequestRecord;
 }

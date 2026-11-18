@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { VenueClaim, VenuePlaceMatch, ClaimVerificationStatus, SportsGame } from '../../types';
 import { businessVenueService } from '../../services/businessVenueService';
+import { getVenueClaimRequests, reviewVenueClaimRequest, VenueClaimRequestRecord } from '../../services/venueService';
+import { isDemoMode } from '../../config/dataMode';
 import { googlePlacesService } from '../../services/googlePlacesService';
 import { sportsService, SportsProviderStatus, ISportsDataProvider } from '../../services/sportsProvider';
 import { SEEDED_VENUES } from '../../data/seedData';
@@ -35,6 +37,8 @@ interface AdminModerationPanelProps {
 export const AdminModerationPanel: React.FC<AdminModerationPanelProps> = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState<'MARKETS' | 'CLAIMS' | 'PLACES' | 'AUDIT' | 'SPORTS_DATA'>('MARKETS');
   const [claims, setClaims] = useState<VenueClaim[]>([]);
+  const [secureClaims, setSecureClaims] = useState<VenueClaimRequestRecord[]>([]);
+  const [isReviewingClaim, setIsReviewingClaim] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
   // Sports data provider administration state
@@ -71,6 +75,12 @@ export const AdminModerationPanel: React.FC<AdminModerationPanelProps> = ({ onBa
 
   const refresh = () => {
     setClaims(businessVenueService.getAllClaims());
+    if (!isDemoMode) {
+      getVenueClaimRequests().then(setSecureClaims).catch((error) => {
+        console.error('Unable to load secure venue claim requests.', error);
+        setActionFeedback('Unable to load venue claims. Confirm your platform-admin access.');
+      });
+    }
   };
 
   const handleTestSportsConnection = async () => {
@@ -100,6 +110,26 @@ export const AdminModerationPanel: React.FC<AdminModerationPanelProps> = ({ onBa
     setActionFeedback('Commercial sports provider credentials activated.');
     setSportsStatus(sportsService.getStatus());
     setTimeout(() => setActionFeedback(null), 3000);
+  };
+
+  const handleReviewSecureClaim = async (claimId: string, status: 'APPROVED' | 'DENIED' | 'NEEDS_VERIFICATION') => {
+    setIsReviewingClaim(claimId);
+    try {
+      await reviewVenueClaimRequest(claimId, status, status === 'APPROVED'
+        ? 'Ownership verified and approved by RallyOn platform administration.'
+        : status === 'DENIED'
+          ? 'Ownership could not be verified.'
+          : 'Additional ownership evidence is required.');
+      setActionFeedback(status === 'APPROVED'
+        ? 'Claim approved. Venue ownership is now assigned to the verified applicant.'
+        : status === 'DENIED' ? 'Claim denied.' : 'Additional verification requested.');
+      refresh();
+    } catch (error) {
+      console.error('Unable to review venue claim request.', error);
+      setActionFeedback(error instanceof Error ? error.message : 'Unable to review this claim.');
+    } finally {
+      setIsReviewingClaim(null);
+    }
   };
 
   const handleReviewClaim = (claimId: string, status: ClaimVerificationStatus) => {
@@ -163,7 +193,7 @@ export const AdminModerationPanel: React.FC<AdminModerationPanelProps> = ({ onBa
             activeTab === 'CLAIMS' ? 'bg-amber-500 text-black' : 'text-neutral-400 hover:text-white'
           }`}
         >
-          Venue Claims ({claims.filter((c) => c.verification_status === 'PENDING').length} Pending)
+          Venue Claims ({(isDemoMode ? claims.filter((c) => c.verification_status === 'PENDING').length : secureClaims.filter((c) => c.status === 'PENDING').length)} Pending)
         </button>
         <button
           onClick={() => setActiveTab('PLACES')}
@@ -198,7 +228,33 @@ export const AdminModerationPanel: React.FC<AdminModerationPanelProps> = ({ onBa
 
         {activeTab === 'CLAIMS' && (
           <div className="space-y-3">
-            {claims.map((claim) => {
+            {!isDemoMode && secureClaims.map((claim) => (
+              <div key={claim.id} className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-black text-white">{claim.venue?.name || 'Venue claim request'}</h4>
+                    <p className="text-xs text-neutral-400">{claim.venue?.city || 'DFW'}, {claim.venue?.state || 'TX'} · {claim.applicant_role}</p>
+                    <p className="text-xs text-neutral-300 mt-1">Applicant: <b>{claim.applicant_name}</b></p>
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500/20 text-amber-400">{claim.status}</span>
+                </div>
+                <div className="p-3 bg-neutral-950 rounded-xl border border-neutral-800 text-xs text-neutral-300 space-y-1">
+                  <div>Email: <span className="text-amber-400">{claim.applicant_email}</span></div>
+                  <div>Phone: <span className="text-amber-400">{claim.applicant_phone}</span></div>
+                  <div>Verification: <b>{claim.verification_method}</b></div>
+                  {claim.notes && <p className="text-neutral-400">Notes: {claim.notes}</p>}
+                  <p className="text-neutral-500">Submitted {new Date(claim.created_at).toLocaleString()}</p>
+                </div>
+                {claim.status === 'PENDING' && (
+                  <div className="flex flex-wrap gap-2">
+                    <button disabled={isReviewingClaim === claim.id} onClick={() => void handleReviewSecureClaim(claim.id, 'APPROVED')} className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs rounded-xl disabled:opacity-50">Approve & assign ownership</button>
+                    <button disabled={isReviewingClaim === claim.id} onClick={() => void handleReviewSecureClaim(claim.id, 'NEEDS_VERIFICATION')} className="px-3 py-1.5 bg-amber-500/20 text-amber-300 font-bold text-xs rounded-xl disabled:opacity-50">Request verification</button>
+                    <button disabled={isReviewingClaim === claim.id} onClick={() => void handleReviewSecureClaim(claim.id, 'DENIED')} className="px-3 py-1.5 bg-neutral-800 text-neutral-300 font-bold text-xs rounded-xl disabled:opacity-50">Deny</button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {isDemoMode && claims.map((claim) => {
               const venue = SEEDED_VENUES.find((v) => v.id === claim.venue_id);
               return (
                 <div

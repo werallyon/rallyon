@@ -44,6 +44,7 @@ function mapUser(u: any): User {
     name: m.name || u.email?.split('@')[0] || '', username: m.username || u.email?.split('@')[0] || '',
     profilePhotoUrl: m.profilePhotoUrl || '', avatar: m.avatar || '',
     authProvider: m.authProvider || 'EMAIL', emailVerified: Boolean(u.email_confirmed_at),
+    isPlatformAdmin: u.app_metadata?.role === 'admin',
     onboardingCompleted: Boolean(m.onboardingCompleted), onboardingStep: m.onboardingStep || 'welcome',
     createdAt: m.createdAt || u.created_at || now, updatedAt: now, lastActiveAt: now,
     locationPermissionStatus: m.locationPermissionStatus || 'PROMPT',
