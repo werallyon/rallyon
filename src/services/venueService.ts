@@ -151,7 +151,12 @@ function mapPromotion(row: any): Promotion {
     start_at: row.start_at,
     end_at: row.end_at,
     status: row.status,
-    claims_count: Number(row.claims_count ?? 0)
+    claims_count: Number(row.claims_count ?? 0),
+    source_type: row.source_type ?? 'VENUE_CONFIRMED',
+    source_url: row.source_url ?? undefined,
+    source_label: row.source_label ?? undefined,
+    verified_at: row.verified_at ?? undefined,
+    verified_by: row.verified_by ?? undefined
   };
 }
 

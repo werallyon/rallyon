@@ -138,8 +138,42 @@ begin
       and tablename = 'venue_promotions'
       and policyname = 'venue_promotions_public_active_read'
       and qual ~ 'claimed_by_user_id[[:space:]]*=[[:space:]]*venue_promotions.created_by'
+      and qual ~ 'verified_at'
+      and qual ~ 'verified_by'
   ) then
-    raise exception 'Public promotion reads must require the current venue owner to match the offer creator';
+    raise exception 'Public promotion reads must separate claimed-owner offers from reviewed source-backed offers';
+  end if;
+
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'venue_promotions'
+      and column_name = 'source_type' and is_nullable = 'NO'
+  ) or not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'venue_promotions'
+      and column_name = 'source_url'
+  ) or not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'venue_promotions'
+      and column_name = 'verified_by'
+  ) then
+    raise exception 'Venue promotion provenance columns are missing';
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'venue_promotions'
+      and policyname = 'venue_promotions_owner_update'
+      and qual ~ 'created_by'
+      and qual ~ 'VENUE_CONFIRMED'
+  ) or not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'venue_promotions'
+      and policyname = 'venue_promotions_owner_delete'
+      and qual ~ 'created_by'
+      and qual ~ 'VENUE_CONFIRMED'
+  ) then
+    raise exception 'Venue owners must not edit or delete centrally sourced offers';
   end if;
 
   if not has_table_privilege('anon', 'public.venue_promotions', 'SELECT')
