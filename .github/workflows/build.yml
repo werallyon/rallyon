@@ -38,3 +38,49 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+  dfw-market-validation:
+    name: DFW migrations on isolated local Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SUPABASE_PROJECT_ID: rallyon-dfw-${{ github.run_id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        id: setup-supabase-cli
+        uses: supabase/setup-cli@v3
+        with:
+          version: ^3
+
+      - name: Configure isolated project and unique ports
+        run: |
+          BASE_PORT=$((20000 + GITHUB_RUN_ID % 10000))
+          sed -i "s/^project_id = .*/project_id = \"$SUPABASE_PROJECT_ID\"/" validation/dfw/supabase/config.toml
+          sed -i "s/^port = 54371$/port = $((BASE_PORT + 1))/" validation/dfw/supabase/config.toml
+          sed -i "s/^port = 54372$/port = $((BASE_PORT + 2))/" validation/dfw/supabase/config.toml
+          sed -i "s/^shadow_port = 54370$/shadow_port = $BASE_PORT/" validation/dfw/supabase/config.toml
+          sed -i "s/^port = 54373$/port = $((BASE_PORT + 3))/" validation/dfw/supabase/config.toml
+          sed -i "s/^port = 54374$/port = $((BASE_PORT + 4))/" validation/dfw/supabase/config.toml
+
+      - name: Stage exact DFW production migrations
+        run: |
+          cp supabase/migrations/20261117100000_seed_dfw_market_and_cities.sql validation/dfw/supabase/migrations/
+          cp supabase/migrations/20261117103000_seed_dfw_venue_directory.sql validation/dfw/supabase/migrations/
+          cp supabase/migrations/20261117104500_seed_dfw_official_game_programming.sql validation/dfw/supabase/migrations/
+          cp supabase/migrations/20261117110000_create_venue_promotions.sql validation/dfw/supabase/migrations/
+
+      - name: Start isolated local Supabase stack
+        run: supabase --workdir validation/dfw start
+
+      - name: Reset database and apply exact DFW migrations
+        run: supabase --workdir validation/dfw db reset
+
+      - name: Verify market, cities, venues, coordinates, and trust boundaries
+        run: bash validation/dfw/run-local-sql.sh validation/dfw/verify.sql
+
+      - name: Stop isolated local Supabase stack
+        if: always() && steps.setup-supabase-cli.outcome == 'success'
+        run: supabase --workdir validation/dfw stop

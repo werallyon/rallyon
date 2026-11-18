@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   Zap,
@@ -32,13 +32,15 @@ import {
   RallyMatchResult,
   SportsGame,
   VenueGame,
-  Presence
+  Presence,
+  Promotion
 } from '../types';
 import { INTENT_CONFIGS } from '../data/seedData';
 import { QRCheckInModal } from './business/QRCheckInModal';
 import { VenueClaimModal } from './business/VenueClaimModal';
 import { businessVenueService } from '../services/businessVenueService';
 import { googlePlacesService } from '../services/googlePlacesService';
+import { getVenuePromotions } from '../services/venueService';
 
 interface VenueDetailModalProps {
   venue: Venue;
@@ -72,13 +74,25 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
 
   const intentConfig = INTENT_CONFIGS[currentIntent];
 
   const claim = businessVenueService.getClaimForVenue(venue.id);
   const isClaimed = venue.claimed || claim?.verification_status === 'APPROVED';
-  const promotions = businessVenueService.getPromotionsForVenue(venue.id);
-  const activePromo = promotions[0];
+  useEffect(() => {
+    let mounted = true;
+    if (venue.isDemoData || venue.id.startsWith('venue_')) {
+      setPromotions(businessVenueService.getPromotionsForVenue(venue.id));
+    } else {
+      getVenuePromotions(venue.id).then((items) => { if (mounted) setPromotions(items); })
+        .catch((error) => { console.warn('Venue specials are unavailable.', error); if (mounted) setPromotions([]); });
+    }
+    return () => { mounted = false; };
+  }, [venue.id, venue.isDemoData]);
+  const now = Date.now();
+  const activePromotions = promotions.filter((promo) => (promo.status === 'ACTIVE' || promo.status === 'SCHEDULED') && new Date(promo.start_at).getTime() <= now && new Date(promo.end_at).getTime() > now);
+  const hasPublishedSpecial = venue.features?.some((feature) => /happy hour|special|deal|discount|offer|wing night|taco of the month/i.test(feature)) ?? false;
   const programming = businessVenueService.getProgrammingForVenue(venue.id);
   const googlePlace = googlePlacesService.getPlaceForVenue(venue.id);
   const reliability = businessVenueService.calculateVenueReliability(venue.id);
@@ -169,8 +183,7 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
               <span>{venue.baseline.category}</span>
               <span>•</span>
               <span>{venue.neighborhood}</span>
-              <span>•</span>
-              <span>{venue.baseline.priceLevel}</span>
+              {venue.baseline.priceLevel && <><span>•</span><span>{venue.baseline.priceLevel}</span></>}
               {googlePlace && (
                 <>
                   <span>•</span>
@@ -250,30 +263,48 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
             </div>
           </div>
 
-          {/* ACTIVE PROMOTION / SPECIAL OFFER (Section 13 & 26) */}
-          {activePromo && (
-            <div className="rounded-2xl bg-gradient-to-r from-amber-500/20 via-neutral-900 to-orange-500/15 border border-amber-500/40 p-4 shadow-xl">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                  <Ticket className="w-3.5 h-3.5" />
-                  Special: With RallyOn Check-In
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500 text-black">
-                  {activePromo.discount_value}
-                </span>
-              </div>
-              <h3 className="text-sm font-black text-white">{activePromo.title}</h3>
-              <p className="text-xs text-neutral-300 mt-1">{activePromo.description}</p>
-              <div className="mt-3 flex items-center justify-between pt-2 border-t border-neutral-800">
-                <span className="text-[10px] text-neutral-400">{activePromo.terms}</span>
-                <button
-                  onClick={() => setShowCheckInModal(true)}
-                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs flex items-center gap-1 shadow-md transition-transform active:scale-95"
-                >
-                  <QrCode className="w-3.5 h-3.5" />
-                  <span>Rally & Redeem</span>
-                </button>
-              </div>
+          {/* CURRENT VENUE SPECIALS */}
+          {activePromotions.length > 0 && (
+            <div className="space-y-3">
+              {activePromotions.map((activePromo) => (
+                <div key={activePromo.id} className="rounded-2xl bg-gradient-to-r from-amber-500/20 via-neutral-900 to-orange-500/15 border border-amber-500/40 p-4 shadow-xl">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                      <Ticket className="w-3.5 h-3.5" />
+                      {activePromo.promotion_type === 'FOOD_SPECIAL' ? 'Food special' : activePromo.promotion_type === 'DRINK_SPECIAL' ? 'Drink special' : activePromo.promotion_type === 'GAME_SPECIAL' ? 'Game-time special' : activePromo.promotion_type === 'WATCH_PARTY' ? 'Watch party offer' : 'Venue special'}
+                    </span>
+                    {activePromo.discount_value && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500 text-black">
+                        {activePromo.discount_value}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-sm font-black text-white">{activePromo.title}</h3>
+                  <p className="text-xs text-neutral-300 mt-1">{activePromo.description}</p>
+                  <p className="mt-2 text-[10px] text-neutral-400">Valid {new Date(activePromo.start_at).toLocaleString()} – {new Date(activePromo.end_at).toLocaleString()}{activePromo.game_id ? (activeGame?.id === activePromo.game_id ? ` · ${activeGame.awayTeam.name} at ${activeGame.homeTeam.name}` : ' · Game-specific offer') : ' · Applies to all games'}</p>
+                  <div className="mt-3 flex items-center justify-between gap-2 pt-2 border-t border-neutral-800">
+                    <span className="text-[10px] text-neutral-400">{activePromo.terms || 'Ask staff to confirm availability.'}</span>
+                    {venue.isDemoData || venue.id.startsWith('venue_') ? (
+                      <button
+                        onClick={() => setShowCheckInModal(true)}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs flex items-center gap-1 shadow-md transition-transform active:scale-95"
+                      >
+                        <QrCode className="w-3.5 h-3.5" />
+                        <span>Rally & Redeem</span>
+                      </button>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-amber-300">Show this offer to staff</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activePromotions.length === 0 && !hasPublishedSpecial && (
+            <div className="rounded-2xl bg-neutral-900/70 border border-neutral-800 p-4">
+              <span className="text-[11px] font-black uppercase tracking-wider text-neutral-400">Game-Day Specials</span>
+              <p className="mt-1 text-xs text-neutral-400">No current specials have been published or confirmed by this venue. Check with staff before heading over.</p>
             </div>
           )}
 
@@ -577,14 +608,37 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
           </div>
 
           {/* STRUCTURED VENUE TRUTH */}
-          <div className="rounded-2xl bg-neutral-900/90 border border-neutral-800 p-4 space-y-4">
+          {venue.venueTruthComplete === false ? (
+            <div className="rounded-2xl bg-neutral-900/90 border border-neutral-800 p-4 space-y-3">
+              <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+                <span className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-neutral-500" />
+                  Venue Truth Intelligence
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400 font-medium">Not confirmed</span>
+              </div>
+              <p className="text-xs text-neutral-400">Screen count, audio, projection, seating and crowd details have not been confirmed by this venue. RallyOn does not guess these specifications.</p>
+              {venue.features && venue.features.length > 0 && (
+                <div className="pt-2 border-t border-neutral-800">
+                  <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block mb-1.5">Publicly Listed Venue Highlights</span>
+                  <div className="flex flex-wrap gap-1">
+                    {venue.features.map((item, idx) => (
+                      <span key={idx} className="text-[11px] px-2.5 py-1 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-300">{item}</span>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[10px] text-neutral-500">Published details can change. Confirm current specials and game-time availability with staff.</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-neutral-900/90 border border-neutral-800 p-4 space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
               <span className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-amber-400" />
                 Venue Truth Intelligence
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400 font-medium">
-                Verified Profile
+                Structured Details
               </span>
             </div>
 
@@ -701,7 +755,23 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
                 </div>
               </div>
             )}
-          </div>
+            {venue.features && venue.features.length > 0 && (
+              <div className="pt-3 border-t border-neutral-800">
+                <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block mb-1.5">
+                  Publicly Listed Venue Highlights
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {venue.features.map((item, idx) => (
+                    <span key={idx} className="text-[11px] px-2.5 py-1 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-300">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-2 text-[10px] text-neutral-500">Published venue details can change. Confirm current specials and game-time availability with staff.</p>
+              </div>
+            )}
+            </div>
+          )}
 
           {/* Location & Contact Info */}
           <div className="p-4 rounded-2xl bg-neutral-900/80 border border-neutral-800 space-y-2 text-xs">
@@ -756,7 +826,7 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
 
           <a
             href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-              `${venue.name} ${venue.address} Austin TX`
+              [venue.name, venue.address, venue.city, venue.state].filter(Boolean).join(' ')
             )}`}
             target="_blank"
             rel="noreferrer"
@@ -771,7 +841,7 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
         {showCheckInModal && (
           <QRCheckInModal
             venue={venue}
-            activePromotion={activePromo}
+            activePromotion={activePromotions[0]}
             onClose={() => setShowCheckInModal(false)}
             onCheckInSuccess={() => {
               setShowCheckInModal(false);
