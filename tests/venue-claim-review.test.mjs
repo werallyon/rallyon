@@ -26,3 +26,16 @@ test('approval atomically assigns the venue only while it remains unclaimed', ()
   assert.match(migration, /Venue is no longer available to claim/i);
   assert.match(migration, /reviewed_by = auth\.uid\(\)/i);
 });
+
+
+test('admin review UI uses the privileged database workflow outside demo mode', () => {
+  const service = readFileSync('src/services/venueService.ts', 'utf8');
+  const panel = readFileSync('src/components/business/AdminModerationPanel.tsx', 'utf8');
+  assert.match(service, /getVenueClaimRequests/);
+  assert.match(service, /from\\('venue_claim_requests'\\)[\\s\\S]*venue:venues/);
+  assert.match(service, /rpc\\('review_venue_claim_request'/);
+  assert.match(panel, /!isDemoMode && secureClaims\\.map/);
+  assert.match(panel, /handleReviewSecureClaim\\(claim\\.id, 'APPROVED'\\)/);
+  assert.match(panel, /handleReviewSecureClaim\\(claim\\.id, 'NEEDS_VERIFICATION'\\)/);
+  assert.match(panel, /handleReviewSecureClaim\\(claim\\.id, 'DENIED'\\)/);
+});
