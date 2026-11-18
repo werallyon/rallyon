@@ -39,3 +39,15 @@ test('admin review UI uses the privileged database workflow outside demo mode', 
   assert.match(panel, /handleReviewSecureClaim\(claim\.id, 'NEEDS_VERIFICATION'\)/);
   assert.match(panel, /handleReviewSecureClaim\(claim\.id, 'DENIED'\)/);
 });
+
+
+test('isolated DFW validation applies byte-identical production claim migrations', () => {
+  for (const name of [
+    '20261118120000_create_venue_claim_requests.sql',
+    '20261118130000_secure_venue_claim_review.sql'
+  ]) {
+    const production = readFileSync('supabase/migrations/' + name, 'utf8');
+    const isolated = readFileSync('validation/dfw/supabase/migrations/' + name, 'utf8');
+    assert.equal(isolated, production, name + ' differs from the production migration');
+  }
+});
