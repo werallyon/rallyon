@@ -220,32 +220,43 @@ export class GooglePlacesService {
    * Normalizes raw Google Places API result into RallyOn GooglePlaceData model
    */
   normalizeGooglePlace(raw: any): GooglePlaceData {
+    const location = raw.location || raw.geometry?.location || {};
+    const lat = typeof location.lat === 'function' ? location.lat() : location.lat;
+    const lng = typeof location.lng === 'function' ? location.lng() : location.lng;
+    const displayName = typeof raw.displayName === 'string' ? raw.displayName : raw.displayName?.text;
+    const priceLevelMap: Record<string, number> = {
+      PRICE_LEVEL_FREE: 0,
+      PRICE_LEVEL_INEXPENSIVE: 1,
+      PRICE_LEVEL_MODERATE: 2,
+      PRICE_LEVEL_EXPENSIVE: 3,
+      PRICE_LEVEL_VERY_EXPENSIVE: 4
+    };
+    const rawPriceLevel = raw.priceLevel ?? raw.price_level;
+
     return {
-      placeId: raw.place_id || raw.id,
-      name: raw.name || '',
-      formattedAddress: raw.formatted_address || raw.vicinity || '',
-      formattedPhoneNumber: raw.formatted_phone_number || raw.international_phone_number,
-      website: raw.website,
+      placeId: raw.id || raw.place_id,
+      name: displayName || raw.name || '',
+      formattedAddress: raw.formattedAddress || raw.formatted_address || raw.vicinity || '',
+      formattedPhoneNumber: raw.nationalPhoneNumber || raw.internationalPhoneNumber || raw.formatted_phone_number || raw.international_phone_number,
+      website: raw.websiteUri || raw.website,
       location: {
-        lat: raw.geometry?.location?.lat || 0,
-        lng: raw.geometry?.location?.lng || 0
+        lat: Number(lat ?? 0),
+        lng: Number(lng ?? 0)
       },
       rating: raw.rating,
-      userRatingsTotal: raw.user_ratings_total,
-      businessStatus: raw.business_status || 'OPERATIONAL',
-      priceLevel: raw.price_level,
-      openNow: raw.opening_hours?.open_now,
-      weekdayText: raw.opening_hours?.weekday_text,
-      photos: raw.photos?.map(
-        (p: any) =>
-          `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${p.photo_reference}&key=${this.apiKey}`
-      ),
+      userRatingsTotal: raw.userRatingCount ?? raw.user_ratings_total,
+      businessStatus: raw.businessStatus || raw.business_status || 'OPERATIONAL',
+      priceLevel: typeof rawPriceLevel === 'number' ? rawPriceLevel : priceLevelMap[rawPriceLevel],
+      openNow: raw.currentOpeningHours?.openNow ?? raw.regularOpeningHours?.openNow ?? raw.opening_hours?.open_now,
+      weekdayText: raw.regularOpeningHours?.weekdayDescriptions || raw.currentOpeningHours?.weekdayDescriptions || raw.opening_hours?.weekday_text,
+      photos: raw.photos?.map((photo: any) => photo.photo_reference
+        ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo.photo_reference}&key=${this.apiKey}`
+        : photo.url).filter(Boolean),
       types: raw.types,
-      googleMapsUrl: raw.url,
+      googleMapsUrl: raw.googleMapsUri || raw.url,
       lastFetchedAt: new Date().toISOString()
     };
   }
-
   /**
    * Venue Identity / Place Matching algorithm (Section 5)
    * Prevents duplicates by computing cross-attribute similarity
