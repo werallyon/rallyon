@@ -30,7 +30,7 @@ begin
       using errcode = '42501';
   end if;
 
-  if p_status not in ('APPROVED', 'DENIED', 'NEEDS_VERIFICATION') then
+  if p_status is null or p_status not in ('APPROVED', 'DENIED', 'NEEDS_VERIFICATION') then
     raise exception 'Invalid venue claim review status'
       using errcode = '22023';
   end if;
