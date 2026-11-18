@@ -140,16 +140,6 @@ export const MapScreen: React.FC<MapScreenProps> = ({
 
   const locatedVenues = useMemo(() => venues.filter(hasValidMapCoordinates), [venues]);
 
-  useEffect(() => {
-    setSelectedMarkerVenue((current) => {
-      if (current) {
-        const refreshed = locatedVenues.find((venue) => venue.id === current.id);
-        if (refreshed) return refreshed;
-      }
-      return locatedVenues[0] || null;
-    });
-  }, [locatedVenues]);
-
   const getMarkerStatus = (venue: Venue) => {
     const live = liveStates[venue.id];
     const friends = presences.filter((presence) => presence.venueId === venue.id);
@@ -178,6 +168,17 @@ export const MapScreen: React.FC<MapScreenProps> = ({
     if (selectedGame && !venueGames.some((programming) => programming.venueId === venue.id && programming.gameId === selectedGame.id)) return false;
     return matchesMarkerCategory(venue, markerCategory);
   }), [locatedVenues, markerCategory, liveStates, presences, venueGames, selectedGame]);
+
+  // Keep the selected venue consistent with the active game/status filters.
+  useEffect(() => {
+    setSelectedMarkerVenue((current) => {
+      if (current) {
+        const refreshed = visibleVenues.find((venue) => venue.id === current.id);
+        if (refreshed) return refreshed;
+      }
+      return visibleVenues[0] || null;
+    });
+  }, [visibleVenues]);
 
   useEffect(() => {
     let cancelled = false;
