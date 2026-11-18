@@ -177,15 +177,24 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
                 Broadcast Network
               </span>
               <span className="font-bold text-white text-xs block">
-                {game.broadcastNetwork || 'ESPN Broadcast'}
+                {game.broadcastNetwork || 'No listing supplied by ESPN'}
               </span>
-              <span className="text-[10px] text-emerald-400 block">
+              <span className="text-[10px] text-neutral-400 block">
                 {game.broadcast?.broadcastType === 'NATIONAL_OTA'
-                  ? 'Over-the-Air (Free)'
+                  ? 'Over-the-air network'
                   : game.broadcast?.broadcastType === 'STREAMING_EXCLUSIVE'
-                  ? 'Streaming Only'
-                  : 'Cable & Sports Bars'}
+                  ? 'Streaming service'
+                  : game.broadcast?.broadcastType === 'REGIONAL'
+                  ? 'Regional sports network'
+                  : game.broadcast?.broadcastType === 'CABLE'
+                  ? 'Cable sports network'
+                  : 'Broadcast availability unconfirmed'}
               </span>
+              {game.broadcast?.regionalAvailability && (
+                <span className="text-[10px] text-neutral-500 block">
+                  Market: {game.broadcast.regionalAvailability}
+                </span>
+              )}
             </div>
 
             <div className="p-3 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-1">
@@ -194,10 +203,10 @@ export const GameIntelligenceModal: React.FC<GameIntelligenceModalProps> = ({
                 Odds & Spread
               </span>
               <span className="font-bold text-white text-xs block truncate">
-                {summary?.odds?.details || game.liveDetails?.headline || 'Even Line'}
+                {summary?.odds?.details || 'Odds not available'}
               </span>
               <span className="text-[10px] text-neutral-400 block">
-                {summary?.odds?.overUnder ? `O/U ${summary.odds.overUnder}` : 'Live ESPN Feed'}
+                {summary?.odds?.overUnder ? `O/U ${summary.odds.overUnder}` : 'No odds data supplied'}
               </span>
             </div>
           </div>
