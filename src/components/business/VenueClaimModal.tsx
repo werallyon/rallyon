@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Shield, Building2, CheckCircle2, X, Phone, Mail, FileText, AlertCircle } from 'lucide-react';
 import { Venue, ClaimVerificationStatus } from '../../types';
 import { businessVenueService } from '../../services/businessVenueService';
+import { submitVenueClaimRequest } from '../../services/venueService';
 import { useAuth } from '../../context/AuthContext';
 
 interface VenueClaimModalProps {
@@ -29,7 +30,8 @@ export const VenueClaimModal: React.FC<VenueClaimModalProps> = ({
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const existingClaim = businessVenueService.getClaimForVenue(venue.id);
+  const isDemoVenue = Boolean(venue.isDemoData) || venue.id.startsWith('venue_');
+  const existingClaim = isDemoVenue ? businessVenueService.getClaimForVenue(venue.id) : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,21 +40,39 @@ export const VenueClaimModal: React.FC<VenueClaimModalProps> = ({
       return;
     }
 
+    if (!currentUser?.id) {
+      setError('Sign in with a verified RallyOn account before submitting a venue claim.');
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
     try {
-      await businessVenueService.submitClaim({
-        venue_id: venue.id,
-        applicant_user_id: currentUser?.id || 'usr_guest',
-        business_name: venue.name,
-        applicant_name: applicantName.trim(),
-        applicant_email: applicantEmail.trim(),
-        applicant_phone: applicantPhone.trim(),
-        role: role.trim(),
-        verification_method: verificationMethod,
-        notes: notes.trim()
-      });
+      if (isDemoVenue) {
+        await businessVenueService.submitClaim({
+          venue_id: venue.id,
+          applicant_user_id: currentUser.id,
+          business_name: venue.name,
+          applicant_name: applicantName.trim(),
+          applicant_email: applicantEmail.trim(),
+          applicant_phone: applicantPhone.trim(),
+          role: role.trim(),
+          verification_method: verificationMethod,
+          notes: notes.trim()
+        });
+      } else {
+        await submitVenueClaimRequest({
+          venue_id: venue.id,
+          applicant_user_id: currentUser.id,
+          applicant_name: applicantName.trim(),
+          applicant_email: applicantEmail.trim(),
+          applicant_phone: applicantPhone.trim(),
+          applicant_role: role.trim(),
+          verification_method: verificationMethod,
+          notes: notes.trim()
+        });
+      }
 
       setSubmitted(true);
       setTimeout(() => {
@@ -116,9 +136,9 @@ export const VenueClaimModal: React.FC<VenueClaimModalProps> = ({
               <div className="w-12 h-12 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
-              <h4 className="text-base font-black text-white">Claim Submitted Successfully</h4>
+              <h4 className="text-base font-black text-white">Claim Submitted for Review</h4>
               <p className="text-xs text-neutral-400 max-w-xs mx-auto">
-                Our verification team will review your business credentials and contact you via {applicantPhone} to verify ownership.
+                Your request is securely saved and remains pending until RallyOn verifies your authority to represent this venue. We may contact you via {applicantPhone}. Submitting a request does not grant venue access.
               </p>
             </div>
           ) : (

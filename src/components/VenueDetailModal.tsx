@@ -854,9 +854,8 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
           <VenueClaimModal
             venue={venue}
             onClose={() => setShowClaimModal(false)}
-            onSuccess={() => {
+            onClaimSubmitted={() => {
               setShowClaimModal(false);
-              if (onOpenDashboard) onOpenDashboard(venue.id);
             }}
           />
         )}

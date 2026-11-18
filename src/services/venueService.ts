@@ -286,3 +286,51 @@ export async function getFavoriteVenueIds(userId: string): Promise<string[]> {
   if (error) throw error;
   return (data ?? []).map((row: any) => row.venue_id);
 }
+
+
+export interface VenueClaimRequestInput {
+  venue_id: string;
+  applicant_user_id: string;
+  applicant_name: string;
+  applicant_email: string;
+  applicant_phone: string;
+  applicant_role: string;
+  verification_method: 'PHONE_CALL' | 'BUSINESS_EMAIL' | 'UTILITY_BILL' | 'MANUAL_AUDIT';
+  notes?: string;
+}
+
+export async function submitVenueClaimRequest(params: VenueClaimRequestInput): Promise<{ id: string; status: 'PENDING'; created_at: string }> {
+  if (!supabase) throw new Error('Venue claim service is unavailable. Please try again later.');
+  if (!params.applicant_user_id) throw new Error('Sign in before requesting venue ownership verification.');
+  const { data, error } = await supabase
+    .from('venue_claim_requests')
+    .insert({
+      venue_id: params.venue_id,
+      applicant_user_id: params.applicant_user_id,
+      applicant_name: params.applicant_name.trim(),
+      applicant_email: params.applicant_email.trim().toLowerCase(),
+      applicant_phone: params.applicant_phone.trim(),
+      applicant_role: params.applicant_role.trim(),
+      verification_method: params.verification_method,
+      notes: (params.notes ?? '').trim()
+    })
+    .select('id,status,created_at')
+    .single();
+  if (error) {
+    if (error.code === '23505') throw new Error('A claim for this venue is already pending review.');
+    if (error.code === '42501') throw new Error('You cannot claim this venue. It may already be claimed or your session has expired.');
+    throw error;
+  }
+  return { id: data.id, status: data.status, created_at: data.created_at };
+}
+
+export async function getMyVenueClaimRequests(userId: string): Promise<Array<{ id: string; venue_id: string; status: string; created_at: string }>> {
+  if (!supabase || !userId) return [];
+  const { data, error } = await supabase
+    .from('venue_claim_requests')
+    .select('id,venue_id,status,created_at')
+    .eq('applicant_user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
