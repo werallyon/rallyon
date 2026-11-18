@@ -48,3 +48,10 @@ test('map status filters are independent instead of mutually exclusive', () => {
   assert.match(source, /liveStates\[venue\.id\]\?\.crowd[\s\S]*>= 75/);
   assert.match(source, /return matchesMarkerCategory\(venue, markerCategory\)/);
 });
+
+
+test('selected venue follows active game and status filters', () => {
+  assert.match(source, /const refreshed = visibleVenues\.find/);
+  assert.match(source, /return visibleVenues\[0\] \|\| null/);
+  assert.match(source, /\}, \[visibleVenues\]\)/);
+});
