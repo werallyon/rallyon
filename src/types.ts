@@ -353,7 +353,10 @@ export interface User {
   privacy: 'FRIENDS_ONLY' | 'ANONYMOUS' | 'HIDDEN';
   savedVenueIds: string[];
 
-  // Trusted Supabase app_metadata role; never sourced from user-editable metadata.\n  isPlatformAdmin?: boolean;\n\n  // Business / Venue management association
+  // Trusted Supabase app_metadata role; never sourced from user-editable metadata.
+  isPlatformAdmin?: boolean;
+
+  // Business / Venue management association
   businessAccountId?: string;
   businessRole?: BusinessRole;
 }
