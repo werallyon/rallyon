@@ -324,53 +324,50 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
         status = 'DELAYED';
       }
 
-      // Broadcast Intelligence extraction
-      const rawBroadcast = competition.broadcasts?.[0]?.names?.[0] || competition.broadcasts?.[0]?.market || 'ESPN';
-      const netUpper = rawBroadcast.toUpperCase();
+      // Broadcast data is optional in ESPN scoreboard responses. Never invent a
+      // default network or infer a streaming subscription from a linear TV brand.
+      const broadcastEntries: any[] = Array.isArray(competition.broadcasts)
+        ? competition.broadcasts
+        : [];
+      const broadcastNames = broadcastEntries
+        .flatMap((entry) => Array.isArray(entry?.names) ? entry.names : [])
+        .filter((name: unknown): name is string => typeof name === 'string' && name.trim().length > 0)
+        .map((name: string) => name.trim());
+      const rawBroadcast = [...new Set(broadcastNames)].join(', ');
+      const normalizedNames = broadcastNames.map((name) => name.toUpperCase());
+      const explicitMarket = broadcastEntries
+        .map((entry) => typeof entry?.market === 'string' ? entry.market.trim() : '')
+        .find(Boolean);
 
-      let broadcastType: BroadcastIntelligence['broadcastType'] = 'CABLE';
-      if (
-        netUpper.includes('ABC') ||
-        netUpper.includes('FOX') ||
-        netUpper.includes('CBS') ||
-        netUpper.includes('NBC')
-      ) {
+      let broadcastType: BroadcastIntelligence['broadcastType'] = 'UNKNOWN';
+      if (normalizedNames.some((name) => ['ABC', 'CBS', 'FOX', 'NBC'].includes(name))) {
         broadcastType = 'NATIONAL_OTA';
-      } else if (
-        netUpper.includes('+') ||
-        netUpper.includes('PEACOCK') ||
-        netUpper.includes('PRIME') ||
-        netUpper.includes('APPLE') ||
-        netUpper.includes('MAX')
-      ) {
+      } else if (normalizedNames.some((name) =>
+        ['ESPN+', 'PEACOCK', 'PRIME VIDEO', 'APPLE TV+', 'MAX', 'PARAMOUNT+'].includes(name)
+      )) {
         broadcastType = 'STREAMING_EXCLUSIVE';
-      } else if (
-        netUpper.includes('REGIONAL') ||
-        netUpper.includes('BALLY') ||
-        netUpper.includes('YES') ||
-        netUpper.includes('NESN') ||
-        netUpper.includes('MARQUEE')
-      ) {
+      } else if (normalizedNames.some((name) =>
+        ['BALLY SPORTS', 'FANDUEL SPORTS NETWORK', 'YES NETWORK', 'NESN', 'MARQUEE SPORTS NETWORK', 'ROOT SPORTS', 'MASN'].includes(name)
+      )) {
         broadcastType = 'REGIONAL';
+      } else if (normalizedNames.some((name) =>
+        ['ESPN', 'ESPN2', 'ESPNU', 'ESPN NEWS', 'FS1', 'FS2', 'TNT', 'TBS', 'TRUTV', 'SEC NETWORK', 'ACC NETWORK', 'BIG TEN NETWORK', 'NBA TV', 'MLB NETWORK', 'NHL NETWORK', 'GOLF CHANNEL', 'CBS SPORTS NETWORK', 'NFL NETWORK'].includes(name)
+      )) {
+        broadcastType = 'CABLE';
       }
 
-      const broadcast: BroadcastIntelligence = {
-        network: rawBroadcast,
-        broadcastType,
-        regionalAvailability:
-          broadcastType === 'REGIONAL'
-            ? 'Regional Sports Network (Check Local Listings)'
-            : 'Available Nationally',
-        streamingAvailability: netUpper.includes('ESPN')
-          ? ['ESPN+']
-          : netUpper.includes('NBC')
-          ? ['Peacock']
-          : netUpper.includes('CBS')
-          ? ['Paramount+']
-          : undefined,
-        externalProvider: 'ESPN Public Feeds',
-        lastVerified: new Date().toISOString()
-      };
+      const broadcast: BroadcastIntelligence | undefined = rawBroadcast
+        ? {
+            network: rawBroadcast,
+            broadcastType,
+            regionalAvailability: explicitMarket || undefined,
+            streamingAvailability: normalizedNames.filter((name) =>
+              ['ESPN+', 'PEACOCK', 'PRIME VIDEO', 'APPLE TV+', 'MAX', 'PARAMOUNT+'].includes(name)
+            ),
+            externalProvider: 'ESPN Public Feeds',
+            lastVerified: new Date().toISOString()
+          }
+        : undefined;
 
       const situation = this.extractSituationText(event, league);
 
@@ -409,7 +406,7 @@ export class ESPNSportsDataProvider implements ISportsDataProvider {
         startTime: event.date || new Date().toISOString(),
         status,
         venueName,
-        broadcastNetwork: rawBroadcast,
+        broadcastNetwork: rawBroadcast || undefined,
         broadcast,
         liveDetails: {
           currentScore: {
