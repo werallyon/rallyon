@@ -288,6 +288,24 @@ export async function getFavoriteVenueIds(userId: string): Promise<string[]> {
 }
 
 
+export interface VenueClaimRequestRecord {
+  id: string;
+  venue_id: string;
+  applicant_user_id: string;
+  applicant_name: string;
+  applicant_email: string;
+  applicant_phone: string;
+  applicant_role: string;
+  verification_method: 'PHONE_CALL' | 'BUSINESS_EMAIL' | 'UTILITY_BILL' | 'MANUAL_AUDIT';
+  notes: string;
+  status: 'PENDING' | 'APPROVED' | 'DENIED' | 'NEEDS_VERIFICATION';
+  review_notes: string;
+  created_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  venue?: { name: string; city: string; state: string } | null;
+}
+
 export interface VenueClaimRequestInput {
   venue_id: string;
   applicant_user_id: string;
@@ -333,4 +351,32 @@ export async function getMyVenueClaimRequests(userId: string): Promise<Array<{ i
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data ?? [];
+}
+
+export async function getVenueClaimRequests(): Promise<VenueClaimRequestRecord[]> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { data, error } = await supabase
+    .from('venue_claim_requests')
+    .select('id,venue_id,applicant_user_id,applicant_name,applicant_email,applicant_phone,applicant_role,verification_method,notes,status,review_notes,created_at,reviewed_at,reviewed_by,venue:venues(name,city,state)')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as VenueClaimRequestRecord[];
+}
+
+export async function reviewVenueClaimRequest(
+  requestId: string,
+  status: 'APPROVED' | 'DENIED' | 'NEEDS_VERIFICATION',
+  reviewNotes = ''
+): Promise<VenueClaimRequestRecord> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { data, error } = await supabase.rpc('review_venue_claim_request', {
+    p_request_id: requestId,
+    p_status: status,
+    p_review_notes: reviewNotes.trim()
+  });
+  if (error) {
+    if (error.code === '42501') throw new Error('Platform administrator access is required to review venue claims.');
+    throw error;
+  }
+  return data as VenueClaimRequestRecord;
 }
