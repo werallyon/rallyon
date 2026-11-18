@@ -17,7 +17,7 @@ alter table public.venue_promotions
     or (
       source_type = 'OFFICIAL_PUBLIC_SOURCE'
       and source_url is not null
-      and source_url ~ '^https?://[^[:space:]]+
+      and source_url ~ $url$^https?://[^[:space:]]+$url$
       and source_label is not null
       and length(btrim(source_label)) > 0
       and verified_at is not null
