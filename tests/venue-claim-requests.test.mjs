@@ -16,7 +16,7 @@ test('venue claim requests are durable and tied to an authenticated applicant', 
 
 test('claim submission cannot grant ownership or allow client-side review', () => {
   assert.match(migration, /status text not null default 'PENDING'/i);
-  assert.match(migration, /grant insert \\([\\s\\S]*verification_method,\\s*notes\\s*\\) on public\\.venue_claim_requests to authenticated/i);
+  assert.match(migration, /grant insert \([\s\S]*verification_method,\s*notes\s*\) on public\.venue_claim_requests to authenticated/i);
   assert.doesNotMatch(migration, /grant update|grant delete/i);
   assert.match(migration, /v\.claimed = false/i);
   assert.match(service, /submitVenueClaimRequest/);
