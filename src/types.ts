@@ -51,7 +51,7 @@ export type GameStatus =
 
 export interface BroadcastIntelligence {
   network: string; // e.g. "ESPN", "FOX", "CBS", "NBC", "ABC", "TNT", "SEC Network"
-  broadcastType: 'NATIONAL_OTA' | 'CABLE' | 'REGIONAL' | 'STREAMING_EXCLUSIVE';
+  broadcastType: 'NATIONAL_OTA' | 'CABLE' | 'REGIONAL' | 'STREAMING_EXCLUSIVE' | 'UNKNOWN';
   regionalAvailability?: string; // "National", "Texas / SW Regional", "Blackout in Austin"
   streamingAvailability?: string[]; // ["ESPN+", "Peacock", "Paramount+"]
   broadcastStartTime?: string;
