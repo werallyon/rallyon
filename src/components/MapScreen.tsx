@@ -61,29 +61,43 @@ declare global {
   }
 }
 
-let googleMapsLoader: Promise<GoogleMapsApi> | null = null;
+let googleMapsLoader: { apiKey: string; promise: Promise<GoogleMapsApi> } | null = null;
 
 const loadGoogleMaps = (apiKey: string): Promise<GoogleMapsApi> => {
   if (window.google?.maps) return Promise.resolve(window.google.maps);
-  if (!googleMapsLoader) {
-    googleMapsLoader = new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(apiKey) + '&v=weekly';
-      script.async = true;
-      script.defer = true;
-      script.dataset.rallyonGoogleMaps = 'true';
-      script.onload = () => {
-        if (window.google?.maps) resolve(window.google.maps);
-        else reject(new Error('Google Maps loaded without its maps library.'));
-      };
-      script.onerror = () => {
-        googleMapsLoader = null;
-        reject(new Error('Google Maps could not load. Check the API key, billing and Maps JavaScript API access.'));
-      };
-      document.head.appendChild(script);
-    });
+  if (googleMapsLoader) {
+    if (googleMapsLoader.apiKey !== apiKey) {
+      return Promise.reject(new Error('Google Maps is already loading with a different API key. Reload the page after changing the configured key.'));
+    }
+    return googleMapsLoader.promise;
   }
-  return googleMapsLoader;
+
+  const promise = new Promise<GoogleMapsApi>((resolve, reject) => {
+    const script = document.createElement('script');
+    const resetLoader = () => {
+      if (googleMapsLoader?.promise === promise) googleMapsLoader = null;
+      script.remove();
+    };
+    script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(apiKey) + '&v=weekly';
+    script.async = true;
+    script.defer = true;
+    script.dataset.rallyonGoogleMaps = 'true';
+    script.onload = () => {
+      if (window.google?.maps) {
+        resolve(window.google.maps);
+      } else {
+        resetLoader();
+        reject(new Error('Google Maps loaded without its maps library.'));
+      }
+    };
+    script.onerror = () => {
+      resetLoader();
+      reject(new Error('Google Maps could not load. Check the API key, billing and Maps JavaScript API access.'));
+    };
+    document.head.appendChild(script);
+  });
+  googleMapsLoader = { apiKey, promise };
+  return promise;
 };
 
 const hasValidMapCoordinates = (venue: Venue): boolean =>
@@ -162,11 +176,11 @@ export const MapScreen: React.FC<MapScreenProps> = ({
 
   useEffect(() => {
     let cancelled = false;
-    if (!apiKey) {
-      setMapReady(false);
-      setMapError('');
-      return;
-    }
+    // A market change tears down the previous map. Clear readiness before starting
+    // the next load so the marker effect runs after the replacement map is created.
+    setMapReady(false);
+    setMapError('');
+    if (!apiKey) return;
 
     loadGoogleMaps(apiKey)
       .then((maps) => {
