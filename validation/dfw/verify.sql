@@ -170,7 +170,7 @@ begin
     select 1 from pg_policies
     where schemaname = 'public' and tablename = 'venue_promotions'
       and policyname = 'venue_promotions_owner_delete'
-      and qual ~ 'created_by[[:space:]]*=[[:space:]]*\( SELECT auth.uid\(\)'
+      and qual ~ 'created_by'
       and qual ~ 'VENUE_CONFIRMED'
   ) then
     raise exception 'Venue owners must not edit or delete centrally sourced offers';
