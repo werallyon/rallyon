@@ -39,3 +39,12 @@ test('map remains usable without a key and never simulates GPS or hardcodes Aust
 test('selected game filters venues to programming rows for that game', () => {
   assert.match(source, /selectedGame && !venueGames\.some\(\(programming\) => programming\.venueId === venue\.id && programming\.gameId === selectedGame\.id\)/);
 });
+
+
+test('map status filters are independent instead of mutually exclusive', () => {
+  assert.match(source, /category === 'FRIENDS'[\s\S]*presences\.some/);
+  assert.match(source, /category === 'TRENDING'[\s\S]*trendingVelocity/);
+  assert.match(source, /category === 'GAME_ON'[\s\S]*verificationStatus === 'GAME_ON'/);
+  assert.match(source, /liveStates\[venue\.id\]\?\.crowd[\s\S]*>= 75/);
+  assert.match(source, /return matchesMarkerCategory\(venue, markerCategory\)/);
+});
