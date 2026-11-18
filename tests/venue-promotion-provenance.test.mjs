@@ -29,6 +29,9 @@ test('legacy venue-confirmed offers retain claimed-owner visibility and owner wr
   assert.ok(migration.includes("v.claimed_by_user_id = venue_promotions.created_by"));
   assert.ok(migration.includes("alter column created_by drop not null"));
   assert.ok(migration.includes("Owner insert/update grants intentionally exclude all provenance fields"));
+  assert.ok(migration.includes("source_type = 'VENUE_CONFIRMED'\n    and created_by = (select auth.uid())"));
+  assert.ok(migration.includes("drop policy if exists venue_promotions_owner_update"));
+  assert.ok(migration.includes("drop policy if exists venue_promotions_owner_delete"));
   assert.ok(original.includes("venue_promotions_owner_insert"));
   assert.ok(original.includes("venue_promotions_owner_update"));
   assert.ok(original.includes("venue_promotions_owner_delete"));
