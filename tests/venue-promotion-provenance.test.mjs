@@ -4,6 +4,9 @@ import test from 'node:test';
 
 const migration = readFileSync(new URL('../supabase/migrations/20261118140000_venue_promotion_provenance.sql', import.meta.url), 'utf8');
 const original = readFileSync(new URL('../supabase/migrations/20261117110000_create_venue_promotions.sql', import.meta.url), 'utf8');
+const service = readFileSync(new URL('../src/services/venueService.ts', import.meta.url), 'utf8');
+const types = readFileSync(new URL('../src/types.ts', import.meta.url), 'utf8');
+const detail = readFileSync(new URL('../src/components/VenueDetailModal.tsx', import.meta.url), 'utf8');
 
 test('publicly advertised specials require explicit source attribution and review', () => {
   assert.ok(migration.includes("OFFICIAL_PUBLIC_SOURCE"));
@@ -35,4 +38,18 @@ test('legacy venue-confirmed offers retain claimed-owner visibility and owner wr
   assert.ok(original.includes("venue_promotions_owner_insert"));
   assert.ok(original.includes("venue_promotions_owner_update"));
   assert.ok(original.includes("venue_promotions_owner_delete"));
+});
+
+test('fan offer cards preserve provenance and freshness instead of presenting sourced offers as venue-confirmed', () => {
+  assert.ok(types.includes("source_type?: 'VENUE_CONFIRMED' | 'OFFICIAL_PUBLIC_SOURCE' | 'COMMUNITY_REPORTED'"));
+  assert.ok(types.includes('source_url?: string'));
+  assert.ok(types.includes('verified_at?: string'));
+  assert.ok(service.includes("source_type: row.source_type ?? 'VENUE_CONFIRMED'"));
+  assert.ok(service.includes('source_label: row.source_label ?? undefined'));
+  assert.ok(service.includes('verified_at: row.verified_at ?? undefined'));
+  assert.ok(detail.includes('Officially advertised'));
+  assert.ok(detail.includes('Community reported · reviewed'));
+  assert.ok(detail.includes('Venue confirmed'));
+  assert.ok(detail.includes('activePromo.source_url'));
+  assert.ok(detail.includes('Checked'));
 });
