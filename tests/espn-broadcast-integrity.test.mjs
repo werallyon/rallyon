@@ -25,3 +25,15 @@ test('ESPN maps only explicitly named streaming services as streaming availabili
   assert.match(provider, /\['ESPN\+', 'PEACOCK', 'PRIME VIDEO', 'APPLE TV\+', 'MAX', 'PARAMOUNT\+'\]/);
   assert.match(provider, /streamingAvailability: normalizedNames\.filter/);
 });
+
+
+test('game intelligence UI does not invent a network, TV type, or odds', () => {
+  const modal = readFileSync(new URL('../src/components/sports/GameIntelligenceModal.tsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(modal, /'ESPN Broadcast'/);
+  assert.doesNotMatch(modal, /'Cable & Sports Bars'/);
+  assert.doesNotMatch(modal, /'Even Line'/);
+  assert.match(modal, /'No listing supplied by ESPN'/);
+  assert.match(modal, /'Broadcast availability unconfirmed'/);
+  assert.match(modal, /'Odds not available'/);
+  assert.match(modal, /'No odds data supplied'/);
+});
