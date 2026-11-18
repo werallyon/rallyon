@@ -164,14 +164,19 @@ export const MapScreen: React.FC<MapScreenProps> = ({
     return { type: 'LOW_ACTIVITY', label: 'Venue', icon: MapPin };
   };
 
+  const matchesMarkerCategory = (venue: Venue, category: MarkerCategory): boolean => {
+    if (category === 'ALL') return true;
+    if (category === 'FRIENDS') return presences.some((presence) => presence.venueId === venue.id);
+    if (category === 'TRENDING') return (liveStates[venue.id]?.trendingVelocity ?? 0) >= 25;
+    if (category === 'GAME_ON') return venueGames.some(
+      (programming) => programming.venueId === venue.id && programming.verificationStatus === 'GAME_ON'
+    );
+    return (liveStates[venue.id]?.crowd ?? 0) >= 75;
+  };
+
   const visibleVenues = useMemo(() => locatedVenues.filter((venue) => {
     if (selectedGame && !venueGames.some((programming) => programming.venueId === venue.id && programming.gameId === selectedGame.id)) return false;
-    const status = getMarkerStatus(venue).type;
-    if (markerCategory === 'ALL') return true;
-    if (markerCategory === 'FRIENDS') return status === 'FRIENDS';
-    if (markerCategory === 'TRENDING') return status === 'TRENDING';
-    if (markerCategory === 'GAME_ON') return status === 'GAME_ON';
-    return status === 'ACTIVE';
+    return matchesMarkerCategory(venue, markerCategory);
   }), [locatedVenues, markerCategory, liveStates, presences, venueGames, selectedGame]);
 
   useEffect(() => {
