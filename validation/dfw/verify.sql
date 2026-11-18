@@ -163,5 +163,45 @@ begin
     raise exception 'DFW promotions must not be seeded as if a venue operator confirmed them';
   end if;
 
+
+  if not exists (
+    select 1 from pg_class
+    where oid = 'public.venue_claim_requests'::regclass
+      and relrowsecurity
+  ) then
+    raise exception 'venue_claim_requests must have row-level security enabled';
+  end if;
+
+  if (
+    select count(*) from pg_policies
+    where schemaname = 'public'
+      and tablename = 'venue_claim_requests'
+  ) <> 3 then
+    raise exception 'venue_claim_requests must have applicant-read, applicant-insert and admin-read policies';
+  end if;
+
+  if has_table_privilege('authenticated', 'public.venue_claim_requests', 'UPDATE')
+     or has_table_privilege('authenticated', 'public.venue_claim_requests', 'DELETE')
+     or has_column_privilege('authenticated', 'public.venue_claim_requests', 'status', 'UPDATE')
+     or has_column_privilege('authenticated', 'public.venue_claim_requests', 'status', 'INSERT') then
+    raise exception 'Authenticated clients must not review claims or set claim status directly';
+  end if;
+
+  if not has_function_privilege('authenticated', 'public.review_venue_claim_request(uuid,text,text)', 'EXECUTE')
+     or has_function_privilege('anon', 'public.review_venue_claim_request(uuid,text,text)', 'EXECUTE') then
+    raise exception 'Venue claim review RPC execution privileges are incorrect';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'review_venue_claim_request'
+      and p.prosecdef
+  ) then
+    raise exception 'Venue claim review RPC must execute as a security definer';
+  end if;
+
   raise notice 'PASS: DFW market, 28 cities, 24 real unclaimed venues, 3 source-backed game-to-venue rows, RLS-protected venue promotions and trust boundaries';
 end $$;
