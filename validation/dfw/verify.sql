@@ -132,6 +132,16 @@ begin
     raise exception 'venue_promotions must have the five public-read/owner-only policies';
   end if;
 
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'venue_promotions'
+      and policyname = 'venue_promotions_public_active_read'
+      and qual ~ 'claimed_by_user_id[[:space:]]*=[[:space:]]*venue_promotions.created_by'
+  ) then
+    raise exception 'Public promotion reads must require the current venue owner to match the offer creator';
+  end if;
+
   if not has_table_privilege('anon', 'public.venue_promotions', 'SELECT')
      or has_table_privilege('anon', 'public.venue_promotions', 'INSERT')
      or has_table_privilege('anon', 'public.venue_promotions', 'UPDATE')
