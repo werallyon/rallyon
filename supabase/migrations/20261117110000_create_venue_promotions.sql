@@ -46,12 +46,6 @@ create policy venue_promotions_public_active_read
         and v.claimed = true
         and v.claimed_by_user_id = venue_promotions.created_by
     )
-    and exists (
-      select 1 from public.venues v
-      where v.id = venue_promotions.venue_id
-        and v.claimed = true
-        and v.claimed_by_user_id = venue_promotions.created_by
-    )
   );
 
 create policy venue_promotions_owner_read
